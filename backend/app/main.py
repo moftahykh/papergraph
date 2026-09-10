@@ -2,6 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.health import router as health_router
+from app.api.v1.search import router as search_router
+from app.api.v1.resolve import router as resolve_router
+from app.api.v1.graphs import router as graphs_router
+from app.api.v1.papers import router as papers_router
+from app.core.errors import APIError, api_error_handler
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -11,6 +16,9 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
 )
+
+# Exception Handlers
+app.add_exception_handler(APIError, api_error_handler)
 
 # CORS configuration
 app.add_middleware(
@@ -32,3 +40,7 @@ async def root_health():
 
 # Include API v1 routers
 app.include_router(health_router, prefix=settings.API_V1_STR)
+app.include_router(search_router, prefix=settings.API_V1_STR)
+app.include_router(resolve_router, prefix=settings.API_V1_STR)
+app.include_router(graphs_router, prefix=settings.API_V1_STR)
+app.include_router(papers_router, prefix=settings.API_V1_STR)

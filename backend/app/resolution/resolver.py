@@ -225,3 +225,21 @@ class IdentityResolver:
             [item[0] for item in scored_candidates[:5]],
             round(top_score, 2),
         )
+
+    def get_by_id(self, identifier: str) -> Optional[CanonicalPaper]:
+        """Direct identifier lookup across canonical papers and indexed keys."""
+        if not identifier:
+            return None
+        ident = identifier.strip()
+        for p in self.canonical_papers:
+            if p.canonical_id == ident or p.canonical_id.lower() == ident.lower():
+                return p
+        clean_d = normalize_doi(ident)
+        if clean_d and clean_d in self._doi_map:
+            return self._doi_map[clean_d]
+        clean_p = normalize_pmid(ident)
+        if clean_p and clean_p in self._pmid_map:
+            return self._pmid_map[clean_p]
+        if ident in self._provider_id_map:
+            return self._provider_id_map[ident]
+        return None

@@ -62,5 +62,11 @@ class Settings(BaseSettings):
     ENRICHMENT_MAX_CITATIONS_PER_PAPER: int = 200
     ENRICHMENT_EPSILON: float = 1e-8
 
+    # Security & Protection Settings
+    MAX_REQUEST_BODY_BYTES: int = 2 * 1024 * 1024  # 2MB max request payload
+    RATE_LIMIT_PER_MINUTE: int = 60  # Default requests per minute per IP
+    RATE_LIMIT_ENABLED: bool = True
+    METRICS_ENABLED: bool = True
+
 
 settings = Settings()

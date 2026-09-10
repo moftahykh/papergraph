@@ -1,0 +1,64 @@
+name: PaperGraph CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  secret-scan:
+    name: Secret & Credential Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for Hardcoded Provider Secrets
+        run: |
+          echo "Scanning for hardcoded API keys and secrets..."
+          # Check for forbidden patterns in client code
+          ! grep -rnE "(AIzaSy[a-zA-Z0-9_-]{33}|api_key\s*=\s*['\"][a-zA-Z0-9_-]{20,}['\"])" flutter_app/lib/
+          # Ensure .env is not tracked
+          ! git ls-files --error-unmatch backend/.env 2>/dev/null
+          echo "Secret scan passed successfully!"
+
+  backend-tests:
+    name: Backend Test Suite & Observability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest anyio Faker hypothesis asyncio httpx
+      - name: Run Pytest Suite
+        run: |
+          cd backend
+          python -m pytest
+
+  flutter-tests:
+    name: Flutter Analysis & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+      - name: Install Flutter Dependencies
+        run: |
+          cd flutter_app
+          flutter pub get
+      - name: Analyze Code
+        run: |
+          cd flutter_app
+          flutter analyze
+      - name: Run Flutter Tests
+        run: |
+          cd flutter_app
+          flutter test

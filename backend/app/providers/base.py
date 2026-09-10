@@ -107,12 +107,16 @@ class BaseHttpProvider:
         """
         Executes an HTTP request returning parsed JSON with rate limiting, caching, and retry policies.
         """
+        from app.core.metrics import metrics
+
         url = endpoint if endpoint.startswith("http") else f"{self.base_url}/{endpoint.lstrip('/')}"
         cache_key = f"{self.name}:{method}:{url}:{str(sorted(params.items()) if params else '')}:{str(json_data)}"
         
         cached = self._get_from_cache(cache_key)
         if cached is not None:
+            metrics.record_cache_hit()
             return cached
+        metrics.record_cache_miss()
 
         attempt = 0
         backoff_delay = 0.5
@@ -122,6 +126,7 @@ class BaseHttpProvider:
             attempt += 1
             await self._rate_limit()
 
+            req_start = time.monotonic()
             try:
                 response = await client.request(
                     method=method,
@@ -130,6 +135,8 @@ class BaseHttpProvider:
                     headers=headers,
                     json=json_data,
                 )
+                elapsed = time.monotonic() - req_start
+                metrics.record_provider_latency(self.name, elapsed)
 
                 # Classify response
                 if response.status_code == 200:
@@ -142,6 +149,8 @@ class BaseHttpProvider:
                     return None
 
                 if response.status_code == 429:
+                    metrics.record_429(self.name)
+                    metrics.record_provider_error(self.name)
                     # Rate limit encountered: read Retry-After if available
                     retry_after_header = response.headers.get("Retry-After")
                     wait_time = backoff_delay
@@ -165,6 +174,7 @@ class BaseHttpProvider:
                     continue
 
                 if 400 <= response.status_code < 500:
+                    metrics.record_provider_error(self.name)
                     # 4xx client errors (400, 401, 403, etc.): do not blind retry
                     raise ProviderClientError(
                         provider=self.name,
@@ -173,6 +183,7 @@ class BaseHttpProvider:
                     )
 
                 if 500 <= response.status_code < 600:
+                    metrics.record_provider_error(self.name)
                     # 5xx server errors: retry with exponential backoff
                     logger.warning(
                         f"[{self.name}] Server error {response.status_code}. Retrying in {backoff_delay:.1f}s..."
@@ -188,6 +199,7 @@ class BaseHttpProvider:
                     continue
 
             except httpx.TimeoutException as e:
+                metrics.record_provider_error(self.name)
                 logger.warning(f"[{self.name}] Request timed out (attempt {attempt}/{self.max_retries})")
                 if attempt >= self.max_retries:
                     raise ProviderTimeoutError(
@@ -197,6 +209,7 @@ class BaseHttpProvider:
                 await asyncio.sleep(backoff_delay)
                 backoff_delay *= 2
             except httpx.RequestError as e:
+                metrics.record_provider_error(self.name)
                 if attempt >= self.max_retries:
                     raise ProviderError(
                         provider=self.name,
@@ -205,6 +218,7 @@ class BaseHttpProvider:
                 await asyncio.sleep(backoff_delay)
                 backoff_delay *= 2
 
+        metrics.record_provider_error(self.name)
         raise ProviderError(
             provider=self.name,
             message="Exceeded max retries without successful response",

@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.middleware import ContentLengthLimitMiddleware
+from app.core.rate_limiter import RateLimitMiddleware
 from app.api.v1.health import router as health_router
 from app.api.v1.search import router as search_router
 from app.api.v1.resolve import router as resolve_router
 from app.api.v1.graphs import router as graphs_router
 from app.api.v1.papers import router as papers_router
+from app.api.v1.metrics import router as metrics_router
 from app.core.errors import APIError, api_error_handler
 
 app = FastAPI(
@@ -20,12 +23,16 @@ app = FastAPI(
 # Exception Handlers
 app.add_exception_handler(APIError, api_error_handler)
 
+# Security & Traffic Middlewares (processed in reverse order of addition)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(ContentLengthLimitMiddleware)
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -44,3 +51,4 @@ app.include_router(search_router, prefix=settings.API_V1_STR)
 app.include_router(resolve_router, prefix=settings.API_V1_STR)
 app.include_router(graphs_router, prefix=settings.API_V1_STR)
 app.include_router(papers_router, prefix=settings.API_V1_STR)
+app.include_router(metrics_router, prefix=settings.API_V1_STR)

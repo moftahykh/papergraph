@@ -127,6 +127,10 @@ class GraphJobManager:
         """
         Executes the 16-stage asynchronous literature discovery and synthesis pipeline.
         """
+        import time
+        from app.core.metrics import metrics
+
+        pipeline_start = time.monotonic()
         try:
             # Stage 1: Queued
             await self._update_stage(job, GraphJobStatus.QUEUED, 0.0)
@@ -196,6 +200,8 @@ class GraphJobManager:
                         CandidateRecord(paper=cand_paper, pre_score=round(0.8 - (i * 0.05), 2))
                     )
 
+            metrics.record_candidate_pool_size(len(retained_candidates))
+
             # Stage 5: Enriching Metadata
             await self._update_stage(job, GraphJobStatus.ENRICHING_METADATA, 0.35)
             # Stage 6: Enriching References
@@ -209,6 +215,8 @@ class GraphJobManager:
 
             enrichment_result = await self.enrichment_pipeline.run(origin_paper, retained_candidates)
             job.warnings.extend(enrichment_result.warnings)
+            if enrichment_result.data_completeness:
+                metrics.record_enrichment_completeness(enrichment_result.data_completeness.score)
 
             # Stage 10: Computing Final Scores
             await self._update_stage(job, GraphJobStatus.COMPUTING_FINAL_SCORES, 0.85)
@@ -216,6 +224,10 @@ class GraphJobManager:
                 origin=origin_paper,
                 candidates=enrichment_result.candidates,
             )
+
+            for cand in ranking_result.ranked_candidates:
+                if cand.confidence:
+                    metrics.record_confidence(cand.confidence.value)
 
             # Stage 11: Extracting Prior Works
             await self._update_stage(job, GraphJobStatus.EXTRACTING_PRIOR_WORKS, 0.88)
@@ -240,9 +252,13 @@ class GraphJobManager:
             job.current_stage = final_status
             job.progress = 1.0
             job.updated_at = datetime.now(timezone.utc)
-            logger.info(f"Graph job {job.job_id} finished successfully with status {final_status}")
+            duration = time.monotonic() - pipeline_start
+            metrics.record_job_duration(duration)
+            logger.info(f"Graph job {job.job_id} finished successfully with status {final_status} in {duration:.2f}s")
 
         except Exception as exc:
+            duration = time.monotonic() - pipeline_start
+            metrics.record_job_duration(duration)
             logger.error(f"Graph job {job.job_id} failed with unhandled exception: {exc}", exc_info=True)
             job.status = GraphJobStatus.FAILED
             job.current_stage = GraphJobStatus.FAILED

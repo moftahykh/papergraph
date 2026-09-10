@@ -9,6 +9,7 @@ class CreateGraphRequest(BaseModel):
     origin_id: str = Field(
         ...,
         min_length=2,
+        max_length=500,
         description="Canonical paper ID or DOI of the seed/origin paper.",
     )
     max_nodes: int = Field(

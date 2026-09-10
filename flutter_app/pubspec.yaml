@@ -33,13 +33,14 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   cupertino_icons: ^1.0.8
-  provider: ^6.1.5
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.5
   local_auth: ^2.3.0
   permission_handler: ^13.0.1
   google_fonts: ^6.3.3
+  flutter_bloc: ^9.1.1
+  dio: ^5.11.1
 
 dev_dependencies:
   flutter_test:

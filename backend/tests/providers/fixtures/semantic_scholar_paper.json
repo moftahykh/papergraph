@@ -1,0 +1,28 @@
+{
+  "paperId": "204e3073870fae3f05bcbc65a8899c4449aca837",
+  "externalIds": {
+    "DOI": "10.1038/nature12373",
+    "CorpusId": 4353456,
+    "PubMed": "23903748"
+  },
+  "title": "Nanometre-scale thermometry in a living cell",
+  "abstract": "Accurate measurement of intracellular temperature is a powerful tool for biology and medicine.",
+  "venue": "Nature",
+  "year": 2013,
+  "referenceCount": 35,
+  "citationCount": 940,
+  "s2FieldsOfStudy": [
+    {"category": "Physics"},
+    {"category": "Biology"}
+  ],
+  "authors": [
+    {
+      "authorId": "14412345",
+      "name": "G. Kucsko"
+    },
+    {
+      "authorId": "14498765",
+      "name": "P. C. Maurer"
+    }
+  ]
+}

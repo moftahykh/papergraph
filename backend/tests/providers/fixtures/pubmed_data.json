@@ -1,0 +1,31 @@
+{
+  "esearch": {
+    "header": {"type": "esearch", "version": "2.0"},
+    "esearchresult": {
+      "count": "1",
+      "retmax": "1",
+      "retstart": "0",
+      "idlist": ["23903748"]
+    }
+  },
+  "esummary": {
+    "header": {"type": "esummary", "version": "2.0"},
+    "result": {
+      "uids": ["23903748"],
+      "23903748": {
+        "uid": "23903748",
+        "pubdate": "2013 Aug 1",
+        "title": "Nanometre-scale thermometry in a living cell.",
+        "authors": [
+          {"name": "Kucsko G", "authtype": "Author"},
+          {"name": "Maurer PC", "authtype": "Author"}
+        ],
+        "source": "Nature",
+        "articleids": [
+          {"idtype": "pubmed", "value": "23903748"},
+          {"idtype": "doi", "value": "10.1038/nature12373"}
+        ]
+      }
+    }
+  }
+}

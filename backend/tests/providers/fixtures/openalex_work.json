@@ -1,0 +1,47 @@
+{
+  "id": "https://openalex.org/W2147152072",
+  "doi": "https://doi.org/10.1038/nature12373",
+  "title": "Nanometre-scale thermometry in a living cell",
+  "publication_year": 2013,
+  "cited_by_count": 925,
+  "primary_location": {
+    "source": {
+      "display_name": "Nature"
+    }
+  },
+  "authorships": [
+    {
+      "author": {
+        "id": "https://openalex.org/A5012345678",
+        "display_name": "G. Kucsko"
+      },
+      "institutions": [
+        {
+          "display_name": "Harvard University"
+        }
+      ]
+    }
+  ],
+  "concepts": [
+    {
+      "display_name": "Thermometry",
+      "score": 0.85
+    },
+    {
+      "display_name": "Optics",
+      "score": 0.65
+    }
+  ],
+  "referenced_works": [
+    "https://openalex.org/W1987654321",
+    "https://openalex.org/W1234567890"
+  ],
+  "abstract_inverted_index": {
+    "Accurate": [0],
+    "measurement": [1],
+    "of": [2],
+    "temperature": [3],
+    "in": [4],
+    "cells.": [5]
+  }
+}

@@ -1,0 +1,34 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api.v1.health import router as health_router
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="PaperGraph — Multi-Source Academic Discovery Engine Backend API",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url=f"{settings.API_V1_STR}/docs",
+    redoc_url=f"{settings.API_V1_STR}/redoc",
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Root-level health check convenience endpoint
+@app.get("/health", tags=["Health"])
+async def root_health():
+    return {
+        "status": "ok",
+        "app": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+    }
+
+# Include API v1 routers
+app.include_router(health_router, prefix=settings.API_V1_STR)

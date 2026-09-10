@@ -9,15 +9,64 @@ class LibraryCubit extends Cubit<LibraryState> {
     loadLibrary();
   }
 
-  /// Loads saved papers and cached graphs from local persistent storage.
+  /// Loads saved papers, cached graphs, and notes from local persistent storage.
   void loadLibrary() {
     try {
       final papers = HiveService.getSavedCanonicalPapers();
-      final graphs = HiveService.getCachedGraphs();
-      emit(LibraryLoaded(savedPapers: papers, cachedGraphs: graphs));
+      final graphs = HiveService.getCachedGraphs(includeExpired: true);
+      final notes = HiveService.getAllPersonalNotes();
+      emit(LibraryLoaded(
+        savedPapers: papers,
+        cachedGraphs: graphs,
+        paperNotes: notes,
+      ));
     } catch (e) {
-      emit(LibraryLoaded(savedPapers: const [], cachedGraphs: const []));
+      emit(const LibraryLoaded());
     }
+  }
+
+  /// Saves personal study notes for a research paper.
+  Future<void> saveNotes(String paperId, String notes) async {
+    try {
+      await HiveService.savePersonalNotes(paperId, notes);
+    } catch (_) {}
+
+    final currentNotes = Map<String, String>.from(_getCurrentNotes());
+    if (notes.trim().isEmpty) {
+      currentNotes.remove(paperId);
+    } else {
+      currentNotes[paperId] = notes;
+    }
+
+    if (state is LibraryLoaded) {
+      emit((state as LibraryLoaded).copyWith(paperNotes: currentNotes));
+    } else {
+      emit(LibraryLoaded(paperNotes: currentNotes));
+    }
+  }
+
+  /// Deletes personal notes for a paper.
+  Future<void> deleteNotes(String paperId) async {
+    try {
+      await HiveService.deletePersonalNotes(paperId);
+    } catch (_) {}
+
+    final currentNotes = Map<String, String>.from(_getCurrentNotes());
+    currentNotes.remove(paperId);
+
+    if (state is LibraryLoaded) {
+      emit((state as LibraryLoaded).copyWith(paperNotes: currentNotes));
+    } else {
+      emit(LibraryLoaded(paperNotes: currentNotes));
+    }
+  }
+
+  /// Retrieves saved personal notes for a given paper.
+  String getNotes(String paperId) {
+    if (state is LibraryLoaded) {
+      return (state as LibraryLoaded).getNotes(paperId);
+    }
+    return HiveService.getPersonalNotes(paperId);
   }
 
   /// Saves a canonical paper to the library.
@@ -35,8 +84,11 @@ class LibraryCubit extends Cubit<LibraryState> {
       updated.insert(0, paper);
     }
 
-    final currentGraphs = _getCurrentGraphs();
-    emit(LibraryLoaded(savedPapers: updated, cachedGraphs: currentGraphs));
+    if (state is LibraryLoaded) {
+      emit((state as LibraryLoaded).copyWith(savedPapers: updated));
+    } else {
+      emit(LibraryLoaded(savedPapers: updated));
+    }
   }
 
   /// Removes a canonical paper from the library.
@@ -47,8 +99,12 @@ class LibraryCubit extends Cubit<LibraryState> {
 
     final currentPapers = _getCurrentPapers();
     final updated = currentPapers.where((p) => p.canonicalId != canonicalId).toList();
-    final currentGraphs = _getCurrentGraphs();
-    emit(LibraryLoaded(savedPapers: updated, cachedGraphs: currentGraphs));
+
+    if (state is LibraryLoaded) {
+      emit((state as LibraryLoaded).copyWith(savedPapers: updated));
+    } else {
+      emit(LibraryLoaded(savedPapers: updated));
+    }
   }
 
   /// Toggles paper saved state.
@@ -83,8 +139,11 @@ class LibraryCubit extends Cubit<LibraryState> {
       updated.insert(0, snapshot);
     }
 
-    final currentPapers = _getCurrentPapers();
-    emit(LibraryLoaded(savedPapers: currentPapers, cachedGraphs: updated));
+    if (state is LibraryLoaded) {
+      emit((state as LibraryLoaded).copyWith(cachedGraphs: updated));
+    } else {
+      emit(LibraryLoaded(cachedGraphs: updated));
+    }
   }
 
   /// Removes a cached graph snapshot.
@@ -95,8 +154,31 @@ class LibraryCubit extends Cubit<LibraryState> {
 
     final currentGraphs = _getCurrentGraphs();
     final updated = currentGraphs.where((g) => g.graphId != graphId).toList();
-    final currentPapers = _getCurrentPapers();
-    emit(LibraryLoaded(savedPapers: currentPapers, cachedGraphs: updated));
+
+    if (state is LibraryLoaded) {
+      emit((state as LibraryLoaded).copyWith(cachedGraphs: updated));
+    } else {
+      emit(LibraryLoaded(cachedGraphs: updated));
+    }
+  }
+
+  /// Purges all expired graph snapshots from local cache.
+  Future<int> pruneExpiredGraphs() async {
+    final count = await HiveService.cleanExpiredGraphs();
+    loadLibrary();
+    return count;
+  }
+
+  /// Looks up a cached graph snapshot by ID.
+  GraphSnapshot? getCachedGraph(String graphId) {
+    if (state is LibraryLoaded) {
+      final found = (state as LibraryLoaded)
+          .cachedGraphs
+          .where((g) => g.graphId == graphId)
+          .firstOrNull;
+      if (found != null) return found;
+    }
+    return HiveService.getCachedGraph(graphId);
   }
 
   List<CanonicalPaper> _getCurrentPapers() {
@@ -111,5 +193,12 @@ class LibraryCubit extends Cubit<LibraryState> {
       return (state as LibraryLoaded).cachedGraphs;
     }
     return const [];
+  }
+
+  Map<String, String> _getCurrentNotes() {
+    if (state is LibraryLoaded) {
+      return (state as LibraryLoaded).paperNotes;
+    }
+    return const {};
   }
 }

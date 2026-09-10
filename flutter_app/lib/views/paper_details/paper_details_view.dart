@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../cubits/library/library_cubit.dart';
+import '../../models/canonical_paper.dart';
 import '../../models/paper_model.dart';
-import '../../providers/favorites_provider.dart';
 import '../../providers/papers_provider.dart';
 import '../graph_view/connected_graph_view.dart';
 import 'citation_bottom_sheet.dart';
@@ -22,7 +24,10 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
   @override
   void initState() {
     super.initState();
-    _notesController = TextEditingController(text: widget.paper.personalNotes);
+    final savedNote = HiveService.getPersonalNotes(widget.paper.id);
+    _notesController = TextEditingController(
+      text: savedNote.isNotEmpty ? savedNote : widget.paper.personalNotes,
+    );
   }
 
   @override
@@ -31,8 +36,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
     super.dispose();
   }
 
-  void _saveNotes(FavoritesProvider favoritesProvider) {
-    favoritesProvider.updateNotes(widget.paper.id, _notesController.text);
+  void _saveNotes() {
+    context.read<LibraryCubit>().saveNotes(widget.paper.id, _notesController.text);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Research notes saved to local storage!'),
@@ -42,12 +47,29 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
     );
   }
 
+  CanonicalPaper _toCanonicalPaper(PaperModel model) {
+    return CanonicalPaper(
+      canonicalId: model.id,
+      title: model.title,
+      normalizedTitle: model.title.toLowerCase(),
+      authors: model.authors.map((a) => Author(name: a)).toList(),
+      year: model.year,
+      venue: model.journal,
+      abstractText: model.abstractText,
+      citationCount: model.citationsCount,
+      referenceCount: 0,
+      doi: model.doi.isNotEmpty ? model.doi : null,
+      topics: [model.category],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final papersProvider = Provider.of<PapersProvider>(context);
-    final favoritesProvider = Provider.of<FavoritesProvider>(context);
-    final isFav = favoritesProvider.isFavorite(widget.paper.id);
+    final papersProvider = context.read<PapersProvider>();
+    final isFav = context.select<LibraryCubit, bool>(
+      (c) => c.isPaperSaved(widget.paper.id),
+    );
     final connectedPapers = papersProvider.getConnectedPapers(widget.paper);
 
     return Scaffold(
@@ -61,15 +83,13 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
             ),
             tooltip: isFav ? 'Remove from Library' : 'Save to Library (Hive)',
             onPressed: () {
-              favoritesProvider.toggleFavorite(widget.paper, papersProvider);
+              final canonical = _toCanonicalPaper(widget.paper);
+              context.read<LibraryCubit>().toggleSavePaper(canonical);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    isFav
-                        ? 'Removed from offline library'
-                        : 'Saved to library (available offline in Hive)!',
-                  ),
-                  duration: const Duration(seconds: 2),
+                  content: Text(isFav ? 'Removed from Library' : 'Saved to Library for offline reading!'),
+                  duration: const Duration(seconds: 1),
+                  backgroundColor: isFav ? AppTheme.accentAmber : AppTheme.accentEmerald,
                 ),
               );
             },
@@ -307,7 +327,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                   ),
                   const SizedBox(height: 10),
                   TextButton.icon(
-                    onPressed: () => _saveNotes(favoritesProvider),
+                    onPressed: _saveNotes,
                     icon: const Icon(Icons.save_rounded, size: 16),
                     label: const Text('Save Note to Local Hive'),
                   ),

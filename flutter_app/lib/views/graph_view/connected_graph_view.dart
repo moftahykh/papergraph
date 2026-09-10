@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
+import '../../core/services/local_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../cubits/graph/graph_cubit.dart';
 import '../../cubits/graph/graph_state.dart';
@@ -256,15 +257,26 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
       backgroundColor: isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
       body: BlocConsumer<GraphCubit, GraphState>(
         listener: (context, state) {
-          if (state is GraphLoaded && state.snapshot.nodes.isNotEmpty) {
-            final originNode = state.snapshot.nodes.firstWhere(
-              (n) => n.isOrigin,
-              orElse: () => state.snapshot.nodes.first,
-            );
-            if (_selectedNode == null) {
-              setState(() {
-                _selectedNode = originNode;
-              });
+          if (state is GraphLoaded) {
+            if (state.snapshot.nodes.isNotEmpty) {
+              final originNode = state.snapshot.nodes.firstWhere(
+                (n) => n.isOrigin,
+                orElse: () => state.snapshot.nodes.first,
+              );
+              if (_selectedNode == null) {
+                setState(() {
+                  _selectedNode = originNode;
+                });
+              }
+            }
+            // Trigger contextual completion notice if this was an active network job
+            if (!state.fromOfflineCache) {
+              LocalNotificationService.onGraphCompleted(
+                graphId: state.snapshot.graphId,
+                nodeCount: state.snapshot.nodes.length,
+                isPartial: state.isPartial,
+                notificationCubit: context.read<NotificationCubit>(),
+              );
             }
           }
         },
@@ -404,8 +416,70 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
+
+            // Contextual notification permission toggle
+            if (state is GraphPolling) ...[
+              const SizedBox(height: 12),
+              _buildContextualNotificationOptIn(state.graphId, isDark),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildContextualNotificationOptIn(String graphId, bool isDark) {
+    final isEnabled = LocalNotificationService.isGraphNotificationEnabled(graphId);
+
+    if (isEnabled) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withAlpha(25),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF10B981).withAlpha(80)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.notifications_active_rounded, size: 13, color: Color(0xFF10B981)),
+            SizedBox(width: 6),
+            Text(
+              'Notification enabled when ready',
+              style: TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return TextButton.icon(
+      onPressed: () async {
+        final granted = await LocalNotificationService.requestContextualPermission();
+        if (!mounted) return;
+        if (granted) {
+          await LocalNotificationService.setGraphNotificationEnabled(graphId, true);
+          if (!mounted) return;
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("We'll notify you as soon as this graph finishes!"),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notifications disabled. In-app notice will still show when complete.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      icon: const Icon(Icons.notifications_none_rounded, size: 14),
+      label: const Text('Notify me when done', style: TextStyle(fontSize: 11)),
+      style: TextButton.styleFrom(
+        foregroundColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
       ),
     );
   }
@@ -668,6 +742,37 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
                       ),
                     ),
                   ],
+
+                  if (snapshot.isExpired) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withAlpha(35),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFF59E0B)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.history_toggle_off_rounded, size: 14, color: Color(0xFFF59E0B)),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Stale Snapshot: Generated >14 days ago. Connect online to refresh.',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -749,6 +854,15 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
                 });
               },
               onRecenterGraph: (canonicalId) {
+                if (fromOfflineCache) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cannot synthesize new graphs in offline mode. Connect to the internet to explore new papers.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  return;
+                }
                 context.read<GraphCubit>().buildGraphFromDoi(canonicalId);
                 setState(() {
                   _draggedPositions.clear();

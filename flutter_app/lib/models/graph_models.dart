@@ -300,8 +300,10 @@ class GraphSnapshot {
   final List<GraphEdge> citationEdges;
   final DataCompleteness dataCompleteness;
   final List<GraphWarning> warnings;
+  final int schemaVersion;
   final String algorithmVersion;
   final DateTime createdAt;
+  final DateTime? expiresAt;
 
   const GraphSnapshot({
     required this.graphId,
@@ -312,11 +314,26 @@ class GraphSnapshot {
     this.citationEdges = const [],
     this.dataCompleteness = const DataCompleteness(),
     this.warnings = const [],
+    this.schemaVersion = 1,
     this.algorithmVersion = 'v1.0',
     required this.createdAt,
+    this.expiresAt,
   });
 
+  /// Computed expiration date (defaults to 14 days after creation if not explicitly set)
+  DateTime get effectiveExpiresAt => expiresAt ?? createdAt.add(const Duration(days: 14));
+
+  /// Whether this cached graph snapshot has passed its validity TTL.
+  bool get isExpired => DateTime.now().isAfter(effectiveExpiresAt);
+
+  /// Validates schema version compatibility.
+  bool isCompatible(int supportedVersion) => schemaVersion == supportedVersion;
+
   factory GraphSnapshot.fromJson(Map<String, dynamic> json) {
+    final createdAt = json['created_at'] != null
+        ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
+        : DateTime.now();
+
     return GraphSnapshot(
       graphId: (json['graph_id'] as String?) ?? '',
       origin: GraphOrigin.fromJson(
@@ -344,10 +361,12 @@ class GraphSnapshot {
               ?.map((w) => GraphWarning.fromJson(Map<String, dynamic>.from(w as Map)))
               .toList() ??
           const [],
+      schemaVersion: (json['schema_version'] as num?)?.toInt() ?? 1,
       algorithmVersion: (json['algorithm_version'] as String?) ?? 'v1.0',
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
-          : DateTime.now(),
+      createdAt: createdAt,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
     );
   }
 
@@ -360,9 +379,41 @@ class GraphSnapshot {
         'citation_edges': citationEdges.map((e) => e.toJson()).toList(),
         'data_completeness': dataCompleteness.toJson(),
         'warnings': warnings.map((w) => w.toJson()).toList(),
+        'schema_version': schemaVersion,
         'algorithm_version': algorithmVersion,
         'created_at': createdAt.toIso8601String(),
+        'expires_at': effectiveExpiresAt.toIso8601String(),
       };
+
+  GraphSnapshot copyWith({
+    String? graphId,
+    GraphOrigin? origin,
+    GraphJobStatus? status,
+    List<GraphNode>? nodes,
+    List<GraphEdge>? similarityEdges,
+    List<GraphEdge>? citationEdges,
+    DataCompleteness? dataCompleteness,
+    List<GraphWarning>? warnings,
+    int? schemaVersion,
+    String? algorithmVersion,
+    DateTime? createdAt,
+    DateTime? expiresAt,
+  }) {
+    return GraphSnapshot(
+      graphId: graphId ?? this.graphId,
+      origin: origin ?? this.origin,
+      status: status ?? this.status,
+      nodes: nodes ?? this.nodes,
+      similarityEdges: similarityEdges ?? this.similarityEdges,
+      citationEdges: citationEdges ?? this.citationEdges,
+      dataCompleteness: dataCompleteness ?? this.dataCompleteness,
+      warnings: warnings ?? this.warnings,
+      schemaVersion: schemaVersion ?? this.schemaVersion,
+      algorithmVersion: algorithmVersion ?? this.algorithmVersion,
+      createdAt: createdAt ?? this.createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+    );
+  }
 }
 
 @immutable

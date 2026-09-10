@@ -18,10 +18,12 @@ class LibraryLoading extends LibraryState {
 class LibraryLoaded extends LibraryState {
   final List<CanonicalPaper> savedPapers;
   final List<GraphSnapshot> cachedGraphs;
+  final Map<String, String> paperNotes;
 
   const LibraryLoaded({
     this.savedPapers = const [],
     this.cachedGraphs = const [],
+    this.paperNotes = const {},
   });
 
   bool isPaperSaved(String canonicalId) {
@@ -32,13 +34,28 @@ class LibraryLoaded extends LibraryState {
     return cachedGraphs.any((g) => g.graphId == graphId);
   }
 
+  String getNotes(String paperId) {
+    return paperNotes[paperId] ?? '';
+  }
+
+  bool hasNotes(String paperId) {
+    return (paperNotes[paperId]?.trim().isNotEmpty) ?? false;
+  }
+
+  bool isGraphExpired(String graphId) {
+    final graph = cachedGraphs.where((g) => g.graphId == graphId).firstOrNull;
+    return graph?.isExpired ?? false;
+  }
+
   LibraryLoaded copyWith({
     List<CanonicalPaper>? savedPapers,
     List<GraphSnapshot>? cachedGraphs,
+    Map<String, String>? paperNotes,
   }) {
     return LibraryLoaded(
       savedPapers: savedPapers ?? this.savedPapers,
       cachedGraphs: cachedGraphs ?? this.cachedGraphs,
+      paperNotes: paperNotes ?? this.paperNotes,
     );
   }
 }

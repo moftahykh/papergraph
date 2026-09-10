@@ -45,7 +45,7 @@ class GraphLoaded extends GraphState {
     required this.snapshot,
     this.isPartial = false,
     this.warnings = const [],
-    required this.dataCompleteness,
+    this.dataCompleteness = const DataCompleteness(),
     this.fromOfflineCache = false,
   });
 }

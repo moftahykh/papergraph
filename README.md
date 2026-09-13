@@ -1,121 +1,106 @@
-# 📄 PaperGraph
+# PaperGraph
 
-> **Multi-Source Academic Discovery Engine with Hybrid Similarity Ranking & Interactive Literature Graph**
+> Turn one paper into a visual map of its research field.
 
-PaperGraph is a research discovery platform designed to explore scientific literature through connected knowledge graphs. It combines multi-source metadata retrieval, identity deduplication, and mathematical ranking (incorporating bibliographic coupling and co-citation analysis) to deliver an interactive visual map of scientific works.
+![Python](https://img.shields.io/badge/python-3.11+-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B) ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
----
+PaperGraph is a mobile-first academic discovery engine. Paste a paper's DOI, link, or title, and it builds an interactive literature graph: the works it builds on (prior works), the works that build on it (derivative works), and the most relevant similar research — resolved across four scholarly databases, deduplicated, ranked with explainable scores, and laid out as an explorable map.
 
-## 🏛️ System Boundary & Architectural Isolation Rules
+<p align="center">
+  <img src="flutter_app/assets/images/logo_light.png" width="140" alt="PaperGraph logo" />
+</p>
 
-To maintain high reliability, maintainability, and clean separation of concerns, the project enforces strict architectural boundaries:
+## Features
 
-1. **Backend as Sole Gateway:** The Flutter client communicates **exclusively** with the PaperGraph FastAPI backend.
-2. **No Direct Provider Access in Client:** Flutter **never** calls third-party academic APIs (Semantic Scholar, OpenAlex, Crossref, PubMed).
-3. **Engine Isolation:** All provider normalization, caching, candidate pooling, and ranking algorithms reside entirely inside the `backend/` service.
-4. **State Management:** Flutter uses `flutter_bloc` / Cubit exclusively for deterministic state transitions.
-5. **Offline Operation:** The client operates offline using cached graphs and local storage (Hive) only, never attempting ad-hoc third-party queries.
-6. **Zero Secrets in Client:** No provider API keys or sensitive credentials exist within the Flutter application bundle or repository.
+- **Universal paper resolution** — bare DOI, DOI URL, PMID/PMCID, arXiv ID, Semantic Scholar ID, OpenAlex ID, or a publisher landing-page URL (citation meta-tag scraping as fallback)
+- **Multi-provider engine** — Semantic Scholar, OpenAlex, Crossref, and PubMed with per-channel failure isolation, API key pooling with instant 429 rotation, and per-provider rate limiting
+- **Explainable hybrid ranking** — semantic score, weighted bibliographic coupling (WBC), normalized co-citation (NCC), and direct-link signals; missing signals are never defaulted to zero (weights renormalize), and every candidate carries a full score breakdown
+- **Prior & derivative works** extraction (Connected Papers-style)
+- **MMR diversity selection** (λ = 0.70) so the graph shows the breadth of the field, not 40 copies of the same paper
+- **Deterministic, force-directed layout** computed server-side: collision-free, prior works to the left, derivative works to the right, similar works clustered by actual similarity
+- **Interactive Flutter canvas** — pinch-zoom, draggable nodes, tap for details, year-gradient node colors, directed citation arrows vs. dashed similarity links
+- **Offline library** — cached graphs (Hive) with staleness badges, favorites with personal notes, biometric vault unlock
+- **One-tap citations** — BibTeX/APA generated per paper
+- **Auth** — Firebase email/password, biometric quick-unlock, and email OTP delivered via Gmail SMTP
+- **Honest progress** — a 16-stage job lifecycle streamed to the UI with cancellation, backoff polling, and partial-result warnings instead of silent failures
 
----
+## Architecture
 
-## 📁 Repository Structure
-
-```text
-papergraph/
-├── PLAN.md                  # Master execution contract & phased implementation plan
-├── PROJECT_DOCUMENTATION.md # Detailed technical specification v4.2
-├── README.md                # Root system documentation and boundary guide
-├── .gitignore               # Monorepo gitignore (Python, Flutter, IDEs, envs)
-├── docker-compose.yml       # Local PostgreSQL & Redis infrastructure
-├── .env.example             # Safe template for local environment variables
-├── backend/                 # FastAPI backend application
-│   ├── app/
-│   │   ├── api/v1/          # REST endpoints (health, search, resolve, graphs)
-│   │   ├── core/            # Configuration and system settings
-│   │   ├── models/          # Domain and database models
-│   │   ├── schemas/         # Pydantic validation schemas
-│   │   ├── repositories/    # Data persistence layer
-│   │   ├── providers/       # Academic provider adapters (isolated & testable)
-│   │   ├── resolution/      # Canonical identity resolution & deduplication
-│   │   ├── candidates/      # Candidate generation & pre-ranking pools
-│   │   ├── ranking/         # Safe ranking engine (WBC, NCC, MMR)
-│   │   ├── graph/           # Topology synthesis and relationship edge typing
-│   │   ├── cache/           # Redis caching layer
-│   │   └── workers/         # Asynchronous background graph generation
-│   ├── tests/               # Pytest suite with fixtures & mock responses
-│   ├── alembic/             # Database migrations
-│   ├── pyproject.toml       # Backend package configuration and dependencies
-│   └── main.py              # Application entrypoint
-├── flutter_app/             # Flutter mobile / web application
-│   ├── lib/                 # Dart source code (views, cubits, models, painters)
-│   ├── test/                # Unit and widget tests
-│   ├── pubspec.yaml         # Flutter dependencies
-│   └── README.md            # Flutter-specific documentation
-└── docs/                    # Architectural decisions & protocol contracts
-    ├── api-contract.md      # REST and job polling contract specification
-    ├── ranking-spec.md      # Hybrid ranking mathematics & formulas
-    └── decisions.md         # Architecture Decision Records (ADRs)
+```
+┌──────────────┐      REST / JSON       ┌─────────────────────────────────────┐
+│  Flutter app │  ◀──────────────────▶  │  FastAPI backend                    │
+│  (bloc, dio, │   async graph jobs     │  providers → resolution → candidates│
+│  hive, firebase)  (202 + polling)     │  → enrichment (WBC/NCC) → ranking   │
+└──────────────┘                        │  → MMR → force-directed layout      │
+                                        └─────────────────────────────────────┘
 ```
 
----
+## Tech stack
 
-## 🚀 Local Development Setup
+| Layer | Tech |
+|---|---|
+| Mobile | Flutter / Dart — flutter_bloc + provider, dio, hive, firebase_auth, local_auth, lottie |
+| Backend | Python 3.11+ — FastAPI, pydantic v2, httpx |
+| Data providers | Semantic Scholar Graph API, OpenAlex, Crossref, NCBI E-Utilities |
+| Testing | pytest (backend: providers, resolution, ranking, graph, security) + flutter_test |
 
-### 1. Prerequisites
-- **Python:** 3.11+ (Python 3.13 supported)
-- **Flutter SDK:** 3.44+ (Dart 3.12+)
-- **Docker & Docker Compose:** For PostgreSQL & Redis
+## Project structure
 
-### 2. Infrastructure (Docker)
-Start the local PostgreSQL and Redis instances:
-```bash
-docker compose up -d
 ```
-Verify status:
-```bash
-docker compose ps
+├── backend/            # FastAPI discovery & ranking engine
+│   ├── app/            # api, providers, resolution, candidates, enrichment, ranking, graph, workers
+│   └── tests/          # pytest suite with provider fixtures
+├── flutter_app/        # Flutter mobile app
+│   └── lib/            # views, cubits, models, core (theme, network, services)
+└── docs/               # API contract, ranking spec, design decisions, plans
 ```
 
-### 3. Backend Setup
-```bash
+## Getting started
+
+### Backend
+
+```
 cd backend
-# Run test suite
-python -m pytest
-
-# Run local development server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+pip install -r requirements.txt
+copy .env.example .env          # then fill in your own API keys
+uvicorn app.main:app --reload
 ```
-Interactive API documentation is available at:
-- Swagger UI: `http://localhost:8000/api/v1/docs`
-- Health check: `http://localhost:8000/api/v1/health`
 
-### 4. Flutter Setup
-```bash
+Interactive API docs: `http://localhost:8000/api/v1/docs`
+
+### Flutter app
+
+```
 cd flutter_app
-# Fetch dependencies
 flutter pub get
-
-# Static analysis and tests
-flutter analyze
-flutter test
-
-# Run application locally
-flutter run
+flutter run --dart-define=PAPERGRAPH_API_URL=http://10.0.2.2:8000/api/v1
 ```
 
----
+Release APK against a deployed backend:
 
-## 🧪 Phase 0 Verification
-
-Run the Phase 0 verification suite:
-```bash
-# 1. Verify Docker compose syntax
-docker compose config
-
-# 2. Run backend test suite
-cd backend && python -m pytest
-
-# 3. Run Flutter analyzer and tests
-cd ../flutter_app && flutter analyze && flutter test
 ```
+flutter build apk --release --dart-define=PAPERGRAPH_API_URL=https://<your-backend-host>/api/v1
+```
+
+## Testing
+
+```
+cd backend && python -m pytest -q
+cd flutter_app && flutter test
+```
+
+## Design principles
+
+- **Never fabricate** — if every provider fails, the job fails loudly with an honest error; no invented papers, ever
+- **Explainability** — every score ships with its signal breakdown and confidence level
+- **Resilience** — key rotation on 429s, per-channel isolation (one provider's 500 never aborts the chain), exponential backoff, and graceful partial results with explicit warnings
+
+## Screenshots
+
+<!-- TODO: add real screenshots under docs/screenshots/ and embed them here -->
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -292,4 +292,21 @@ class HiveService {
   static Future<void> clearUser() async {
     await settingsBox.delete('saved_user');
   }
+
+  // Guest search limit tracking (1 free search for unauthenticated guests)
+  static int getGuestSearchCount() {
+    if (!Hive.isBoxOpen(settingsBoxName)) return 0;
+    return settingsBox.get('guest_search_count', defaultValue: 0) as int;
+  }
+
+  static Future<void> incrementGuestSearchCount() async {
+    if (!Hive.isBoxOpen(settingsBoxName)) return;
+    final current = getGuestSearchCount();
+    await settingsBox.put('guest_search_count', current + 1);
+  }
+
+  static Future<void> resetGuestSearchCount() async {
+    if (!Hive.isBoxOpen(settingsBoxName)) return;
+    await settingsBox.put('guest_search_count', 0);
+  }
 }

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Dict, Optional, Set, Tuple
 from app.models.canonical_paper import CanonicalPaper
@@ -13,9 +14,9 @@ logger = logging.getLogger("papergraph.enrichment.citations")
 
 class CitationEnricher:
     """
-    Selects top 30 candidates (using composite PreScore + WBC ranking) and fetches
-    inbound citations for origin and selected candidates with provider pagination
-    and request collapsing.
+    Selects top candidates (using composite PreScore + WBC ranking) and fetches
+    inbound citations for origin and selected candidates concurrently with bounded
+    concurrency and provider fallback.
     """
     def __init__(
         self,
@@ -37,14 +38,13 @@ class CitationEnricher:
         wbc_scores: Dict[str, MetricResult],
     ) -> List[CandidateRecord]:
         """
-        Selects the top 30 candidates for expensive inbound citation enrichment
+        Selects top candidates for inbound citation enrichment
         based on composite PreScore and available WBC similarity.
         """
         def ranking_key(cand: CandidateRecord) -> float:
             cid = cand.paper.canonical_id
             wbc_res = wbc_scores.get(cid)
             wbc_val = wbc_res.value if wbc_res and wbc_res.value is not None else cand.pre_score
-            # 60% PreScore, 40% WBC similarity
             return 0.60 * cand.pre_score + 0.40 * wbc_val
 
         sorted_cands = sorted(candidates, key=ranking_key, reverse=True)
@@ -57,10 +57,7 @@ class CitationEnricher:
     ) -> Tuple[List[str], EnrichmentStatusEnum, bool]:
         """
         Fetches inbound citations for a single paper with pagination and caching.
-        Returns:
-          - citation_ids: List of canonical/provider IDs citing this work
-          - status: EnrichmentStatusEnum (SUCCESS, PARTIAL, EMPTY, FAILED)
-          - is_complete: True if all pages were fetched completely without error/cutoff
+        Attempts primary provider and seamlessly falls back to alternative provider.
         """
         warnings = warnings if warnings is not None else []
 
@@ -72,51 +69,57 @@ class CitationEnricher:
 
         async def _do_fetch() -> Tuple[List[str], EnrichmentStatusEnum, bool]:
             cite_ids: List[str] = []
-            cursor: Optional[str] = None
-            is_complete = True
-            provider_used = self.s2_provider or self.openalex_provider
+            providers_to_try = [p for p in [self.s2_provider, self.openalex_provider] if p is not None]
 
-            if not provider_used:
+            if not providers_to_try:
                 return cite_ids, EnrichmentStatusEnum.SKIPPED, False
 
-            try:
-                while True:
-                    page = await provider_used.get_citations(
-                        provider_id=provider_id,
-                        cursor=cursor,
-                        limit=min(100, self.max_cites_per_paper - len(cite_ids)),
-                    )
+            for provider in providers_to_try:
+                try:
+                    cursor: Optional[str] = None
+                    is_complete = True
+                    target_id = provider_id
+                    if provider.name == "openalex" and getattr(paper, "open_alex_id", None):
+                        target_id = paper.open_alex_id
 
-                    for item in page.items:
-                        cid = item.doi or item.semantic_scholar_id or item.provider_id
-                        if cid and cid not in cite_ids:
-                            cite_ids.append(cid)
+                    while True:
+                        page = await provider.get_citations(
+                            provider_id=target_id,
+                            cursor=cursor,
+                            limit=min(100, self.max_cites_per_paper - len(cite_ids)),
+                        )
 
-                    if not page.has_more or not page.next_cursor:
-                        is_complete = True
-                        break
+                        for item in page.items:
+                            cid = item.doi or item.semantic_scholar_id or item.provider_id
+                            if cid and cid not in cite_ids:
+                                cite_ids.append(cid)
 
-                    cursor = page.next_cursor
-                    if len(cite_ids) >= self.max_cites_per_paper:
-                        is_complete = False  # Truncated by quota limit
-                        break
+                        if not page.has_more or not page.next_cursor:
+                            is_complete = True
+                            break
 
-                status = EnrichmentStatusEnum.SUCCESS if cite_ids else EnrichmentStatusEnum.EMPTY
-                if not is_complete and cite_ids:
-                    status = EnrichmentStatusEnum.PARTIAL
+                        cursor = page.next_cursor
+                        if len(cite_ids) >= self.max_cites_per_paper:
+                            is_complete = False
+                            break
 
-                return cite_ids, status, is_complete
+                    status = EnrichmentStatusEnum.SUCCESS if cite_ids else EnrichmentStatusEnum.EMPTY
+                    if not is_complete and cite_ids:
+                        status = EnrichmentStatusEnum.PARTIAL
 
-            except Exception as e:
-                logger.warning(f"Error fetching citations for {paper.canonical_id}: {e}")
-                warnings.append(
-                    GraphWarning(
-                        code="provider_citations_error",
-                        message=f"Failed to fetch citations for {paper.canonical_id}: {str(e)}",
-                        severity="warning",
-                    )
+                    return cite_ids, status, is_complete
+
+                except Exception as e:
+                    logger.warning(f"[{provider.name}] Error fetching citations for {paper.canonical_id}: {e}")
+
+            warnings.append(
+                GraphWarning(
+                    code="provider_citations_error",
+                    message=f"Failed to fetch citations for {paper.canonical_id} across all providers.",
+                    severity="warning",
                 )
-                return cite_ids, EnrichmentStatusEnum.FAILED, False
+            )
+            return cite_ids, EnrichmentStatusEnum.FAILED, False
 
         result = await self.cache.get_or_fetch(cache_key, _do_fetch)
         return result
@@ -132,10 +135,7 @@ class CitationEnricher:
         Dict[str, Tuple[List[str], EnrichmentStatusEnum, bool, bool]],
     ]:
         """
-        Enriches inbound citations for origin and the selected top 30 candidates.
-        Returns:
-          - origin_result: (citation_ids, status, is_complete)
-          - candidate_results: Dict[cid -> (citation_ids, status, is_complete, is_selected)]
+        Enriches inbound citations for origin and selected candidates concurrently with a bounded semaphore.
         """
         warnings = warnings if warnings is not None else []
 
@@ -148,15 +148,15 @@ class CitationEnricher:
             origin.citation_ids = merged_cites
             origin.citation_count = max(origin.citation_count, len(merged_cites))
 
-        # 2. Select top 30 candidates
+        # 2. Select top candidates
         selected = self.select_top_candidates(candidates, wbc_scores)
         selected_cids = {c.paper.canonical_id for c in selected}
 
-        candidate_results: Dict[str, Tuple[List[str], EnrichmentStatusEnum, bool, bool]] = {}
+        # 3. Concurrent retrieval with bounded semaphore
+        sem = asyncio.Semaphore(settings.ENRICHMENT_CONCURRENCY_LIMIT)
 
-        for cand in candidates:
-            cid = cand.paper.canonical_id
-            if cid in selected_cids:
+        async def _fetch_single(cand: CandidateRecord):
+            async with sem:
                 cites, status, complete = await self.fetch_paper_citations(
                     cand.paper, warnings=warnings
                 )
@@ -165,8 +165,21 @@ class CitationEnricher:
                     cand.paper.citation_count = max(
                         cand.paper.citation_count, len(cand.paper.citation_ids)
                     )
-                candidate_results[cid] = (cand.paper.citation_ids, status, complete, True)
-            else:
+                return cand.paper.canonical_id, (cand.paper.citation_ids, status, complete, True)
+
+        tasks = [_fetch_single(c) for c in selected]
+        gathered = await asyncio.gather(*tasks, return_exceptions=True)
+
+        candidate_results: Dict[str, Tuple[List[str], EnrichmentStatusEnum, bool, bool]] = {}
+        for item in gathered:
+            if isinstance(item, tuple) and len(item) == 2:
+                cid, res = item
+                candidate_results[cid] = res
+
+        # 4. Fill unselected candidates
+        for cand in candidates:
+            cid = cand.paper.canonical_id
+            if cid not in candidate_results:
                 candidate_results[cid] = (
                     cand.paper.citation_ids,
                     EnrichmentStatusEnum.NOT_SELECTED,

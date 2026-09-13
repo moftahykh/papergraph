@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lottie/lottie.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import '../../core/services/local_notification_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -33,11 +34,11 @@ extension GraphJobStatusDisplay on GraphJobStatus {
       case GraphJobStatus.enrichingReferences:
         return 'Harvesting foundational references...';
       case GraphJobStatus.computingWbc:
-        return 'Computing Co-Citation (WBC) matrix...';
+        return 'Computing Bibliographic Coupling (WBC) matrix...';
       case GraphJobStatus.enrichingCitations:
         return 'Harvesting derivative citations...';
       case GraphJobStatus.computingNcc:
-        return 'Computing Bibliographic Coupling (NCC)...';
+        return 'Computing Co-Citation (NCC)...';
       case GraphJobStatus.computingFinalScores:
         return 'Computing safe hybrid ranking scores...';
       case GraphJobStatus.extractingPriorWorks:
@@ -45,7 +46,7 @@ extension GraphJobStatusDisplay on GraphJobStatus {
       case GraphJobStatus.extractingDerivativeWorks:
         return 'Extracting subsequent derivative works...';
       case GraphJobStatus.buildingLayout:
-        return 'Synthesizing 2D force-directed layout...';
+        return 'Synthesizing deterministic 2D graph layout...';
       case GraphJobStatus.completed:
         return 'Graph generation complete';
       case GraphJobStatus.partial:
@@ -125,12 +126,17 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
   }
 
   void _centerCanvas() {
-    // Centers the 2000x2000 canvas in the middle of viewport
+    // The backend layout places the origin node at (0,0) and spreads candidates
+    // within roughly ±450px of it. So center the VIEW on that content origin —
+    // NOT on the middle of the 2000px canvas (that pushed every node off-screen,
+    // leaving the canvas looking blank on load).
     final screenSize = MediaQuery.of(context).size;
-    final dx = (screenSize.width - _canvasSize) / 2;
-    final dy = (screenSize.height - _canvasSize) / 2;
+    const double initialScale = 0.75;
+    final dx = screenSize.width / 2;       // canvas (0,0) lands on horizontal center
+    final dy = screenSize.height * 0.38;   // slightly above center: leaves room for the bottom sheet
     _transformController.value = Matrix4.identity()
-      ..setTranslationRaw(dx, dy, 0.0);
+      ..setTranslationRaw(dx, dy, 0.0)
+      ..scale(initialScale, initialScale);
   }
 
   void _resetZoom() {
@@ -332,29 +338,22 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Animated Pulse Spinner
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 72,
-                  height: 72,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 4.5,
-                    backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
-                  ),
-                ),
-                Icon(
-                  Icons.hub_rounded,
-                  size: 32,
-                  color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
-                ),
-              ],
+            // Connected Research Lottie Animation (Adaptive Light / Dark)
+            SizedBox(
+              width: 110,
+              height: 110,
+              child: Lottie.asset(
+                isDark
+                    ? 'assets/lottie/splash_animation.json'
+                    : 'assets/lottie/splash_animation_light.json',
+                width: 110,
+                height: 110,
+                fit: BoxFit.contain,
+                repeat: true,
+              ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
 
             Text(
               'Synthesizing Literature Graph',

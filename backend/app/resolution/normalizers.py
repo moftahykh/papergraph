@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
 
 def normalize_doi(doi: Optional[str]) -> Optional[str]:
@@ -106,3 +106,120 @@ def build_deterministic_key(title: str, first_author: str, year: Optional[int]) 
     norm_a = first_author.strip().lower()
     year_str = str(year) if year else "none"
     return f"{norm_t}|{norm_a}|{year_str}"
+
+
+def classify_identifier(raw: Optional[str]) -> Tuple[str, str]:
+    """
+    Universal paper-identifier classifier.
+
+    Accepts anything a researcher might paste — bare DOI, DOI URL, PMID,
+    PMCID, arXiv ID, S2 paper ID, CorpusID, OpenAlex ID, or a publisher
+    landing-page URL (PubMed, PMC, arXiv, OpenAlex, Semantic Scholar,
+    Nature, ACM, Wiley, Science, Springer, bioRxiv, Taylor & Francis, OUP...).
+
+    Returns (kind, value) where kind is one of:
+      "doi" | "pmid" | "pmcid" | "arxiv" | "s2" | "corpusid" | "openalex"
+      | "url"   — http(s) link we cannot identify locally (caller may scrape
+                  citation_* meta tags as a best-effort fallback)
+      | "title" — free text to search by
+    """
+    if not raw:
+        return ("title", "")
+
+    text = raw.strip()
+    low = text.lower()
+
+    # ---- URL inputs ----
+    if low.startswith(("http://", "https://")):
+        host_match = re.search(r"^https?://([^/?#]+)", low)
+        host = host_match.group(1) if host_match else ""
+
+        if "pmc.ncbi.nlm.nih.gov" in host:
+            m = re.search(r"(pmc\d+)", low)
+            if m:
+                return ("pmcid", m.group(1).upper())
+
+        if "pubmed.ncbi.nlm.nih.gov" in host:
+            m = re.search(r"/(\d{5,10})(?:/|$)", low)
+            if m:
+                return ("pmid", m.group(1))
+
+        if "arxiv.org" in host:
+            m = re.search(
+                r"/(?:abs|pdf|html)/([0-9]{4}\.[0-9]{4,5}|[a-z\-]+(?:\.[a-z]{2})?/[0-9]{7})",
+                low,
+            )
+            if m:
+                return ("arxiv", m.group(1))
+
+        if "openalex.org" in host:
+            m = re.search(r"(w\d{1,12})", low)
+            if m:
+                return ("openalex", m.group(1).upper())
+
+        if "semanticscholar.org" in host:
+            m = re.search(r"([0-9a-f]{40})", low)
+            if m:
+                return ("s2", m.group(1))
+
+        # Publisher URLs that embed the DOI in the path
+        # (ACM, Wiley, Science, Springer, Taylor & Francis, bioRxiv, OUP...)
+        if "10." in low:
+            doi = normalize_doi(text)
+            if doi:
+                doi = re.sub(
+                    r"(\.(?:pdf|html?)|/(?:full|abstract|epdf|pdf|short|meta|references|suppl[a-z0-9._\-]*))+$",
+                    "",
+                    doi,
+                    flags=re.IGNORECASE,
+                )
+                return ("doi", doi)
+
+        # Nature article slugs are DOI suffixes (10.1038/<slug>)
+        if "nature.com" in host:
+            m = re.search(r"/articles/([a-z0-9][a-z0-9\-]+)", low)
+            if m:
+                return ("doi", f"10.1038/{m.group(1)}")
+
+        # Unknown landing page — the caller may scrape citation_* meta tags.
+        return ("url", text)
+
+    # ---- Bare / prefixed identifiers ----
+    if low.startswith("10.") or "doi.org/" in low or low.startswith("doi:"):
+        doi = normalize_doi(text)
+        if doi:
+            return ("doi", doi)
+
+    m = re.match(r"^(?:pmcid:)?(pmc\d{3,12})$", low)
+    if m:
+        return ("pmcid", m.group(1).upper())
+
+    m = re.match(r"^(?:pmid:|pubmed:)?(\d{5,10})$", low)
+    if m:
+        return ("pmid", m.group(1))
+
+    m = re.match(r"^(?:arxiv:)?([0-9]{4}\.[0-9]{4,5})(v\d+)?$", low)
+    if m:
+        return ("arxiv", m.group(1))
+
+    m = re.match(r"^(?:arxiv:)?([a-z\-]+(?:\.[a-z]{2})?/[0-9]{7})(v\d+)?$", low)
+    if m:
+        return ("arxiv", m.group(1))
+
+    m = re.match(r"^(?:https?://)?(?:api\.)?openalex\.org/(?:works/)?(w\d{1,12})$", low)
+    if m:
+        return ("openalex", m.group(1).upper())
+
+    m = re.match(r"^(w\d{1,12})$", low)
+    if m:
+        return ("openalex", m.group(1).upper())
+
+    m = re.match(r"^(?:s2:)?([0-9a-f]{40})$", low)
+    if m:
+        return ("s2", m.group(1))
+
+    m = re.match(r"^corpusid:?(\d{1,12})$", low)
+    if m:
+        return ("corpusid", m.group(1))
+
+    return ("title", text)

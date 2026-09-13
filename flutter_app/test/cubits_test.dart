@@ -124,7 +124,7 @@ void main() {
         ],
       );
 
-      final future = cubit.search('attention');
+      final future = cubit.search('attention', immediate: true);
       expect(cubit.state, isA<SearchLoading>());
       await future;
 
@@ -141,7 +141,7 @@ void main() {
         items: [],
       );
 
-      await cubit.search('nonexistent query 12345');
+      await cubit.search('nonexistent query 12345', immediate: true);
       expect(cubit.state, isA<SearchEmpty>());
       final empty = cubit.state as SearchEmpty;
       expect(empty.query, 'nonexistent query 12345');
@@ -153,7 +153,7 @@ void main() {
         statusCode: 503,
       );
 
-      await cubit.search('transformer');
+      await cubit.search('transformer', immediate: true);
       expect(cubit.state, isA<SearchError>());
       final err = cubit.state as SearchError;
       expect(err.message, 'Backend connection refused');
@@ -165,7 +165,7 @@ void main() {
         total: 1,
         items: [SearchResultItem(canonicalId: '1', title: 'Test')],
       );
-      await cubit.search('test');
+      await cubit.search('test', immediate: true);
       expect(cubit.state, isA<SearchLoaded>());
 
       cubit.clear();
@@ -238,13 +238,18 @@ void main() {
       await cubit.buildGraphFromDoi('10.1000/182');
       expect(cubit.state, isA<GraphCreating>());
 
-      // Await polling timer tick
+      // First poll fires after the initial 750ms interval
       await Future.delayed(const Duration(milliseconds: 900));
       expect(cubit.state, isA<GraphPolling>());
       var pollingState = cubit.state as GraphPolling;
       expect(pollingState.currentStage, GraphJobStatus.resolvingOrigin);
 
-      await Future.delayed(const Duration(milliseconds: 850));
+      // Later polls back off exponentially (750ms * 1.4 = ~1050ms), so wait
+      // generously for the second poll delivering the completed snapshot.
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (cubit.state is! GraphLoaded && DateTime.now().isBefore(deadline)) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
       expect(cubit.state, isA<GraphLoaded>());
       final loadedState = cubit.state as GraphLoaded;
       expect(loadedState.snapshot.nodes.length, 2);

@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.models.canonical_paper import Author
 from app.providers.base import BaseHttpProvider
 from app.providers.models import RawPaper, Page
+from app.resolution.normalizers import classify_identifier
 
 
 def clean_doi(identifier: str) -> str:
@@ -121,16 +122,19 @@ class OpenAlexProvider(BaseHttpProvider):
         ident = identifier.strip()
         params = {"mailto": self.contact_email}
 
-        if "/" in ident and (ident.startswith("10.") or "doi.org" in ident.lower()):
-            doi = clean_doi(ident)
-            endpoint = f"/works/https://doi.org/{doi}"
-        elif ident.lower().startswith("w") and ident[1:].isdigit():
-            endpoint = f"/works/{ident}"
-        elif "openalex.org" in ident:
-            clean_id = ident.split("/")[-1]
-            endpoint = f"/works/{clean_id}"
+        kind, value = classify_identifier(ident)
+
+        if kind == "doi":
+            endpoint = f"/works/{{https://doi.org/{value}}}"
+        elif kind == "openalex":
+            endpoint = f"/works/{value}"
+        elif kind == "pmid":
+            endpoint = f"/works/pmid:{value}"
+        elif kind == "pmcid":
+            endpoint = f"/works/pmcid:{value}"
         else:
-            # Search by title as fallback
+            # Titles, S2 IDs, arXiv IDs, and unrecognized links:
+            # best-effort keyword search as fallback.
             res = await self.search(ident, limit=1)
             return res[0] if res else None
 
@@ -156,9 +160,10 @@ class OpenAlexProvider(BaseHttpProvider):
             params=params,
             headers=self.headers,
         )
-        if not data or "results" not in data:
+        # OpenAlex may return {"results": null} — reject null payload, not just a missing key.
+        if not data or not data.get("results"):
             return []
-        return [self._parse_work(w) for w in data["results"]]
+        return [self._parse_work(w) for w in data["results"] if w]
 
     async def get_details(self, provider_id: str) -> Optional[RawPaper]:
         return await self.resolve(provider_id)
@@ -201,10 +206,11 @@ class OpenAlexProvider(BaseHttpProvider):
             params=params,
             headers=self.headers,
         )
-        if not data or "results" not in data:
+        # Same null-payload guard as search().
+        if not data or not data.get("results"):
             return Page(items=[], total=0, has_more=False)
 
-        items = [self._parse_work(w) for w in data["results"]]
+        items = [self._parse_work(w) for w in data["results"] if w]
         meta = data.get("meta", {})
         total = meta.get("count", len(items))
         next_cursor = meta.get("next_cursor")

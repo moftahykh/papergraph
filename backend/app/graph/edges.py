@@ -62,8 +62,8 @@ def synthesize_citation_edges(
 
 def synthesize_similarity_edges(
     nodes: List[CanonicalPaper],
-    min_threshold: float = 0.20,
-    max_neighbors_per_node: int = 4,
+    min_threshold: float = 0.42,
+    max_neighbors_per_node: int = 2,
 ) -> List[GraphEdge]:
     """
     Synthesizes non-directional similarity edges based on multi-factor similarity.

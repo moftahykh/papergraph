@@ -1,0 +1,1 @@
+FastAPI multi-provider academic discovery engine: search/resolve/graph endpoints, providers for Semantic Scholar + OpenAlex + Crossref + PubMed, run with `uvicorn app.main:app --reload`, test with `pytest`.

@@ -37,7 +37,16 @@ class PaperGraphApiClient {
               ),
             );
 
+  /// Override the backend URL at build/run time:
+  ///   flutter run --dart-define=PAPERGRAPH_API_URL=https://api.example.com/api/v1
+  ///   flutter build apk --dart-define=PAPERGRAPH_API_URL=https://api.example.com/api/v1
+  static const String _envBaseUrl =
+      String.fromEnvironment('PAPERGRAPH_API_URL');
+
   static String _resolveDefaultBaseUrl() {
+    if (_envBaseUrl.isNotEmpty) {
+      return _envBaseUrl;
+    }
     if (kIsWeb) {
       return 'http://localhost:8000/api/v1';
     }
@@ -139,6 +148,35 @@ class PaperGraphApiClient {
         cancelToken: cancelToken,
       );
       return PaperDetailsResponse.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Sends a 6-digit verification code to the specified email address via Resend.
+  Future<Map<String, dynamic>> sendOtp(String email) async {
+    try {
+      final response = await _dio.post(
+        '/auth/send-otp',
+        data: {'email': email.trim().toLowerCase()},
+      );
+      return Map<String, dynamic>.from(response.data as Map);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Verifies the 6-digit OTP code against the backend store.
+  Future<Map<String, dynamic>> verifyOtp(String email, String code) async {
+    try {
+      final response = await _dio.post(
+        '/auth/verify-otp',
+        data: {
+          'email': email.trim().toLowerCase(),
+          'code': code.trim(),
+        },
+      );
+      return Map<String, dynamic>.from(response.data as Map);
     } on DioException catch (e) {
       throw _handleDioError(e);
     }

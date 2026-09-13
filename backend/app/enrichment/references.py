@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Dict, Optional, Set, Tuple
 from app.models.canonical_paper import CanonicalPaper
@@ -12,9 +13,9 @@ logger = logging.getLogger("papergraph.enrichment.references")
 
 class ReferenceEnricher:
     """
-    Fetches outbound references for origin and up to 60 retained candidates using
-    provider-specific pagination. Collapses duplicate requests and guarantees
-    that partial reference lists are explicitly flagged as incomplete.
+    Fetches outbound references for origin and retained candidates using
+    provider-specific pagination with bounded concurrency. Collapses duplicate
+    requests and falls back across providers when rate limits are met.
     """
     def __init__(
         self,
@@ -37,10 +38,7 @@ class ReferenceEnricher:
     ) -> Tuple[List[str], EnrichmentStatusEnum, bool]:
         """
         Fetches outbound references for a single paper with pagination and caching.
-        Returns:
-          - reference_ids: List of canonical/provider IDs cited
-          - status: EnrichmentStatusEnum (SUCCESS, PARTIAL, EMPTY, FAILED)
-          - is_complete: True if all pages were fetched completely without error/cutoff
+        Attempts primary provider and seamlessly falls back to alternative provider.
         """
         warnings = warnings if warnings is not None else []
 
@@ -53,54 +51,59 @@ class ReferenceEnricher:
 
         async def _do_fetch() -> Tuple[List[str], EnrichmentStatusEnum, bool]:
             ref_ids: List[str] = []
-            cursor: Optional[str] = None
-            is_complete = True
-            provider_used = self.s2_provider or self.openalex_provider
+            providers_to_try = [p for p in [self.s2_provider, self.openalex_provider] if p is not None]
 
-            if not provider_used:
+            if not providers_to_try:
                 return ref_ids, EnrichmentStatusEnum.SKIPPED, False
 
-            try:
-                while True:
-                    # Pagination call
-                    page = await provider_used.get_references(
-                        provider_id=provider_id,
-                        cursor=cursor,
-                        limit=min(100, self.max_refs_per_paper - len(ref_ids)),
-                    )
+            for provider in providers_to_try:
+                try:
+                    cursor: Optional[str] = None
+                    is_complete = True
+                    target_id = provider_id
+                    if provider.name == "openalex" and getattr(paper, "open_alex_id", None):
+                        target_id = paper.open_alex_id
 
-                    for item in page.items:
-                        cid = item.doi or item.semantic_scholar_id or item.provider_id
-                        if cid and cid not in ref_ids:
-                            ref_ids.append(cid)
+                    while True:
+                        page = await provider.get_references(
+                            provider_id=target_id,
+                            cursor=cursor,
+                            limit=min(100, self.max_refs_per_paper - len(ref_ids)),
+                        )
 
-                    if not page.has_more or not page.next_cursor:
-                        is_complete = True
-                        break
+                        for item in page.items:
+                            cid = item.doi or item.semantic_scholar_id or item.provider_id
+                            if cid and cid not in ref_ids:
+                                ref_ids.append(cid)
 
-                    cursor = page.next_cursor
-                    if len(ref_ids) >= self.max_refs_per_paper:
-                        is_complete = False  # Truncated by quota limit
-                        break
+                        if not page.has_more or not page.next_cursor:
+                            is_complete = True
+                            break
 
-                status = EnrichmentStatusEnum.SUCCESS if ref_ids else EnrichmentStatusEnum.EMPTY
-                if not is_complete and ref_ids:
-                    status = EnrichmentStatusEnum.PARTIAL
+                        cursor = page.next_cursor
+                        if len(ref_ids) >= self.max_refs_per_paper:
+                            is_complete = False
+                            break
 
-                return ref_ids, status, is_complete
+                    status = EnrichmentStatusEnum.SUCCESS if ref_ids else EnrichmentStatusEnum.EMPTY
+                    if not is_complete and ref_ids:
+                        status = EnrichmentStatusEnum.PARTIAL
 
-            except Exception as e:
-                logger.warning(f"Error fetching references for {paper.canonical_id}: {e}")
-                warnings.append(
-                    GraphWarning(
-                        code="provider_references_error",
-                        message=f"Failed to fetch references for {paper.canonical_id}: {str(e)}",
-                        severity="warning",
-                    )
+                    return ref_ids, status, is_complete
+
+                except Exception as e:
+                    logger.warning(f"[{provider.name}] Error fetching references for {paper.canonical_id}: {e}")
+                    # Continue loop to try next provider
+
+            warnings.append(
+                GraphWarning(
+                    code="provider_references_error",
+                    message=f"Failed to fetch references for {paper.canonical_id} across all providers.",
+                    severity="warning",
                 )
-                return ref_ids, EnrichmentStatusEnum.FAILED, False
+            )
+            return ref_ids, EnrichmentStatusEnum.FAILED, False
 
-        # Use cache with request collapsing to prevent duplicate network calls
         result = await self.cache.get_or_fetch(cache_key, _do_fetch)
         return result
 
@@ -114,7 +117,7 @@ class ReferenceEnricher:
         Dict[str, Tuple[List[str], EnrichmentStatusEnum, bool]],
     ]:
         """
-        Enriches references for the origin paper and up to max_candidates (default 60).
+        Enriches references for the origin paper and candidates concurrently with a bounded semaphore.
         """
         warnings = warnings if warnings is not None else []
 
@@ -123,21 +126,19 @@ class ReferenceEnricher:
             origin, warnings=warnings
         )
         if origin_refs:
-            # Merge into origin
             merged_refs = list(set(origin.reference_ids + origin_refs))
             origin.reference_ids = merged_refs
             origin.reference_count = max(origin.reference_count or 0, len(merged_refs))
 
-        # 2. Select up to 60 candidates (prioritizing higher PreScore)
+        # 2. Select candidates prioritizing higher PreScore
         sorted_candidates = sorted(candidates, key=lambda c: c.pre_score, reverse=True)
         selected_candidates = sorted_candidates[:self.max_candidates]
-        selected_cids = {c.paper.canonical_id for c in selected_candidates}
 
-        candidate_results: Dict[str, Tuple[List[str], EnrichmentStatusEnum, bool]] = {}
+        # 3. Concurrent retrieval with bounded semaphore
+        sem = asyncio.Semaphore(settings.ENRICHMENT_CONCURRENCY_LIMIT)
 
-        for cand in candidates:
-            cid = cand.paper.canonical_id
-            if cid in selected_cids:
+        async def _fetch_single(cand: CandidateRecord):
+            async with sem:
                 refs, status, complete = await self.fetch_paper_references(
                     cand.paper, warnings=warnings
                 )
@@ -146,8 +147,21 @@ class ReferenceEnricher:
                     cand.paper.reference_count = max(
                         cand.paper.reference_count or 0, len(cand.paper.reference_ids)
                     )
-                candidate_results[cid] = (cand.paper.reference_ids, status, complete)
-            else:
+                return cand.paper.canonical_id, (cand.paper.reference_ids, status, complete)
+
+        tasks = [_fetch_single(c) for c in selected_candidates]
+        gathered = await asyncio.gather(*tasks, return_exceptions=True)
+
+        candidate_results: Dict[str, Tuple[List[str], EnrichmentStatusEnum, bool]] = {}
+        for item in gathered:
+            if isinstance(item, tuple) and len(item) == 2:
+                cid, res = item
+                candidate_results[cid] = res
+
+        # 4. Fill unselected candidates
+        for cand in candidates:
+            cid = cand.paper.canonical_id
+            if cid not in candidate_results:
                 candidate_results[cid] = (
                     cand.paper.reference_ids,
                     EnrichmentStatusEnum.SKIPPED,

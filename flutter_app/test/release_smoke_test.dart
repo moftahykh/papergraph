@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lottie/lottie.dart';
 import 'package:paper_graph/core/theme/app_theme.dart';
 import 'package:paper_graph/cubits/graph/graph_cubit.dart';
 import 'package:paper_graph/cubits/graph/graph_state.dart';
@@ -129,11 +130,11 @@ void main() {
       await tester.pump();
 
       // Verify progress indicators
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(Lottie), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
       // Verify stage description text
-      expect(find.text('Computing Co-Citation (WBC) matrix...'), findsOneWidget);
+      expect(find.text('Computing Bibliographic Coupling (WBC) matrix...'), findsOneWidget);
 
       // Verify Cancel Job action button
       expect(find.text('Cancel Job'), findsOneWidget);

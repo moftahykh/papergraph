@@ -4,13 +4,12 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Optional, List
-from app.models.canonical_paper import CanonicalPaper, Author
 from app.models.enums import GraphJobStatus, MetricAvailability
 from app.models.graph import GraphJob, GraphSnapshot, GraphWarning, DataCompleteness
 from app.schemas.graph import CreateGraphRequest
 from app.resolution.resolver import IdentityResolver
+from app.resolution.normalizers import classify_identifier
 from app.candidates.generator import CandidatePoolGenerator
-from app.candidates.models import CandidateRecord
 from app.enrichment.pipeline import EnrichmentPipeline
 from app.ranking.engine import SafeRankingEngine
 from app.graph.synthesizer import GraphSynthesizer
@@ -138,41 +137,119 @@ class GraphJobManager:
             # Stage 2: Resolving Origin
             await self._update_stage(job, GraphJobStatus.RESOLVING_ORIGIN, 0.05)
             origin_raw = None
-            try:
-                origin_raw = await self.s2_provider.resolve(request.origin_id)
-                if not origin_raw and self.openalex_provider:
-                    origin_raw = await self.openalex_provider.resolve(request.origin_id)
-            except Exception as e:
-                logger.warning(f"Live origin resolution failed: {e}")
+            attempted_channels: List[str] = []
+
+            async def _try_channel(label: str, identifier: str, provider) -> None:
+                """Resolves via a single channel. A failure in one channel must
+                NEVER abort the rest of the fallback chain — that is the whole
+                point of having multiple providers."""
+                nonlocal origin_raw
+                if origin_raw is not None or provider is None:
+                    return
+                attempted_channels.append(label)
+                try:
+                    origin_raw = await provider.resolve(identifier)
+                except Exception as e:
+                    logger.warning(f"Origin resolution via {label} failed: {e}")
+
+            # 1) Primary providers — isolated so one provider's 5xx does not
+            #    skip the other (previously a single shared try block aborted
+            #    the whole chain on the first exception).
+            await _try_channel("semantic_scholar", request.origin_id, self.s2_provider)
+            await _try_channel("openalex", request.origin_id, self.openalex_provider)
+
+            # 2) Universal fallback chain for links/IDs the providers did not
+            #    resolve directly. Each step is logged so backend logs
+            #    self-describe which channel was attempted.
+            if not origin_raw:
+                from app.resolution.link_resolver import (
+                    resolve_ncbi_idconv,
+                    resolve_url_to_identifier,
+                )
+
+                kind, value = classify_identifier(request.origin_id)
+
+                # 2a) NCBI's official ID converter: PMCID/PMID -> DOI.
+                #     Authoritative for fresh biomedical papers that S2 /
+                #     OpenAlex have not indexed under the PMCID yet.
+                if kind in ("pmcid", "pmid"):
+                    try:
+                        mapped_id = await resolve_ncbi_idconv(kind, value)
+                    except Exception as e:
+                        logger.warning(f"NCBI idconv failed for {value}: {e}")
+                        mapped_id = None
+                    if mapped_id:
+                        logger.info(
+                            f"Origin resolution: NCBI idconv mapped {value} -> {mapped_id}"
+                        )
+                        await _try_channel("semantic_scholar", mapped_id, self.s2_provider)
+                        await _try_channel("openalex", mapped_id, self.openalex_provider)
+
+                # 2b) Any http(s) landing page usually carries citation_*
+                #     meta tags (the metadata Zotero/Mendeley rely on).
+                if not origin_raw and request.origin_id.lower().startswith(
+                    ("http://", "https://")
+                ):
+                    try:
+                        extracted = await resolve_url_to_identifier(request.origin_id)
+                    except Exception as e:
+                        logger.warning(f"Landing-page metadata scrape failed: {e}")
+                        extracted = None
+                    if extracted:
+                        logger.info(
+                            f"Origin resolution: scraped {extracted[0]} from landing page"
+                        )
+                        await _try_channel("semantic_scholar", extracted[1], self.s2_provider)
+                        await _try_channel("openalex", extracted[1], self.openalex_provider)
 
             if not origin_raw:
-                # Synthesize fallback canonical paper if resolution returned nothing
-                origin_paper = CanonicalPaper(
-                    canonical_id=f"doi:{request.origin_id.replace('doi:', '')}",
-                    doi=request.origin_id.replace("doi:", ""),
-                    title=f"Publication {request.origin_id}",
-                    year=2020,
-                    citation_count=50,
+                # Never fabricate an origin paper. Fail loudly instead of presenting
+                # synthesized data as real (academic integrity + honest failure states).
+                channels = ", ".join(attempted_channels) or "none"
+                raise ValueError(
+                    f"Could not resolve origin paper '{request.origin_id}' "
+                    f"(channels attempted: {channels}). The paper may be too new "
+                    "to be indexed — try its DOI or full title instead."
                 )
-            else:
-                origin_paper = self.resolver.ingest(origin_raw.to_canonical())
+            origin_paper = self.resolver.ingest(origin_raw.to_canonical())
 
             # Stage 3: Generating Candidates
             await self._update_stage(job, GraphJobStatus.GENERATING_CANDIDATES, 0.15)
             raw_refs, raw_cites, raw_recs = [], [], []
-            try:
-                if origin_paper.semantic_scholar_id:
+            if origin_paper.semantic_scholar_id:
+                try:
                     ref_page = await self.s2_provider.get_references(origin_paper.semantic_scholar_id, limit=30)
                     raw_refs = ref_page.items
+                except Exception as e:
+                    logger.warning(f"S2 references error: {e}")
+                try:
                     cite_page = await self.s2_provider.get_citations(origin_paper.semantic_scholar_id, limit=30)
                     raw_cites = cite_page.items
+                except Exception as e:
+                    logger.warning(f"S2 citations error: {e}")
+                try:
                     raw_recs = await self.s2_provider.get_recommendations(origin_paper.semantic_scholar_id, limit=20)
-            except Exception as e:
-                logger.warning(f"Candidate retrieval partial error: {e}")
+                except Exception as e:
+                    logger.warning(f"S2 recommendations error: {e}")
+            
+            # Fallback to OpenAlex if S2 returned completely empty pools
+            if not raw_refs and not raw_cites and self.openalex_provider and getattr(origin_paper, 'open_alex_id', None):
+                try:
+                    oa_ref_page = await self.openalex_provider.get_references(origin_paper.open_alex_id, limit=30)
+                    raw_refs = oa_ref_page.items
+                except Exception as e:
+                    logger.warning(f"OA references error: {e}")
+                try:
+                    oa_cite_page = await self.openalex_provider.get_citations(origin_paper.open_alex_id, limit=30)
+                    raw_cites = oa_cite_page.items
+                except Exception as e:
+                    logger.warning(f"OA citations error: {e}")
+
+            if not raw_refs and not raw_cites and not raw_recs:
                 job.warnings.append(
                     GraphWarning(
                         code="candidate_generation_warning",
-                        message=f"Candidate retrieval encountered partial failure: {str(e)}",
+                        message="Candidate retrieval encountered partial failure across providers.",
                         severity="warning",
                     )
                 )
@@ -186,19 +263,15 @@ class GraphJobManager:
                 raw_recommendations=raw_recs,
             )
 
-            # If no candidate survived or initial pool empty, synthesize minimal candidates
+            # Never fabricate candidates. An empty pool means the graph is honestly
+            # impossible for this origin right now — fail with a clear message instead
+            # of showing invented papers as real related work.
             if not retained_candidates:
-                for i in range(10):
-                    cand_paper = CanonicalPaper(
-                        canonical_id=f"doi:10.1000/fallback_{job.job_id}_{i}",
-                        doi=f"10.1000/fallback_{job.job_id}_{i}",
-                        title=f"Related Work {i}",
-                        year=2019 + (i % 3),
-                        citation_count=10 * (i + 1),
-                    )
-                    retained_candidates.append(
-                        CandidateRecord(paper=cand_paper, pre_score=round(0.8 - (i * 0.05), 2))
-                    )
+                raise ValueError(
+                    "No candidate papers could be retrieved for this origin. "
+                    "The paper may lack references/citations in upstream providers, "
+                    "or providers may be unavailable."
+                )
 
             metrics.record_candidate_pool_size(len(retained_candidates))
 
@@ -216,7 +289,12 @@ class GraphJobManager:
             enrichment_result = await self.enrichment_pipeline.run(origin_paper, retained_candidates)
             job.warnings.extend(enrichment_result.warnings)
             if enrichment_result.data_completeness:
-                metrics.record_enrichment_completeness(enrichment_result.data_completeness.score)
+                dc = enrichment_result.data_completeness
+                # DataCompleteness carries per-dimension ratios, not a single
+                # score — record the mean across its four dimensions.
+                metrics.record_enrichment_completeness(
+                    (dc.metadata + dc.references + dc.citations + dc.semantic) / 4.0
+                )
 
             # Stage 10: Computing Final Scores
             await self._update_stage(job, GraphJobStatus.COMPUTING_FINAL_SCORES, 0.85)

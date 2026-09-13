@@ -43,8 +43,13 @@ async def test_request_size_limit_triggers_413():
 async def test_rate_limiter_triggers_429():
     """Excessive request burst triggers HTTP 429 Too Many Requests with Retry-After header."""
     transport = ASGITransport(app=app)
-    # Temporarily set limit to 5 req/min for testing
+    # Temporarily set limit to 5 req/min for testing, and widen the sliding
+    # window: on slow networks the first (live) search request can take tens
+    # of seconds — with a 60s window its timestamps could age out before the
+    # 6th request arrives, making the 429 assertion flaky. 300s makes the
+    # assertion deterministic regardless of upstream provider latency.
     rate_limiter.requests_per_minute = 5
+    rate_limiter.window_seconds = 300.0
     
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         # First 5 requests should pass
@@ -59,8 +64,9 @@ async def test_rate_limiter_triggers_429():
         data = res_blocked.json()
         assert data["error"]["code"] == "RATE_LIMIT_EXCEEDED"
 
-    # Restore default limit
+    # Restore default limit and window
     rate_limiter.requests_per_minute = settings.RATE_LIMIT_PER_MINUTE
+    rate_limiter.window_seconds = 60.0
 
 
 @pytest.mark.asyncio
@@ -135,6 +141,12 @@ def test_flutter_client_contains_zero_provider_secrets_and_urls():
                 file_path = os.path.join(root, file)
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
+
+                    # Firebase client configuration is public BY DESIGN: it ships
+                    # inside every app binary and is enforced by Firebase Security
+                    # Rules, not by key secrecy (unlike provider API keys).
+                    # Never flag the generated firebase_options.dart here.
+                    is_firebase_client_config = file == "firebase_options.dart"
                     
                     # Verify no direct third-party provider URLs
                     for url in forbidden_provider_urls:
@@ -143,6 +155,8 @@ def test_flutter_client_contains_zero_provider_secrets_and_urls():
                         )
                     
                     # Verify no provider secrets or API keys
+                    if is_firebase_client_config:
+                        continue
                     for pattern in suspicious_key_patterns:
                         match = re.search(pattern, content, re.IGNORECASE)
                         assert not match, (

@@ -32,7 +32,8 @@ class Settings(BaseSettings):
 
     # Academic Provider Configuration
     SEMANTIC_SCHOLAR_API_KEY: Optional[str] = None
-    SEMANTIC_SCHOLAR_RPS: float = 1.0
+    SEMANTIC_SCHOLAR_API_KEYS: Union[List[str], str] = []
+    SEMANTIC_SCHOLAR_RPS: float = 2.0
 
     CROSSREF_MAILTO: str = "developer@example.com"
     CROSSREF_RPS: float = 5.0
@@ -56,10 +57,11 @@ class Settings(BaseSettings):
 
     # Enrichment Pipeline Settings
     ENRICHMENT_CACHE_TTL: int = 86400  # 24 hours
-    ENRICHMENT_MAX_CANDIDATES_REFERENCES: int = 60
-    ENRICHMENT_MAX_CANDIDATES_CITATIONS: int = 30
-    ENRICHMENT_MAX_REFERENCES_PER_PAPER: int = 200
-    ENRICHMENT_MAX_CITATIONS_PER_PAPER: int = 200
+    ENRICHMENT_MAX_CANDIDATES_REFERENCES: int = 10
+    ENRICHMENT_MAX_CANDIDATES_CITATIONS: int = 8
+    ENRICHMENT_MAX_REFERENCES_PER_PAPER: int = 150
+    ENRICHMENT_MAX_CITATIONS_PER_PAPER: int = 150
+    ENRICHMENT_CONCURRENCY_LIMIT: int = 4
     ENRICHMENT_EPSILON: float = 1e-8
 
     # Security & Protection Settings
@@ -67,6 +69,13 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60  # Default requests per minute per IP
     RATE_LIMIT_ENABLED: bool = True
     METRICS_ENABLED: bool = True
+
+    # SMTP Email Service (e.g. Gmail App Password)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAILS_FROM_EMAIL: Optional[str] = None
 
 
 settings = Settings()

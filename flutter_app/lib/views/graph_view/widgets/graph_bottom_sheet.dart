@@ -33,6 +33,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   final TextEditingController _searchFilterController = TextEditingController();
   String _listFilter = '';
   String _sortBy = 'citations'; // citations, year, score
+  double _sheetHeight = 380.0;
 
   @override
   void initState() {
@@ -67,7 +68,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     final borderColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
 
     return Container(
-      height: 380,
+      height: _sheetHeight,
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -83,28 +84,39 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       child: Column(
         children: [
           // Drag Handle and Close Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(width: 40),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
+          GestureDetector(
+            onVerticalDragUpdate: (details) {
+              setState(() {
+                _sheetHeight -= details.delta.dy;
+                if (_sheetHeight < 250) _sheetHeight = 250;
+                final maxHeight = MediaQuery.of(context).size.height * 0.85;
+                if (_sheetHeight > maxHeight) _sheetHeight = maxHeight;
+              });
+            },
+            child: Container(
+              color: Colors.transparent, // Capture drags on empty space
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 40),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  onPressed: widget.onClose,
-                  tooltip: 'Close Sheet',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
-                ),
-              ],
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: widget.onClose,
+                    tooltip: 'Close Sheet',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
+                  ),
+                ],
+              ),
             ),
           ),
 

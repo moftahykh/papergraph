@@ -115,7 +115,8 @@ class CrossRefProvider(BaseHttpProvider):
             endpoint=f"/works/{doi}",
             headers=self.headers,
         )
-        if not data or "message" not in data:
+        # CrossRef may return {"message": null} — guard the null payload too.
+        if not data or not data.get("message"):
             return None
         return self._parse_work(data["message"])
 
@@ -130,12 +131,13 @@ class CrossRefProvider(BaseHttpProvider):
             params=params,
             headers=self.headers,
         )
-        if not data or "message" not in data or "items" not in data["message"]:
+        # Guard both a null "message" and null "items" (and non-dict entries).
+        if not data or not data.get("message") or not data["message"].get("items"):
             return []
 
         results: List[RawPaper] = []
         for item in data["message"]["items"]:
-            if item.get("DOI"):
+            if isinstance(item, dict) and item.get("DOI"):
                 results.append(self._parse_work(item))
         return results
 

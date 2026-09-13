@@ -1,32 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// PaperGraph design system.
+///
+/// Light theme = "Paper & Ink": warm academic-paper background, quiet UI,
+/// and one deep-indigo accent.
+/// Dark theme = "Dark Lab": a deep-navy lab canvas where graph nodes glow,
+/// with one soft-cyan accent.
+///
+/// UI chrome stays intentionally quiet: in the graph canvas, color carries
+/// meaning (the year gradient), so the interface never competes with the data.
 class AppTheme {
-  // Brand Color Palette
-  static const Color primaryBlue = Color(0xFF2563EB);
-  static const Color primaryLightBlue = Color(0xFF3B82F6);
-  static const Color accentCyan = Color(0xFF06B6D4);
-  static const Color accentEmerald = Color(0xFF10B981);
-  static const Color accentAmber = Color(0xFFF59E0B);
-  static const Color accentRose = Color(0xFFF43F5E);
+  // ---- Brand accents ----
+  /// Light-theme primary — Paper & Ink deep indigo.
+  static const Color primaryBlue = Color(0xFF3730A3);
+  /// Dark-theme primary — Dark Lab soft cyan.
+  static const Color primaryLightBlue = Color(0xFF4AC6E3);
+  static const Color accentCyan = Color(0xFF4AC6E3);
+  /// Semantic colors, muted to sit well on both themes.
+  static const Color accentEmerald = Color(0xFF2E7D5B);
+  static const Color accentAmber = Color(0xFFB45309);
+  static const Color accentRose = Color(0xFFC2404D);
 
-  // Dark Palette
-  static const Color darkBg = Color(0xFF0B0F19);
-  static const Color darkSurface = Color(0xFF131B2E);
-  static const Color darkCard = Color(0xFF1A243B);
-  static const Color darkBorder = Color(0xFF263352);
-  static const Color darkTextPrimary = Color(0xFFF1F5F9);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  // ---- Dark Lab palette ----
+  static const Color darkBg = Color(0xFF0B1220);
+  static const Color darkSurface = Color(0xFF121C31);
+  static const Color darkCard = Color(0xFF152238);
+  static const Color darkBorder = Color(0xFF22304F);
+  static const Color darkTextPrimary = Color(0xFFE6EDF7);
+  static const Color darkTextSecondary = Color(0xFF93A3BE);
 
-  // Light Palette
-  static const Color lightBg = Color(0xFFF8FAFC);
+  // ---- Paper & Ink palette ----
+  static const Color lightBg = Color(0xFFFAFAF7);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightTextPrimary = Color(0xFF0F172A);
-  static const Color lightTextSecondary = Color(0xFF64748B);
+  static const Color lightBorder = Color(0xFFE7E4DC);
+  static const Color lightTextPrimary = Color(0xFF1B2432);
+  static const Color lightTextSecondary = Color(0xFF667085);
 
-  // Dark Theme
+  // Dark Lab
   static ThemeData get darkTheme {
     final baseTextTheme = ThemeData.dark().textTheme;
     return ThemeData(
@@ -39,8 +51,8 @@ class AppTheme {
         secondary: accentCyan,
         surface: darkSurface,
         error: accentRose,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
+        onPrimary: Color(0xFF062631),
+        onSecondary: Color(0xFF062631),
         onSurface: darkTextPrimary,
       ),
       cardTheme: CardThemeData(
@@ -51,15 +63,17 @@ class AppTheme {
           side: const BorderSide(color: darkBorder, width: 1),
         ),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: darkBg,
         elevation: 0,
         centerTitle: false,
-        iconTheme: IconThemeData(color: darkTextPrimary),
-        titleTextStyle: TextStyle(
-          color: darkTextPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+        iconTheme: const IconThemeData(color: darkTextPrimary),
+        titleTextStyle: GoogleFonts.playfairDisplay(
+          textStyle: const TextStyle(
+            color: darkTextPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -87,14 +101,11 @@ class AppTheme {
           borderSide: const BorderSide(color: primaryLightBlue, width: 2),
         ),
       ),
-      textTheme: GoogleFonts.interTextTheme(baseTextTheme).apply(
-        bodyColor: darkTextPrimary,
-        displayColor: darkTextPrimary,
-      ),
+      textTheme: _buildAppTextTheme(baseTextTheme, darkTextPrimary),
     );
   }
 
-  // Light Theme
+  // Paper & Ink
   static ThemeData get lightTheme {
     final baseTextTheme = ThemeData.light().textTheme;
     return ThemeData(
@@ -114,21 +125,23 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: lightCard,
         elevation: 2,
-        shadowColor: Colors.black.withAlpha(10),
+        shadowColor: Colors.black.withAlpha(8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: lightBorder, width: 1),
         ),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: lightBg,
         elevation: 0,
         centerTitle: false,
-        iconTheme: IconThemeData(color: lightTextPrimary),
-        titleTextStyle: TextStyle(
-          color: lightTextPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+        iconTheme: const IconThemeData(color: lightTextPrimary),
+        titleTextStyle: GoogleFonts.playfairDisplay(
+          textStyle: const TextStyle(
+            color: lightTextPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -156,9 +169,37 @@ class AppTheme {
           borderSide: const BorderSide(color: primaryBlue, width: 2),
         ),
       ),
-      textTheme: GoogleFonts.interTextTheme(baseTextTheme).apply(
-        bodyColor: lightTextPrimary,
-        displayColor: lightTextPrimary,
+      textTheme: _buildAppTextTheme(baseTextTheme, lightTextPrimary),
+    );
+  }
+
+  static TextTheme _buildAppTextTheme(TextTheme base, Color color) {
+    final interBase = GoogleFonts.interTextTheme(base).apply(
+      bodyColor: color,
+      displayColor: color,
+    );
+
+    return interBase.copyWith(
+      displayLarge: GoogleFonts.playfairDisplay(
+        textStyle: interBase.displayLarge?.copyWith(fontWeight: FontWeight.bold),
+      ),
+      displayMedium: GoogleFonts.playfairDisplay(
+        textStyle: interBase.displayMedium?.copyWith(fontWeight: FontWeight.bold),
+      ),
+      displaySmall: GoogleFonts.playfairDisplay(
+        textStyle: interBase.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+      ),
+      headlineLarge: GoogleFonts.playfairDisplay(
+        textStyle: interBase.headlineLarge?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      headlineMedium: GoogleFonts.playfairDisplay(
+        textStyle: interBase.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      headlineSmall: GoogleFonts.playfairDisplay(
+        textStyle: interBase.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      titleLarge: GoogleFonts.playfairDisplay(
+        textStyle: interBase.titleLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }

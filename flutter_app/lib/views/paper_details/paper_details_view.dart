@@ -191,23 +191,9 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
             ),
             const SizedBox(height: 24),
 
-            // 🌟 Creative Feature Button: Explore Connected Graph
-            Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.accentCyan],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryLightBlue.withAlpha(80),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
+            // Creative feature: explore the connected graph grown from this paper.
+            SizedBox(
+              width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.push(
@@ -228,8 +214,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                 ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
+                  backgroundColor: AppTheme.primaryBlue,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
               ),
@@ -237,45 +222,47 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
             const SizedBox(height: 24),
 
             // Key Takeaways Section
-            _buildSectionHeader('Key Takeaways & Core Findings', Icons.lightbulb_outline_rounded),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkCard : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-              ),
-              child: Column(
-                children: widget.paper.keyTakeaways.map((takeaway) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: AppTheme.accentEmerald,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            takeaway,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              height: 1.4,
-                              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+            if (widget.paper.keyTakeaways.isNotEmpty) ...[
+              _buildSectionHeader('Key Takeaways & Core Findings', Icons.lightbulb_outline_rounded),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                ),
+                child: Column(
+                  children: widget.paper.keyTakeaways.map((takeaway) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: AppTheme.accentEmerald,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              takeaway,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                height: 1.4,
+                                color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
+            ],
 
             // Abstract Section
             _buildSectionHeader('Abstract', Icons.description_outlined),
@@ -307,29 +294,53 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                 color: isDark ? AppTheme.darkCard : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(5),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextField(
-                    controller: _notesController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: 'Add personal study notes, insights, or citation references...',
-                      border: InputBorder.none,
-                      filled: false,
-                      contentPadding: EdgeInsets.zero,
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder.withAlpha(100)),
+                    ),
+                    child: TextField(
+                      controller: _notesController,
+                      maxLines: 4,
+                      minLines: 2,
+                      decoration: InputDecoration(
+                        hintText: 'Add personal study notes, insights, or citation references...',
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  TextButton.icon(
-                    onPressed: _saveNotes,
-                    icon: const Icon(Icons.save_rounded, size: 16),
-                    label: const Text('Save Note to Local Hive'),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: _saveNotes,
+                      icon: const Icon(Icons.save_rounded, size: 16),
+                      label: const Text('Save Note'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primaryBlue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
                   ),
                 ],
               ),

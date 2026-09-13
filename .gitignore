@@ -88,3 +88,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+local.properties
+ephemeral/
+google-services.json
+tree.txt

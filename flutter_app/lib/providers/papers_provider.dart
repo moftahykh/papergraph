@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../data/sample_papers_data.dart';
 import '../models/paper_model.dart';
 import '../core/services/hive_service.dart';
 
@@ -23,7 +22,7 @@ class PapersProvider extends ChangeNotifier {
   }
 
   void _initPapers() {
-    _allPapers = SamplePapersData.getInitialPapers();
+    _allPapers = [];
     // Sync favorite flags from Hive
     for (var paper in _allPapers) {
       paper.isFavorite = HiveService.isPaperFavorite(paper.id);

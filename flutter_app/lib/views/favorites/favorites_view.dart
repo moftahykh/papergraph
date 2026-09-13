@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../../cubits/graph/graph_cubit.dart';
 import '../../cubits/library/library_cubit.dart';
@@ -22,7 +23,13 @@ class FavoritesView extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('My Offline Library (المكتبة المحلية)'),
+          title: Text(
+            'My Offline Library',
+            style: GoogleFonts.playfairDisplay(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
+          ),
           bottom: const TabBar(
             tabs: [
               Tab(
@@ -293,13 +300,13 @@ class FavoritesView extends StatelessWidget {
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF0284C7).withAlpha(20),
+            color: AppTheme.primaryBlue.withAlpha(20),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF0284C7).withAlpha(60)),
+            border: Border.all(color: AppTheme.primaryBlue.withAlpha(60)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.cloud_done_rounded, color: Color(0xFF38BDF8), size: 22),
+              const Icon(Icons.cloud_done_rounded, color: AppTheme.primaryLightBlue, size: 22),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -308,7 +315,7 @@ class FavoritesView extends StatelessWidget {
                     const Text(
                       'Offline Literature Graph Cache',
                       style: TextStyle(
-                        color: Color(0xFF38BDF8),
+                        color: AppTheme.primaryLightBlue,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -339,7 +346,7 @@ class FavoritesView extends StatelessWidget {
                   icon: const Icon(Icons.auto_delete_outlined, size: 14),
                   label: Text('Prune ($expiredCount)', style: const TextStyle(fontSize: 11)),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: AppTheme.accentAmber,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   ),
                 ),
@@ -402,11 +409,11 @@ class FavoritesView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: isExpired
-                          ? const Color(0xFFF59E0B).withAlpha(30)
-                          : const Color(0xFF10B981).withAlpha(30),
+                          ? AppTheme.accentAmber.withAlpha(30)
+                          : AppTheme.accentEmerald.withAlpha(30),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: isExpired ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                        color: isExpired ? AppTheme.accentAmber : AppTheme.accentEmerald,
                         width: 1,
                       ),
                     ),
@@ -416,7 +423,7 @@ class FavoritesView extends StatelessWidget {
                         Icon(
                           isExpired ? Icons.schedule_rounded : Icons.offline_pin_rounded,
                           size: 12,
-                          color: isExpired ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                          color: isExpired ? AppTheme.accentAmber : AppTheme.accentEmerald,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -426,7 +433,7 @@ class FavoritesView extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: isExpired ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                            color: isExpired ? AppTheme.accentAmber : AppTheme.accentEmerald,
                           ),
                         ),
                       ],
@@ -444,7 +451,7 @@ class FavoritesView extends StatelessWidget {
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppTheme.accentRose),
                     tooltip: 'Remove Cached Graph',
                     onPressed: () {
                       context.read<LibraryCubit>().removeCachedGraph(snapshot.graphId);

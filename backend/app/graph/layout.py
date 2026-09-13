@@ -3,6 +3,7 @@ from typing import List, Dict, Tuple
 from app.models.canonical_paper import CanonicalPaper
 from app.models.graph import GraphNode
 from app.ranking.models import RankedCandidate
+from app.graph.mmr import compute_pairwise_similarity
 
 
 def compute_node_radius(citation_count: int, is_origin: bool = False) -> float:
@@ -15,6 +16,162 @@ def compute_node_radius(citation_count: int, is_origin: bool = False) -> float:
     cites = max(0, citation_count or 0)
     radius = 8.0 + 3.5 * math.log1p(float(cites))
     return round(min(32.0, max(8.0, radius)), 1)
+
+
+def apply_force_directed_pass(
+    nodes: List[GraphNode],
+    papers_by_id: Dict[str, CanonicalPaper],
+    bounds: float = 600.0,
+    iterations: int = 90,
+    ideal_distance: float = 120.0,
+    similarity_threshold: float = 0.15,
+    gravity: float = 0.06,
+    start_temperature: float = 45.0,
+) -> None:
+    """
+    Refines the deterministic archetype placement with a lightweight
+    Fruchterman–Reingold style pass driven by pairwise paper similarity:
+
+      - Similar pairs (sim >= similarity_threshold) attract like springs, so
+        genuine research sub-communities visibly cluster together instead of
+        rendering as a pure starburst around the origin.
+      - All pairs repel (F_r = k^2 / d) to preserve readability.
+      - Weak gravity toward each node's original archetype position keeps the
+        prior-left / derivative-right semantics from dissolving.
+      - The origin stays anchored at (0, 0) and hemisphere signs are enforced.
+
+    Fully deterministic: fixed iteration order, linear cooling, no randomness.
+    Runs in O(iterations x n^2); at n <= ~50 nodes this is well under 10ms.
+    Mutates node.x / node.y in place.
+    """
+    n = len(nodes)
+    if n <= 2:
+        return
+
+    # Snapshot the archetype placement as the gravity anchor for each node.
+    anchors: Dict[str, Tuple[float, float]] = {nd.id: (nd.x, nd.y) for nd in nodes}
+
+    # Precompute pairwise similarity once (cached across all iterations).
+    sim_weights: Dict[Tuple[int, int], float] = {}
+    for i in range(n):
+        pi = papers_by_id.get(nodes[i].id)
+        if pi is None:
+            continue
+        for j in range(i + 1, n):
+            pj = papers_by_id.get(nodes[j].id)
+            if pj is None:
+                continue
+            sim = compute_pairwise_similarity(pi, pj)
+            if sim >= similarity_threshold:
+                sim_weights[(i, j)] = sim
+
+    # Direct citation links are the strongest semantic bond: add them as
+    # springs too (same 3-way ID matching as edge synthesis). Without this,
+    # a node whose only link is a citation gets exiled to the canvas edge
+    # by pure repulsion, dragging an ugly long edge behind it.
+    id_to_idx = {nd.id: i for i, nd in enumerate(nodes)}
+    doi_to_idx: Dict[str, int] = {}
+    s2_to_idx: Dict[str, int] = {}
+    for i, nd in enumerate(nodes):
+        p = papers_by_id.get(nd.id)
+        if p is None:
+            continue
+        if p.doi:
+            doi_to_idx[p.doi.lower().strip()] = i
+        if p.semantic_scholar_id:
+            s2_to_idx[p.semantic_scholar_id] = i
+
+    linked_nodes: set = set()
+    for i, nd in enumerate(nodes):
+        p = papers_by_id.get(nd.id)
+        if p is None:
+            continue
+        for ref in p.reference_ids:
+            j = id_to_idx.get(ref)
+            if j is None:
+                j = doi_to_idx.get(ref.lower().strip())
+            if j is None:
+                j = s2_to_idx.get(ref)
+            if j is None or j == i:
+                continue
+            pair = (i, j) if i < j else (j, i)
+            if sim_weights.get(pair, 0.0) < 0.90:
+                sim_weights[pair] = 0.90
+            linked_nodes.add(i)
+            linked_nodes.add(j)
+
+    for (i, j) in sim_weights:
+        linked_nodes.add(i)
+        linked_nodes.add(j)
+
+    k = float(ideal_distance)
+
+    for it in range(iterations):
+        disp = [[0.0, 0.0] for _ in range(n)]
+
+        # Repulsive force between every pair.
+        for i in range(n):
+            xi, yi = nodes[i].x, nodes[i].y
+            for j in range(i + 1, n):
+                dx = xi - nodes[j].x
+                dy = yi - nodes[j].y
+                dist = math.hypot(dx, dy)
+                if dist < 0.01:
+                    dx, dy, dist = 0.01, 0.0, 0.01
+                force = (k * k) / dist
+                fx = (dx / dist) * force
+                fy = (dy / dist) * force
+                disp[i][0] += fx
+                disp[i][1] += fy
+                disp[j][0] -= fx
+                disp[j][1] -= fy
+
+        # Attractive force along similarity springs (F_a = w * d^2 / k).
+        for (i, j), w in sim_weights.items():
+            dx = nodes[i].x - nodes[j].x
+            dy = nodes[i].y - nodes[j].y
+            dist = math.hypot(dx, dy)
+            if dist < 0.01:
+                continue
+            force = w * (dist * dist) / k
+            fx = (dx / dist) * force
+            fy = (dy / dist) * force
+            disp[i][0] -= fx
+            disp[i][1] -= fy
+            disp[j][0] += fx
+            disp[j][1] += fy
+
+        temperature = start_temperature * (1.0 - it / iterations)
+
+        for i in range(n):
+            nd = nodes[i]
+            if nd.is_origin:
+                continue  # origin anchored at (0, 0)
+
+            # Weak linear gravity back toward the archetype anchor position.
+            # Nodes with no spring at all (neither similarity nor citation)
+            # get 4x gravity so pure repulsion cannot exile them to the edge.
+            ax, ay = anchors[nd.id]
+            g = gravity if i in linked_nodes else gravity * 4.0
+            disp[i][0] += g * (ax - nd.x)
+            disp[i][1] += g * (ay - nd.y)
+
+            step = math.hypot(disp[i][0], disp[i][1])
+            if step < 1e-6:
+                continue
+            capped = min(step, temperature)
+            nd.x += (disp[i][0] / step) * capped
+            nd.y += (disp[i][1] / step) * capped
+
+            # Preserve hemisphere semantics.
+            if nd.archetype == "prior_work":
+                nd.x = min(-60.0, nd.x)
+            elif nd.archetype == "derivative_work":
+                nd.x = max(60.0, nd.x)
+
+            # Keep everything inside the canvas bounds.
+            nd.x = max(-bounds, min(bounds, nd.x))
+            nd.y = max(-bounds, min(bounds, nd.y))
 
 
 def generate_graph_layout(
@@ -139,5 +296,54 @@ def generate_graph_layout(
         y = dist * math.sin(angle)
         cluster_id = 3 if is_top else 4
         nodes.append(create_node(cand, x, y, cluster=cluster_id))
+
+    # 6. Force-directed refinement: pull genuinely similar papers together so
+    # research sub-communities cluster visually instead of a pure starburst.
+    papers_by_id: Dict[str, CanonicalPaper] = {origin.canonical_id: origin}
+    for cand in selected_candidates:
+        papers_by_id[cand.paper.canonical_id] = cand.paper
+    apply_force_directed_pass(nodes, papers_by_id, bounds=canvas_radius + 150.0)
+
+    # 7. Collision Avoidance & Relaxation Pass
+    # Ensures nodes maintain clear breathing room and never overlap
+    for _ in range(20):
+        for i in range(1, len(nodes)):  # Origin (index 0) remains anchored at (0,0)
+            n1 = nodes[i]
+            for j in range(len(nodes)):
+                if i == j:
+                    continue
+                n2 = nodes[j]
+                dx = n1.x - n2.x
+                dy = n1.y - n2.y
+                dist = math.hypot(dx, dy)
+                min_gap = (n1.radius + n2.radius) + 20.0
+
+                if dist < min_gap:
+                    overlap = min_gap - dist
+                    if dist > 0.001:
+                        nx = dx / dist
+                        ny = dy / dist
+                    else:
+                        nx = 1.0
+                        ny = 0.0
+
+                    push = overlap * 0.4
+                    new_x = n1.x + nx * push
+                    new_y = n1.y + ny * push
+
+                    # Preserve hemisphere boundaries
+                    if n1.archetype == "prior_work":
+                        new_x = min(-60.0, new_x)
+                    elif n1.archetype == "derivative_work":
+                        new_x = max(60.0, new_x)
+
+                    # Respect the same canvas bounds used by the force pass,
+                    # so collision pushes can never push a node out of range.
+                    bound = canvas_radius + 150.0
+                    new_x = max(-bound, min(bound, new_x))
+                    new_y = max(-bound, min(bound, new_y))
+
+                    n1.x = round(new_x, 2)
+                    n1.y = round(new_y, 2)
 
     return nodes

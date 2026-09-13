@@ -7,6 +7,7 @@ from app.resolution.normalizers import (
     normalize_title,
     extract_first_author_surname,
     build_deterministic_key,
+    classify_identifier,
 )
 from app.resolution.similarity import token_sort_ratio, is_title_match
 from app.resolution.merger import merge_canonical_papers
@@ -321,3 +322,46 @@ def test_fuzzy_title_matching_deduplicates_near_duplicates():
     assert len(resolver.canonical_papers) == 1
     assert resolver.canonical_papers[0].source_availability.semantic_scholar is True
     assert resolver.canonical_papers[0].source_availability.open_alex is True
+
+
+class TestClassifyIdentifier:
+    """Universal identifier classifier — any paper link form should classify correctly."""
+
+    @pytest.mark.parametrize("raw,expected", [
+        ("10.1145/357172.357176", "10.1145/357172.357176"),
+        ("https://doi.org/10.1145/357172.357176", "10.1145/357172.357176"),
+        ("doi:10.5555/2643634.2643666", "10.5555/2643634.2643666"),
+        ("https://dl.acm.org/doi/10.1145/357172.357176", "10.1145/357172.357176"),
+        ("https://www.nature.com/articles/s41586-021-03819-2", "10.1038/s41586-021-03819-2"),
+        ("https://www.biorxiv.org/content/10.1101/2020.01.01.123456v1", "10.1101/2020.01.01.123456v1"),
+    ])
+    def test_doi_forms(self, raw, expected):
+        kind, value = classify_identifier(raw)
+        assert kind == "doi"
+        assert value == expected
+
+    @pytest.mark.parametrize("raw,kind,value", [
+        ("https://pmc.ncbi.nlm.nih.gov/articles/PMC12065532/", "pmcid", "PMC12065532"),
+        ("PMC12065532", "pmcid", "PMC12065532"),
+        ("https://pubmed.ncbi.nlm.nih.gov/39123115/", "pmid", "39123115"),
+        ("pmid:39123115", "pmid", "39123115"),
+        ("https://arxiv.org/abs/1706.03762", "arxiv", "1706.03762"),
+        ("https://arxiv.org/pdf/1706.03762v3", "arxiv", "1706.03762"),
+        ("1706.03762", "arxiv", "1706.03762"),
+        ("https://openalex.org/works/W2147152072", "openalex", "W2147152072"),
+        ("W2147152072", "openalex", "W2147152072"),
+        ("b3e9e30a5e8c71b6a3d05d0e26b0e55ee5f7a123", "s2", "b3e9e30a5e8c71b6a3d05d0e26b0e55ee5f7a123"),
+        ("s2:b3e9e30a5e8c71b6a3d05d0e26b0e55ee5f7a123", "s2", "b3e9e30a5e8c71b6a3d05d0e26b0e55ee5f7a123"),
+        ("CorpusID:220416869", "corpusid", "220416869"),
+    ])
+    def test_identifier_forms(self, raw, kind, value):
+        assert classify_identifier(raw) == (kind, value)
+
+    def test_unknown_url_is_flagged_for_meta_scrape(self):
+        kind, _ = classify_identifier("https://ieeexplore.ieee.org/document/895411")
+        assert kind == "url"
+
+    def test_plain_title_falls_back_to_search(self):
+        kind, value = classify_identifier("The Byzantine Generals Problem")
+        assert kind == "title"
+        assert value == "The Byzantine Generals Problem"

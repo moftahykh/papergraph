@@ -62,15 +62,19 @@ async def get_paper_details(
         )
         canonical = match_res
 
-    # 2. If not found in memory, query upstream providers
+    # 2. If not found in memory, query upstream providers — each isolated in
+    #    its own try/except so one provider's failure never skips the other.
     if not canonical:
         raw = None
         try:
             raw = await s2_provider.resolve(clean_id)
-            if not raw and openalex_provider:
-                raw = await openalex_provider.resolve(clean_id)
         except Exception:
-            pass
+            raw = None
+        if not raw and openalex_provider:
+            try:
+                raw = await openalex_provider.resolve(clean_id)
+            except Exception:
+                raw = None
 
         if raw:
             canonical = resolver.ingest(raw.to_canonical())

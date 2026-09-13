@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../core/theme/app_theme.dart';
-import '../../models/paper_model.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/favorites_provider.dart';
-import '../../providers/papers_provider.dart';
-import '../../providers/theme_provider.dart';
-import '../graph_view/connected_graph_view.dart';
-import '../paper_details/citation_bottom_sheet.dart';
-import '../paper_details/paper_details_view.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:provider/provider.dart';
+import '../../core/services/hive_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../cubits/library/library_cubit.dart';
+import '../../cubits/library/library_state.dart';
+import '../../cubits/search/search_cubit.dart';
+import '../../cubits/search/search_state.dart';
+import '../../cubits/theme/theme_cubit.dart';
+import '../../models/api_schemas.dart';
+import '../../models/graph_job_status.dart';
+import '../../models/graph_models.dart';
+import '../../providers/auth_provider.dart';
+import '../auth/widgets/auth_gate_sheet.dart';
+import '../graph_view/connected_graph_view.dart';
+
+/// Search-first home (the Connected Papers model).
+///
+/// No hardcoded paper feed: the screen is a doorway into graph generation —
+/// a prominent search field backed by the real backend search, plus the
+/// user's recent cached graphs for one-tap re-opening.
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
@@ -26,241 +37,120 @@ class _HomeViewState extends State<HomeView> {
     super.dispose();
   }
 
+  bool _checkGuestSearchLimit() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isAuthenticated) {
+      return true; // Authenticated members have unlimited search
+    }
+
+    final count = HiveService.getGuestSearchCount();
+    if (count >= 1) {
+      AuthGateBottomSheet.show(context);
+      return false;
+    }
+
+    HiveService.incrementGuestSearchCount();
+    setState(() {}); // refresh banner state
+    return true;
+  }
+
+  void _openGraphFor(String identifier) {
+    if (!_checkGuestSearchLimit()) return;
+    final clean = identifier.trim();
+    if (clean.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ConnectedGraphView(seedDoi: clean)),
+    );
+  }
+
+  /// Matches DOIs, paper URLs, and bare IDs (arXiv, PMID/PMC, OpenAlex, S2) —
+  /// anything the backend's universal identifier classifier can resolve.
+  bool _looksLikeIdentifier(String value) {
+    final v = value.trim().toLowerCase();
+    if (v.isEmpty) return false;
+    return v.startsWith('http://') ||
+        v.startsWith('https://') ||
+        v.startsWith('10.') ||
+        v.startsWith('doi:') ||
+        v.startsWith('pmid:') ||
+        v.startsWith('pmc') ||
+        v.startsWith('arxiv') ||
+        RegExp(r'^\d{4}\.\d{4,5}(v\d+)?$').hasMatch(v) ||
+        RegExp(r'^w\d{1,12}$').hasMatch(v) ||
+        RegExp(r'^[0-9a-f]{40}$').hasMatch(v);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final papersProvider = Provider.of<PapersProvider>(context);
-    final favoritesProvider = Provider.of<FavoritesProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context);
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    final displayedPapers = papersProvider.papers;
-    final trendingPapers = papersProvider.trendingPapers;
+    final accent = isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue;
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.accentCyan],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.hub_rounded, color: Colors.white, size: 20),
+            Image.asset(
+              isDark ? 'assets/images/logo_dark.png' : 'assets/images/logo_light.png',
+              width: 24,
+              height: 24,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             const Text(
               'PaperGraph',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 19),
             ),
           ],
         ),
         actions: [
           IconButton(
+            tooltip: 'Toggle theme',
             icon: Icon(
-              themeProvider.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: themeProvider.isDark ? Colors.amber : AppTheme.primaryBlue,
+              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
             ),
-            tooltip: 'Toggle Theme',
-            onPressed: () => themeProvider.toggleTheme(),
+            onPressed: () => context.read<ThemeCubit>().toggleTheme(),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.delayed(const Duration(milliseconds: 500));
-          setState(() {});
-        },
+      body: SafeArea(
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Welcome Banner
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                        : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hello, ${authProvider.currentUser?.name ?? "Researcher"} 👋',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Explore connected networks & visual literature',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withAlpha(25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.science_rounded,
-                        color: AppTheme.primaryLightBlue,
-                        size: 26,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 28),
+              Text(
+                'Explore connected literature.',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                  height: 1.2,
+                  color: isDark
+                      ? AppTheme.darkTextPrimary
+                      : AppTheme.lightTextPrimary,
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // Search Bar
-              TextField(
-                controller: _searchController,
-                onChanged: (val) => papersProvider.setSearchQuery(val),
-                decoration: InputDecoration(
-                  hintText: 'Search papers, authors, topics, or models...',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded),
-                          onPressed: () {
-                            _searchController.clear();
-                            papersProvider.setSearchQuery('');
-                          },
-                        )
-                      : null,
+              const SizedBox(height: 8),
+              Text(
+                'Search any paper to grow its graph — prior works, derivative works, and the neighbors in between.',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
                 ),
               ),
-              const SizedBox(height: 18),
-
-              // Category Filter Chips
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: papersProvider.categories.map((cat) {
-                    final isSelected = papersProvider.selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(cat),
-                        selected: isSelected,
-                        onSelected: (_) => papersProvider.selectCategory(cat),
-                        selectedColor: AppTheme.primaryBlue,
-                        checkmarkColor: Colors.white,
-                        labelStyle: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          fontSize: 12.5,
-                        ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Trending Research Papers (Horizontal Carousel)
-              if (papersProvider.selectedCategory == 'All' && papersProvider.searchQuery.isEmpty) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '🔥 Landmark & Most Cited',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                    ),
-                    Text(
-                      'Top 5',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 175,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: trendingPapers.length,
-                    itemBuilder: (context, index) {
-                      final paper = trendingPapers[index];
-                      return _buildTrendingCard(paper, isDark, favoritesProvider, papersProvider);
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // Main Literature Feed
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Research Literature (${displayedPapers.length})',
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 16),
+              _buildGuestTrialBanner(isDark),
               const SizedBox(height: 12),
-
-              if (displayedPapers.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 48,
-                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'No papers match your search query',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: displayedPapers.length,
-                  itemBuilder: (context, index) {
-                    final paper = displayedPapers[index];
-                    return _buildPaperCard(paper, isDark, favoritesProvider, papersProvider);
-                  },
-                ),
+              _buildSearchField(isDark),
+              const SizedBox(height: 6),
+              _buildSearchResults(isDark, accent),
+              const SizedBox(height: 26),
+              _buildRecentGraphs(isDark, accent),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -268,132 +158,232 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildTrendingCard(
-    PaperModel paper,
-    bool isDark,
-    FavoritesProvider favoritesProvider,
-    PapersProvider papersProvider,
-  ) {
+  Widget _buildGuestTrialBanner(bool isDark) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    if (authProvider.isAuthenticated) {
+      return const SizedBox.shrink();
+    }
+
+    final count = HiveService.getGuestSearchCount();
+    final hasSearchLeft = count < 1;
+
     return Container(
-      width: 260,
-      margin: const EdgeInsets.only(right: 14),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: hasSearchLeft
+            ? (isDark ? const Color(0xFF132A3B) : const Color(0xFFF0F9FF))
+            : (isDark ? const Color(0xFF2E1B26) : const Color(0xFFFFF1F2)),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          color: hasSearchLeft
+              ? (isDark ? AppTheme.accentCyan.withAlpha(60) : const Color(0xFFBAE6FD))
+              : (isDark ? AppTheme.accentRose.withAlpha(60) : const Color(0xFFFECDD3)),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(isDark ? 30 : 10),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasSearchLeft ? Icons.info_outline_rounded : Icons.lock_outline_rounded,
+            size: 18,
+            color: hasSearchLeft ? AppTheme.primaryLightBlue : AppTheme.accentRose,
           ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              hasSearchLeft
+                  ? 'Guest Mode: 1 free preview search available'
+                  : 'Free search used. Create account for unlimited access',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: hasSearchLeft
+                    ? (isDark ? Colors.white : const Color(0xFF0369A1))
+                    : (isDark ? Colors.white : const Color(0xFFBE123C)),
+              ),
+            ),
+          ),
+          if (!hasSearchLeft)
+            GestureDetector(
+              onTap: () => AuthGateBottomSheet.show(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentRose,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Unlock',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => PaperDetailsView(paper: paper)),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentEmerald.withAlpha(30),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${paper.citationsCount} cites',
-                        style: const TextStyle(
-                          color: AppTheme.accentEmerald,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${paper.year}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  paper.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  paper.authors.join(', '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                  ),
-                ),
-              ],
+    );
+  }
+
+  Widget _buildSearchField(bool isDark) {
+    return TextField(
+      controller: _searchController,
+      textInputAction: TextInputAction.search,
+      style: const TextStyle(fontSize: 14.5),
+      onChanged: (value) {
+        setState(() {}); // refresh the clear-button visibility
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        if (!authProvider.isAuthenticated && HiveService.getGuestSearchCount() >= 1) {
+          AuthGateBottomSheet.show(context);
+          return;
+        }
+
+        final cubit = context.read<SearchCubit>();
+        // Links and identifiers route straight to the graph — never to search.
+        if (_looksLikeIdentifier(value)) {
+          cubit.clear();
+        } else {
+          cubit.search(value);
+        }
+      },
+      onSubmitted: (value) {
+        if (!_checkGuestSearchLimit()) return;
+        if (_looksLikeIdentifier(value)) {
+          _openGraphFor(value);
+        } else {
+          context.read<SearchCubit>().search(value, immediate: true);
+        }
+      },
+      decoration: InputDecoration(
+        hintText: 'Search by title, DOI, or keyword…',
+        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+        suffixIcon: _searchController.text.isNotEmpty
+            ? IconButton(
+                tooltip: 'Clear',
+                icon: const Icon(Icons.close_rounded, size: 19),
+                onPressed: () {
+                  _searchController.clear();
+                  context.read<SearchCubit>().clear();
+                  setState(() {});
+                },
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildSearchResults(bool isDark, Color accent) {
+    return BlocBuilder<SearchCubit, SearchState>(
+      builder: (context, state) {
+        if (state is SearchLoading) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 22),
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.2),
+              ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ConnectedGraphView(centerPaper: paper),
-                      ),
-                    );
-                  },
-                  child: const Row(
-                    children: [
-                      Icon(Icons.hub_rounded, size: 16, color: AppTheme.accentCyan),
-                      SizedBox(width: 4),
-                      Text(
-                        'View Graph',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.accentCyan,
-                        ),
-                      ),
-                    ],
+          );
+        }
+        if (state is SearchEmpty) {
+          return _hint(isDark,
+              'No papers matched. Try a full title or paste the DOI directly.');
+        }
+        if (state is SearchError) {
+          return _hint(isDark, state.message);
+        }
+        if (state is SearchLoaded) {
+          return Column(
+            children: [
+              for (final item in state.items)
+                _searchResultTile(item, isDark, accent),
+            ],
+          );
+        }
+        return _hint(
+          isDark,
+          _looksLikeIdentifier(_searchController.text)
+              ? 'Identifier detected — press Enter to build its graph directly.'
+              : 'Paste any paper link or DOI — or search by title, e.g. "Attention Is All You Need".',
+        );
+      },
+    );
+  }
+
+  Widget _searchResultTile(SearchResultItem item, bool isDark, Color accent) {
+    final metaParts = <String>[
+      if (item.authors.isNotEmpty)
+        item.authors.first + (item.authors.length > 1 ? ' et al.' : ''),
+      if (item.year != null) '${item.year}',
+      if (item.citationCount > 0) '${item.citationCount} citations',
+    ];
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _openGraphFor(
+        (item.doi != null && item.doi!.isNotEmpty)
+            ? item.doi!
+            : item.canonicalId,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: accent.withAlpha(20),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(Icons.hub_outlined, size: 17, color: accent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                      color: isDark
+                          ? AppTheme.darkTextPrimary
+                          : AppTheme.lightTextPrimary,
+                    ),
                   ),
-                ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    favoritesProvider.isFavorite(paper.id)
-                        ? Icons.bookmark_rounded
-                        : Icons.bookmark_border_rounded,
-                    color: favoritesProvider.isFavorite(paper.id)
-                        ? AppTheme.accentAmber
-                        : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                    size: 20,
+                  const SizedBox(height: 3),
+                  Text(
+                    metaParts.join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary,
+                    ),
                   ),
-                  onPressed: () => favoritesProvider.toggleFavorite(paper, papersProvider),
-                ),
-              ],
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.lightTextSecondary,
+              ),
             ),
           ],
         ),
@@ -401,138 +391,143 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildPaperCard(
-    PaperModel paper,
-    bool isDark,
-    FavoritesProvider favoritesProvider,
-    PapersProvider papersProvider,
-  ) {
-    final isFav = favoritesProvider.isFavorite(paper.id);
+  Widget _buildRecentGraphs(bool isDark, Color accent) {
+    return BlocBuilder<SearchCubit, SearchState>(
+      builder: (context, searchState) {
+        // Recent graphs only share the screen with the idle search state.
+        if (searchState is! SearchInitial) return const SizedBox.shrink();
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => PaperDetailsView(paper: paper)),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Category, Year, & Citations
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withAlpha(25),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      paper.category,
-                      style: const TextStyle(
-                        color: AppTheme.primaryLightBlue,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+        return BlocBuilder<LibraryCubit, LibraryState>(
+          builder: (context, libState) {
+            final graphs = libState is LibraryLoaded
+                ? libState.cachedGraphs
+                : const <GraphSnapshot>[];
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'RECENT GRAPHS',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${paper.year}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                    ),
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      const Icon(Icons.auto_graph_rounded, size: 14, color: AppTheme.accentEmerald),
-                      const SizedBox(width: 4),
+                    if (graphs.isNotEmpty)
                       Text(
-                        '${paper.citationsCount}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.accentEmerald,
+                        '${graphs.length}',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary,
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Title
-              Text(
-                paper.title,
-                style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold, height: 1.3),
-              ),
-              const SizedBox(height: 6),
-
-              // Authors
-              Text(
-                paper.authors.join(' • '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                  ],
                 ),
+                const SizedBox(height: 6),
+                if (graphs.isEmpty)
+                  _hint(isDark,
+                      'Graphs you generate will appear here for quick re-opening — even offline.')
+                else
+                  for (final graph in graphs.take(3))
+                    _recentGraphTile(graph, isDark, accent),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _recentGraphTile(GraphSnapshot graph, bool isDark, Color accent) {
+    final metaParts = <String>[
+      if (graph.origin.year != null) '${graph.origin.year}',
+      '${graph.nodes.length} papers',
+      graph.status == GraphJobStatus.partial ? 'partial' : 'completed',
+    ];
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ConnectedGraphView(initialSnapshot: graph),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: accent.withAlpha(20),
+                borderRadius: BorderRadius.circular(9),
               ),
-              const SizedBox(height: 12),
-
-              // Action Toolbar
-              Row(
+              child: Icon(Icons.bubble_chart_outlined, size: 17, color: accent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Creative Feature Button
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ConnectedGraphView(centerPaper: paper),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.hub_rounded, size: 15),
-                    label: const Text('Connected Graph', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.accentCyan,
-                      side: const BorderSide(color: AppTheme.accentCyan, width: 1.2),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  Text(
+                    graph.origin.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppTheme.darkTextPrimary
+                          : AppTheme.lightTextPrimary,
                     ),
                   ),
-                  const SizedBox(width: 8),
-
-                  // Citation button
-                  IconButton(
-                    icon: const Icon(Icons.format_quote_rounded, size: 20),
-                    tooltip: 'Cite Paper',
-                    onPressed: () => CitationBottomSheet.show(context, paper),
-                  ),
-                  const Spacer(),
-
-                  // Favorite / Bookmark
-                  IconButton(
-                    icon: Icon(
-                      isFav ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                      color: isFav ? AppTheme.accentAmber : null,
+                  const SizedBox(height: 3),
+                  Text(
+                    metaParts.join(' · '),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary,
                     ),
-                    tooltip: isFav ? 'Remove from Library' : 'Save to Library (Hive)',
-                    onPressed: () => favoritesProvider.toggleFavorite(paper, papersProvider),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _hint(bool isDark, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12.5,
+          height: 1.5,
+          color: isDark
+              ? AppTheme.darkTextSecondary
+              : AppTheme.lightTextSecondary,
         ),
       ),
     );

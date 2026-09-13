@@ -1,5 +1,5 @@
 import math
-from typing import List, Dict, Optional, Tuple
+from typing import Any, List, Dict, Optional, Tuple
 from app.models.canonical_paper import CanonicalPaper
 from app.models.metric import MetricResult
 from app.models.enums import MetricAvailability, ConfidenceLevel
@@ -31,7 +31,7 @@ class SafeRankingEngine:
 
     def evaluate_candidate_signals(
         self,
-        candidate_item: any,
+        candidate_item: Any,
     ) -> Dict[str, MetricResult]:
         """
         Extracts or formats the 4 component signals (semantic, wbc, ncc, direct)
@@ -174,7 +174,7 @@ class SafeRankingEngine:
     def rank_candidates(
         self,
         origin: CanonicalPaper,
-        candidates: List[any],
+        candidates: List[Any],
     ) -> RankingResult:
         """
         Executes full ranking pipeline: composite scoring, PriorScore,

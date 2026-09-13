@@ -2,9 +2,9 @@ name: PaperGraph CI
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main ]
   pull_request:
-    branches: [ master, main ]
+    branches: [ main ]
 
 jobs:
   secret-scan:
@@ -12,34 +12,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Scan for Hardcoded Provider Secrets
+      - name: Scan for hardcoded secrets
         run: |
           echo "Scanning for hardcoded API keys and secrets..."
-          # Check for forbidden patterns in client code
-          ! grep -rnE "(AIzaSy[a-zA-Z0-9_-]{33}|api_key\s*=\s*['\"][a-zA-Z0-9_-]{20,}['\"])" flutter_app/lib/
-          # Ensure .env is not tracked
-          ! git ls-files --error-unmatch backend/.env 2>/dev/null
+          # NOTE: firebase_options.dart is EXEMPT — Firebase client API keys are
+          # not secrets; they ship inside every APK/IPA and are protected by
+          # Firebase security rules, not by secrecy. The previous version of
+          # this job did not exclude it, producing a guaranteed false positive.
+          ! grep -rnE "AIzaSy[a-zA-Z0-9_-]{33}" flutter_app/lib/ --exclude=firebase_options.dart
+          ! grep -rnE "api_key\s*=\s*['\"][a-zA-Z0-9_-]{20,}['\"]" flutter_app/lib/ --exclude=firebase_options.dart
+          # No real .env file may ever be tracked (only .env.example templates)
+          ! git ls-files | grep -E '(^|/)\.env$'
           echo "Secret scan passed successfully!"
 
   backend-tests:
-    name: Backend Test Suite & Observability
+    name: Backend Test Suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
       - name: Install dependencies
         run: |
           cd backend
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest anyio Faker hypothesis asyncio httpx
-      - name: Run Pytest Suite
+          # Lean runtime deps + test deps. Do NOT `pip install -e .` here:
+          # flat-layout auto-discovery fails (multiple top-level packages:
+          # app + tests), and the old workflow also installed a bogus PyPI
+          # package named "asyncio" (a 2015 backport) and missed
+          # pytest-asyncio, which asyncio_mode=auto in pyproject.toml requires.
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+      - name: Run pytest suite
         run: |
           cd backend
-          python -m pytest
+          python -m pytest -q
 
   flutter-tests:
     name: Flutter Analysis & Tests
@@ -48,17 +57,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
-          channel: 'stable'
-      - name: Install Flutter Dependencies
-        run: |
-          cd flutter_app
-          flutter pub get
-      - name: Analyze Code
-        run: |
-          cd flutter_app
-          flutter analyze
-      - name: Run Flutter Tests
-        run: |
-          cd flutter_app
-          flutter test
+          # No version pin: pubspec.yaml requires Dart SDK ^3.12.2, which the
+          # old pin (flutter 3.24.x → Dart 3.5) could never satisfy, so
+          # `flutter pub get` failed instantly. Latest stable satisfies it.
+          channel: stable
+      - name: Install Flutter dependencies
+        run: cd flutter_app && flutter pub get
+      - name: Analyze code
+        run: cd flutter_app && flutter analyze
+      - name: Run Flutter tests
+        run: cd flutter_app && flutter test

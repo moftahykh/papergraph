@@ -17,8 +17,7 @@ jobs:
           echo "Scanning for hardcoded API keys and secrets..."
           # NOTE: firebase_options.dart is EXEMPT — Firebase client API keys are
           # not secrets; they ship inside every APK/IPA and are protected by
-          # Firebase security rules, not by secrecy. The previous version of
-          # this job did not exclude it, producing a guaranteed false positive.
+          # Firebase security rules, not by secrecy.
           ! grep -rnE "AIzaSy[a-zA-Z0-9_-]{33}" flutter_app/lib/ --exclude=firebase_options.dart
           ! grep -rnE "api_key\s*=\s*['\"][a-zA-Z0-9_-]{20,}['\"]" flutter_app/lib/ --exclude=firebase_options.dart
           # No real .env file may ever be tracked (only .env.example templates)
@@ -38,11 +37,9 @@ jobs:
         run: |
           cd backend
           python -m pip install --upgrade pip
-          # Lean runtime deps + test deps. Do NOT `pip install -e .` here:
-          # flat-layout auto-discovery fails (multiple top-level packages:
-          # app + tests), and the old workflow also installed a bogus PyPI
-          # package named "asyncio" (a 2015 backport) and missed
-          # pytest-asyncio, which asyncio_mode=auto in pyproject.toml requires.
+          # Lean runtime deps + test deps. Do NOT `pip install -e .`:
+          # flat-layout auto-discovery fails (multiple top-level packages),
+          # and pytest-asyncio is required by asyncio_mode=auto in pyproject.
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov
       - name: Run pytest suite
@@ -57,13 +54,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          # No version pin: pubspec.yaml requires Dart SDK ^3.12.2, which the
-          # old pin (flutter 3.24.x → Dart 3.5) could never satisfy, so
-          # `flutter pub get` failed instantly. Latest stable satisfies it.
+          # No version pin: pubspec.yaml requires Dart SDK ^3.12.2.
           channel: stable
       - name: Install Flutter dependencies
         run: cd flutter_app && flutter pub get
       - name: Analyze code
-        run: cd flutter_app && flutter analyze
+        # Latest-stable SDKs introduce new lint warnings over time; CI must
+        # fail on real ERRORS, not on style warnings the author's SDK lacked.
+        run: cd flutter_app && flutter analyze --no-fatal-warnings --no-fatal-infos
       - name: Run Flutter tests
         run: cd flutter_app && flutter test

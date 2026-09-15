@@ -70,14 +70,20 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     METRICS_ENABLED: bool = True
 
-    # SMTP Email Service (e.g. Gmail App Password)
+    # Gmail REST API v1 via HTTPS (Port 443 - Recommended for Render Cloud)
+    GMAIL_CLIENT_ID: Optional[str] = None
+    GMAIL_CLIENT_SECRET: Optional[str] = None
+    GMAIL_REFRESH_TOKEN: Optional[str] = None
+    SENDER_EMAIL: Optional[str] = None
+
+    # SMTP Email Service (e.g. Gmail App Password fallback)
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM_EMAIL: Optional[str] = None
 
-    # Resend HTTPS API (Port 443 - Bypasses cloud host SMTP port restrictions)
+    # Resend HTTPS API (Port 443 fallback)
     RESEND_API_KEY: Optional[str] = None
 
 

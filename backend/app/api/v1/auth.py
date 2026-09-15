@@ -129,6 +129,53 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
+import base64
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+
+def _send_gmail_api_email(to_email: str, code: str) -> bool:
+    """Delivers OTP email via official Gmail REST API v1 over HTTPS (port 443).
+
+    Bypasses cloud hosting SMTP port blocks (such as Render Free Tier) completely.
+    """
+    client_id = settings.GMAIL_CLIENT_ID or os.getenv("GMAIL_CLIENT_ID")
+    client_secret = settings.GMAIL_CLIENT_SECRET or os.getenv("GMAIL_CLIENT_SECRET")
+    refresh_token = settings.GMAIL_REFRESH_TOKEN or os.getenv("GMAIL_REFRESH_TOKEN")
+    sender_email = settings.SENDER_EMAIL or os.getenv("SENDER_EMAIL", "khalil.moftah@gmail.com")
+
+    if not client_id or not client_secret or not refresh_token:
+        logger.warning("Gmail API OAuth2 credentials are not configured in environment.")
+        return False
+
+    try:
+        creds = Credentials(
+            None,
+            refresh_token=refresh_token.strip(),
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id.strip(),
+            client_secret=client_secret.strip(),
+        )
+
+        service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"PaperGraph Verification Code: {code}"
+        msg["From"] = f"PaperGraph <{sender_email}>"
+        msg["To"] = to_email
+
+        html_part = MIMEText(_generate_otp_html(code), "html")
+        msg.attach(html_part)
+
+        raw_bytes = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+        result = service.users().messages().send(userId="me", body={"raw": raw_bytes}).execute()
+        logger.info(f"OTP successfully delivered via Gmail REST API (HTTPS) to {to_email} (Msg ID: {result.get('id')})")
+        return True
+    except Exception as e:
+        logger.error(f"Gmail REST API sending failed: {e}")
+        return False
+
+
 async def _send_resend_email(to_email: str, code: str) -> bool:
     api_key = settings.RESEND_API_KEY or os.getenv("RESEND_API_KEY")
     if not api_key:
@@ -209,17 +256,13 @@ def _send_smtp_email(to_email: str, code: str) -> bool:
 
 async def _dispatch_email_task(email: str, code: str):
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _send_smtp_email, email, code)
+    await loop.run_in_executor(None, _send_gmail_api_email, email, code)
 
 
 @router.post("/send-otp")
 async def send_otp(req: SendOtpRequest):
     _prune_expired_otps()
     email = req.email.strip().lower()
-
-    smtp_user = settings.SMTP_USER or os.getenv("SMTP_USER")
-    smtp_pass = settings.SMTP_PASSWORD or os.getenv("SMTP_PASSWORD")
-    resend_key = settings.RESEND_API_KEY or os.getenv("RESEND_API_KEY")
 
     # Generate a cryptographically secure 6-digit numeric OTP
     code = f"{secrets.randbelow(900000) + 100000}"
@@ -231,7 +274,7 @@ async def send_otp(req: SendOtpRequest):
         "attempts": 0,
     }
 
-    # Prominently log unmasked OTP to stdout (Immediately accessible in Render Dashboard -> Logs):
+    # Prominently log unmasked OTP to stdout (Immediately visible in Render Dashboard -> Logs):
     print(
         f"\n"
         f"====================================================\n"
@@ -254,23 +297,34 @@ async def send_otp(req: SendOtpRequest):
         }
 
     email_delivered = False
+    loop = asyncio.get_event_loop()
 
-    # 1. Attempt delivery via Resend HTTPS API (Port 443 - NEVER blocked by Render)
-    if resend_key:
+    # 1. PRIMARY: Official Gmail REST API v1 via HTTPS (Port 443 - 100% works on Render)
+    client_id = settings.GMAIL_CLIENT_ID or os.getenv("GMAIL_CLIENT_ID")
+    if client_id:
+        try:
+            email_delivered = await asyncio.wait_for(
+                loop.run_in_executor(None, _send_gmail_api_email, email, code),
+                timeout=10.0,
+            )
+        except Exception as ge:
+            logger.warning(f"Gmail REST API delivery attempt failed: {ge}")
+
+    # 2. FALLBACK A: Resend HTTPS API (Port 443)
+    if not email_delivered and (settings.RESEND_API_KEY or os.getenv("RESEND_API_KEY")):
         email_delivered = await _send_resend_email(email, code)
 
-    # 2. Attempt delivery via SMTP if not delivered and credentials are provided
+    # 3. FALLBACK B: Direct Gmail SMTP (Ports 587/465 with IPv4 forced)
+    smtp_user = settings.SMTP_USER or os.getenv("SMTP_USER")
+    smtp_pass = settings.SMTP_PASSWORD or os.getenv("SMTP_PASSWORD")
     if not email_delivered and smtp_user and smtp_pass:
-        loop = asyncio.get_event_loop()
         try:
             email_delivered = await asyncio.wait_for(
                 loop.run_in_executor(None, _send_smtp_email, email, code),
                 timeout=7.0,
             )
-        except asyncio.TimeoutError:
-            logger.warning(f"SMTP timeout sending code to {email}. Outbound port 587 is likely blocked by Render free tier.")
-        except Exception as e:
-            logger.warning(f"SMTP error sending code to {email}: {e}")
+        except Exception as se:
+            logger.warning(f"SMTP delivery attempt failed: {se}")
 
     if email_delivered:
         return {
@@ -279,17 +333,15 @@ async def send_otp(req: SendOtpRequest):
             "expires_in_seconds": OTP_EXPIRY_SECONDS,
         }
 
-    # If neither delivery method succeeded (e.g. Render port 587 block without Resend):
-    # Log clear diagnostic instructions to Render Logs and allow the user to complete verification
+    # If all network delivery attempts failed (e.g. token error or port limits):
     logger.warning(
         f"[PAPERGRAPH AUTH] Outbound email could not be delivered to {email}. "
-        f"Note: Render Free Tier blocks outbound SMTP port 587. "
         f"The valid verification code is logged above in server stdout for immediate use."
     )
 
     return {
         "success": True,
-        "message": "Verification code generated! (If email is delayed by cloud port limits, view the code in Render Logs).",
+        "message": "Verification code generated! (If email is delayed, view the code in Render Logs).",
         "delivery_status": "console_fallback",
         "expires_in_seconds": OTP_EXPIRY_SECONDS,
     }

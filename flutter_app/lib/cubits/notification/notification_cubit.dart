@@ -27,14 +27,20 @@ class NotificationCubit extends Cubit<NotificationState> {
     );
 
     final updated = [notification, ...state.notifications];
-    emit(state.copyWith(
-      notifications: updated,
-      latestToast: showToast ? notification : state.latestToast,
-    ));
+    emit(
+      state.copyWith(
+        notifications: updated,
+        latestToast: showToast ? notification : state.latestToast,
+      ),
+    );
   }
 
   /// Specialized helper for graph synthesis completion.
-  void notifyGraphReady(String graphId, int nodeCount, {bool isPartial = false}) {
+  void notifyGraphReady(
+    String graphId,
+    int nodeCount, {
+    bool isPartial = false,
+  }) {
     notify(
       title: isPartial ? 'Graph Ready (Partial)' : 'Literature Graph Ready',
       message: isPartial

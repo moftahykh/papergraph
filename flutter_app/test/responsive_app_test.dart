@@ -108,6 +108,7 @@ Widget buildTestableFavorites({
 }
 
 void main() {
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('FavoritesView Multi-Device Zero-Overflow Responsiveness Tests', () {
@@ -130,7 +131,6 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        final libraryCubit = LibraryCubit();
         final paper1 = createSamplePaper(
           id: 'paper-1',
           title: 'Clofazimine broadly inhibits coronaviruses including SARS-CoV-2',
@@ -141,28 +141,27 @@ void main() {
           year: 2023,
         );
 
-        await libraryCubit.savePaper(paper2);
-        await libraryCubit.savePaper(paper1);
+        final libraryCubit = LibraryCubit.seeded(
+          savedPapers: [paper1, paper2],
+        );
 
         await tester.pumpWidget(buildTestableFavorites(libraryCubit: libraryCubit));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
 
         // Verify title
-        expect(find.text('My Offline Library'), findsOneWidget);
+        expect(find.text('Library'), findsOneWidget);
 
         // Verify top paper is visible
         expect(find.text('Clofazimine broadly inhibits coronaviruses including SARS-CoV-2'), findsOneWidget);
 
         // Verify all 4 action buttons exist
-        expect(find.text('Connected Graph'), findsWidgets);
-        expect(find.text('Add Note'), findsWidgets);
+        expect(find.text('Explore graph'), findsWidgets);
         expect(find.byIcon(Icons.open_in_new_rounded), findsWidgets);
-        expect(find.byIcon(Icons.format_quote_rounded), findsWidgets);
 
         // Crucial invariant: ZERO RenderFlex overflows thrown
         expect(tester.takeException(), isNull);
-        libraryCubit.close();
+        await libraryCubit.close();
       });
     }
 
@@ -172,45 +171,50 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final libraryCubit = LibraryCubit();
       final paper = createSamplePaper();
-      await libraryCubit.savePaper(paper);
-      await libraryCubit.saveNotes(paper.canonicalId, 'Crucial benchmark finding for antiviral efficacy.');
+      final libraryCubit = LibraryCubit.seeded(
+        savedPapers: [paper],
+        paperNotes: {
+          paper.canonicalId: 'Crucial benchmark finding for antiviral efficacy.',
+        },
+      );
 
       await tester.pumpWidget(buildTestableFavorites(libraryCubit: libraryCubit));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Crucial benchmark finding for antiviral efficacy.'), findsOneWidget);
-      expect(find.byIcon(Icons.edit_note_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsOneWidget);
       expect(tester.takeException(), isNull);
-      libraryCubit.close();
+      await libraryCubit.close();
     });
 
-    testWidgets('Cached Graphs tab renders on 320x568 & 360x640 viewports without overflow', (tester) async {
+    testWidgets('Graphs tab renders on 320x568 & 360x640 viewports without overflow', (tester) async {
       for (final size in [const Size(320, 568), const Size(360, 640)]) {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        final libraryCubit = LibraryCubit();
         final snapshot = createSampleSnapshot();
-        await libraryCubit.cacheGraph(snapshot);
+        final libraryCubit = LibraryCubit.seeded(cachedGraphs: [snapshot]);
 
         await tester.pumpWidget(buildTestableFavorites(libraryCubit: libraryCubit));
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
 
-        // Switch to Cached Graphs tab
-        await tester.tap(find.text('Cached Graphs'));
-        await tester.pumpAndSettle();
+        // Switch to Graphs tab and advance only the tab animation duration.
+        await tester.tap(find.text('Graphs'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
 
         expect(find.text('Deep Image Matting: A Comprehensive Survey'), findsOneWidget);
-        expect(find.text('Open Graph Offline'), findsOneWidget);
+        expect(find.text('Open graph'), findsOneWidget);
         expect(find.byIcon(Icons.open_in_new_rounded), findsNothing);
 
         // Zero overflow
         expect(tester.takeException(), isNull);
-        libraryCubit.close();
+        await libraryCubit.close();
       }
     });
   });
@@ -224,7 +228,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         final snapshot = createSampleSnapshot();
-        final nonOriginNode = snapshot.nodes[1]; // has Re-center button
+        final nonOriginNode = snapshot.nodes[1]; // has Center graph button
 
         await tester.pumpWidget(
           MaterialApp(
@@ -242,18 +246,33 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Verify metrics
-        expect(find.text('WBC Metric'), findsOneWidget);
-        expect(find.text('NCC Metric'), findsOneWidget);
-        expect(find.text('Final Score'), findsOneWidget);
+        final detailsList = find.descendant(
+          of: find.byType(ListView),
+          matching: find.byType(Scrollable),
+        );
 
-        // Scroll to expose action buttons if needed
-        await tester.drag(find.byType(ListView), const Offset(0, -100));
+        // The compact sheet lazily builds content below the fold. Scroll to
+        // each section before asserting it exists.
+        await tester.scrollUntilVisible(
+          find.text('Shared references'),
+          80,
+          scrollable: detailsList,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Shared references'), findsOneWidget);
+        expect(find.text('Co-citation'), findsOneWidget);
+        expect(find.text('Overall relevance'), findsOneWidget);
+
+        await tester.scrollUntilVisible(
+          find.text('Paper details'),
+          80,
+          scrollable: detailsList,
+        );
         await tester.pumpAndSettle();
 
         // Verify action buttons
-        expect(find.text('Full Details & BibTeX'), findsOneWidget);
-        expect(find.text('Re-center'), findsOneWidget);
+        expect(find.text('Paper details'), findsOneWidget);
+        expect(find.text('Center graph'), findsOneWidget);
         expect(find.byIcon(Icons.open_in_new_rounded), findsWidgets);
 
         // Zero overflow

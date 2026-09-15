@@ -52,15 +52,30 @@ class AuthProvider extends ChangeNotifier {
   StreamSubscription<fb.User?>? _authSub;
 
   AuthProvider() {
-    _loadUserSession();
     if (_firebaseReady) {
+      final firebaseUser = fb.FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        HiveService.setActiveUserScope(firebaseUser.uid);
+        _adoptFirebaseUser(firebaseUser);
+      } else {
+        HiveService.setActiveUserScope('anonymous');
+      }
+
       // Keep the local profile in sync with the persisted Firebase session.
-      _authSub =
-          fb.FirebaseAuth.instance.authStateChanges().listen((fb.User? user) {
+      _authSub = fb.FirebaseAuth.instance.authStateChanges().listen((
+        fb.User? user,
+      ) {
         if (user != null) {
           _adoptFirebaseUser(user);
+        } else {
+          _handleFirebaseSignedOut();
         }
       });
+    } else {
+      // Used only as a graceful fallback in tests or builds where Firebase
+      // could not be initialized. Production authentication still requires
+      // a live Firebase session.
+      _loadUserSession();
     }
   }
 
@@ -75,24 +90,42 @@ class AuthProvider extends ChangeNotifier {
     final saved = HiveService.getSavedUser();
     if (saved != null) {
       _currentUser = UserModel.fromMap(saved);
+      HiveService.setActiveUserScope(_currentUser!.id);
       notifyListeners();
+    } else {
+      HiveService.setActiveUserScope('anonymous');
     }
+  }
+
+  void _handleFirebaseSignedOut() {
+    _currentUser = null;
+    // A passive Firebase sign-out must hide, not delete, the last local
+    // profile. Keeping saved_user allows the same account's offline library
+    // to reappear after re-authentication, while the explicit anonymous scope
+    // prevents a guest session from reading it.
+    HiveService.setActiveUserScope('anonymous');
+    _notifyAuthChanged();
+    notifyListeners();
   }
 
   /// Builds/updates the local [UserModel] from a Firebase user, merging any
   /// locally cached profile extras (institution, researchField).
   Future<void> _adoptFirebaseUser(fb.User user) async {
+    final previousScope = HiveService.activeUserId;
+    HiveService.setActiveUserScope(user.uid);
     final saved = HiveService.getSavedUser();
     final savedModel = saved != null ? UserModel.fromMap(saved) : null;
     final hasLocalProfile = savedModel != null && savedModel.id == user.uid;
+    final accountChanged = savedModel?.id != user.uid;
+    final scopeChanged = previousScope != user.uid;
 
     _currentUser = UserModel(
       id: user.uid,
       name: (user.displayName != null && user.displayName!.isNotEmpty)
           ? user.displayName!
           : hasLocalProfile
-              ? savedModel.name
-              : (user.email?.split('@').first ?? 'Researcher'),
+          ? savedModel.name
+          : (user.email?.split('@').first ?? 'Researcher'),
       email: user.email ?? '',
       institution: hasLocalProfile ? savedModel.institution : '',
       researchField: hasLocalProfile ? savedModel.researchField : '',
@@ -100,7 +133,9 @@ class AuthProvider extends ChangeNotifier {
     );
     await HiveService.saveUser(_currentUser!.toMap());
     await HiveService.migrateLegacyDataForUser(user.uid);
-    _notifyAuthChanged();
+    if (accountChanged || scopeChanged) {
+      _notifyAuthChanged();
+    }
     notifyListeners();
   }
 
@@ -121,8 +156,10 @@ class AuthProvider extends ChangeNotifier {
     }
 
     try {
-      final cred = await fb.FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email.trim(), password: password);
+      final cred = await fb.FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
       if (cred.user != null) {
         await _adoptFirebaseUser(cred.user!);
       }
@@ -169,7 +206,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       final cred = await fb.FirebaseAuth.instance
           .createUserWithEmailAndPassword(
-              email: email.trim(), password: password);
+            email: email.trim(),
+            password: password,
+          );
       await cred.user?.updateDisplayName(name.trim());
 
       _currentUser = UserModel(
@@ -208,12 +247,12 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
 
     try {
-      final fbUser =
-          _firebaseReady ? fb.FirebaseAuth.instance.currentUser : null;
-      final saved = HiveService.getSavedUser();
-
-      if (fbUser == null && saved == null) {
-        _errorMessage = 'No saved account. Please log in with email first.';
+      final fbUser = _firebaseReady
+          ? fb.FirebaseAuth.instance.currentUser
+          : null;
+      if (fbUser == null) {
+        _errorMessage =
+            'Your session has expired. Please sign in with email first.';
         _setLoading(false);
         return false;
       }
@@ -232,13 +271,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (success) {
-        if (fbUser != null) {
-          await _adoptFirebaseUser(fbUser);
-        } else {
-          _currentUser = UserModel.fromMap(saved!);
-          _notifyAuthChanged();
-          notifyListeners();
-        }
+        await _adoptFirebaseUser(fbUser);
         _setLoading(false);
         return true;
       }
@@ -272,7 +305,9 @@ class AuthProvider extends ChangeNotifier {
     final cleanEmail = email.trim().toLowerCase();
     try {
       // ignore: deprecated_member_use
-      final methods = await fb.FirebaseAuth.instance.fetchSignInMethodsForEmail(cleanEmail);
+      final methods = await fb.FirebaseAuth.instance.fetchSignInMethodsForEmail(
+        cleanEmail,
+      );
       return methods.isNotEmpty;
     } on fb.FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') return true;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
-import '../main_nav_view.dart';
+import '../auth/login_view.dart';
 
 /// Onboarding built around the app's real identity: the PaperGraph logo and a
 /// small hand-built graph motif that mirrors the actual graph canvas
@@ -77,15 +77,16 @@ class _OnboardingViewState extends State<OnboardingView>
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const MainNavigationView()),
+      MaterialPageRoute(builder: (_) => const LoginView()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textSecondary =
-        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textSecondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
 
     return Scaffold(
       body: SafeArea(
@@ -111,7 +112,9 @@ class _OnboardingViewState extends State<OnboardingView>
                       const Text(
                         'PaperGraph',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 18),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       ),
                     ],
                   ),
@@ -192,8 +195,8 @@ class _OnboardingViewState extends State<OnboardingView>
                           color: _currentPage == index
                               ? AppTheme.primaryBlue
                               : (isDark
-                                  ? AppTheme.darkBorder
-                                  : AppTheme.lightBorder),
+                                    ? AppTheme.darkBorder
+                                    : AppTheme.lightBorder),
                         ),
                       ),
                     ),
@@ -211,7 +214,9 @@ class _OnboardingViewState extends State<OnboardingView>
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 28, vertical: 16),
+                        horizontal: 28,
+                        vertical: 16,
+                      ),
                       backgroundColor: AppTheme.primaryBlue,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -227,7 +232,9 @@ class _OnboardingViewState extends State<OnboardingView>
                               ? 'Get Started'
                               : 'Next',
                           style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         const Icon(Icons.arrow_forward_rounded, size: 18),
@@ -265,7 +272,9 @@ class _OnboardingViewState extends State<OnboardingView>
       ),
       child: Center(
         child: Image.asset(
-          isDark ? 'assets/images/logo_dark.png' : 'assets/images/logo_light.png',
+          isDark
+              ? 'assets/images/logo_dark.png'
+              : 'assets/images/logo_light.png',
           width: 92,
           height: 92,
           fit: BoxFit.contain,
@@ -349,8 +358,18 @@ class _MiniGraphPainter extends CustomPainter {
         .toList();
 
     final citationTargets = variant == 0 ? [1, 2, 3, 4] : [1, 2, 3];
-    final similarityPairs =
-        variant == 0 ? [[1, 2], [3, 4], [5, 6], [4, 5]] : [[1, 2], [2, 3], [4, 5]];
+    final similarityPairs = variant == 0
+        ? [
+            [1, 2],
+            [3, 4],
+            [5, 6],
+            [4, 5],
+          ]
+        : [
+            [1, 2],
+            [2, 3],
+            [4, 5],
+          ];
 
     final base = size.shortestSide;
     final originR = base * 0.070;
@@ -401,10 +420,15 @@ class _MiniGraphPainter extends CustomPainter {
 
     final origin = pts[0];
     final halo = Paint()
-      ..color = const Color(0xFFF59E0B)
-          .withAlpha((60 * (1.0 - pulse * 0.4)).toInt());
+      ..color = const Color(
+        0xFFF59E0B,
+      ).withAlpha((60 * (1.0 - pulse * 0.4)).toInt());
     canvas.drawCircle(origin, originR + 5.0 + pulse * 5.0, halo);
-    canvas.drawCircle(origin, originR, Paint()..color = const Color(0xFF2563EB));
+    canvas.drawCircle(
+      origin,
+      originR,
+      Paint()..color = const Color(0xFF2563EB),
+    );
     canvas.drawCircle(
       origin,
       originR + 2.5,
@@ -415,8 +439,14 @@ class _MiniGraphPainter extends CustomPainter {
     );
   }
 
-  void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint,
-      {double dash = 5.0, double gap = 4.0}) {
+  void _drawDashedLine(
+    Canvas canvas,
+    Offset p1,
+    Offset p2,
+    Paint paint, {
+    double dash = 5.0,
+    double gap = 4.0,
+  }) {
     final diff = p2 - p1;
     final dist = diff.distance;
     if (dist <= 0.001) return;

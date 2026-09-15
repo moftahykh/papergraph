@@ -18,11 +18,9 @@ class PaperGraphApiClient {
   final Dio _dio;
   final String baseUrl;
 
-  PaperGraphApiClient({
-    Dio? dio,
-    String? baseUrl,
-  })  : baseUrl = baseUrl ?? _resolveDefaultBaseUrl(),
-        _dio = dio ?? _createDefaultDio(baseUrl ?? _resolveDefaultBaseUrl());
+  PaperGraphApiClient({Dio? dio, String? baseUrl})
+    : baseUrl = baseUrl ?? _resolveDefaultBaseUrl(),
+      _dio = dio ?? _createDefaultDio(baseUrl ?? _resolveDefaultBaseUrl());
 
   static Dio _createDefaultDio(String base) {
     final dio = Dio(
@@ -43,8 +41,9 @@ class PaperGraphApiClient {
   /// Override the backend URL at build/run time:
   ///   flutter run --dart-define=PAPERGRAPH_API_URL=https://api.example.com/api/v1
   ///   flutter build apk --dart-define=PAPERGRAPH_API_URL=https://api.example.com/api/v1
-  static const String _envBaseUrl =
-      String.fromEnvironment('PAPERGRAPH_API_URL');
+  static const String _envBaseUrl = String.fromEnvironment(
+    'PAPERGRAPH_API_URL',
+  );
 
   static String _resolveDefaultBaseUrl() {
     if (_envBaseUrl.isNotEmpty) {
@@ -73,7 +72,9 @@ class PaperGraphApiClient {
         },
         cancelToken: cancelToken,
       );
-      return SearchResponse.fromJson(Map<String, dynamic>.from(response.data as Map));
+      return SearchResponse.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
@@ -90,7 +91,9 @@ class PaperGraphApiClient {
         data: {'identifier': identifier},
         cancelToken: cancelToken,
       );
-      return PaperResolveResponse.fromJson(Map<String, dynamic>.from(response.data as Map));
+      return PaperResolveResponse.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
@@ -107,7 +110,9 @@ class PaperGraphApiClient {
         data: request.toJson(),
         cancelToken: cancelToken,
       );
-      return CreateGraphResponse.fromJson(Map<String, dynamic>.from(response.data as Map));
+      return CreateGraphResponse.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
@@ -126,7 +131,9 @@ class PaperGraphApiClient {
         '/graphs/$cleanId',
         cancelToken: cancelToken,
       );
-      return GraphStatusResponse.fromJson(Map<String, dynamic>.from(response.data as Map));
+      return GraphStatusResponse.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
@@ -142,7 +149,9 @@ class PaperGraphApiClient {
         '/papers/$paperId/details',
         cancelToken: cancelToken,
       );
-      return PaperDetailsResponse.fromJson(Map<String, dynamic>.from(response.data as Map));
+      return PaperDetailsResponse.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
@@ -166,10 +175,7 @@ class PaperGraphApiClient {
     try {
       final response = await _dio.post(
         '/auth/verify-otp',
-        data: {
-          'email': email.trim().toLowerCase(),
-          'code': code.trim(),
-        },
+        data: {'email': email.trim().toLowerCase(), 'code': code.trim()},
       );
       return Map<String, dynamic>.from(response.data as Map);
     } on DioException catch (e) {
@@ -208,7 +214,10 @@ class PaperGraphApiClient {
     final response = error.response;
     if (response != null && response.data is Map) {
       final data = response.data as Map;
-      final msg = data['message'] ?? data['detail'] ?? 'An unexpected server error occurred.';
+      final msg =
+          data['message'] ??
+          data['detail'] ??
+          'An unexpected server error occurred.';
       return ApiException(
         msg.toString(),
         statusCode: response.statusCode,
@@ -229,7 +238,20 @@ class _RetryInterceptor extends Interceptor {
   _RetryInterceptor({required this.dio});
 
   @override
-  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    // Retrying POST requests can create duplicate graph jobs or send duplicate
+    // OTPs when the server accepted the first request but its response was
+    // interrupted. Retry only idempotent reads unless the backend introduces
+    // an explicit idempotency-key contract.
+    final method = err.requestOptions.method.toUpperCase();
+    const retryableMethods = {'GET', 'HEAD', 'OPTIONS'};
+    if (!retryableMethods.contains(method)) {
+      return super.onError(err, handler);
+    }
+
     final bool isTransientError =
         err.type == DioExceptionType.connectionError ||
         err.type == DioExceptionType.connectionTimeout ||

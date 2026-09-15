@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../core/theme/app_theme.dart';
-import '../cubits/library/library_cubit.dart';
-import '../cubits/library/library_state.dart';
 import 'favorites/favorites_view.dart';
 import 'home/home_view.dart';
 import 'settings/settings_view.dart';
+import 'widgets/app_lock_gate.dart';
 
 class MainNavigationView extends StatefulWidget {
-  const MainNavigationView({super.key});
+  final bool requireInitialUnlock;
+
+  const MainNavigationView({
+    super.key,
+    this.requireInitialUnlock = false,
+  });
 
   @override
   State<MainNavigationView> createState() => _MainNavigationViewState();
@@ -25,54 +29,71 @@ class _MainNavigationViewState extends State<MainNavigationView> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LibraryCubit, LibraryState>(
-      builder: (context, libraryState) {
-        final int itemCount = libraryState is LibraryLoaded
-            ? libraryState.savedPapers.length + libraryState.cachedGraphs.length
-            : 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        return Scaffold(
-          body: IndexedStack(
-            index: _currentIndex,
-            children: _screens,
-          ),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            items: [
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.explore_outlined),
-                activeIcon: Icon(Icons.explore_rounded),
-                label: 'Explore',
+    return AppLockGate(
+      lockOnStart: widget.requireInitialUnlock,
+      child: Scaffold(
+        // Reserve layout space for the floating navigation container so
+        // scrollable page content never renders underneath it.
+        extendBody: false,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
+        ),
+        bottomNavigationBar: SafeArea(
+          minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
               ),
-              BottomNavigationBarItem(
-                icon: Badge(
-                  isLabelVisible: itemCount > 0,
-                  label: Text('$itemCount'),
-                  backgroundColor: AppTheme.accentEmerald,
-                  child: const Icon(Icons.bookmark_outline_rounded),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(isDark ? 70 : 18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-                activeIcon: Badge(
-                  isLabelVisible: itemCount > 0,
-                  label: Text('$itemCount'),
-                  backgroundColor: AppTheme.accentEmerald,
-                  child: const Icon(Icons.bookmark_rounded),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: NavigationBar(
+              height: 68,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              indicatorColor: isDark
+                  ? AppTheme.primaryLightBlue.withAlpha(30)
+                  : AppTheme.primaryBlue.withAlpha(20),
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (index) {
+                if (index != _currentIndex) {
+                  setState(() => _currentIndex = index);
+                }
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.explore_outlined),
+                  selectedIcon: Icon(Icons.explore_rounded),
+                  label: 'Explore',
                 ),
-                label: 'Library',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                activeIcon: Icon(Icons.settings_rounded),
-                label: 'Settings',
-              ),
-            ],
+                NavigationDestination(
+                  icon: Icon(Icons.bookmarks_outlined),
+                  selectedIcon: Icon(Icons.bookmarks_rounded),
+                  label: 'Library',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings_rounded),
+                  label: 'Settings',
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

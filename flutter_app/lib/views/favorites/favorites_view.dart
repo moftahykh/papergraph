@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/paper_url_helper.dart';
 import '../../cubits/library/library_cubit.dart';
 import '../../cubits/library/library_state.dart';
 import '../../models/canonical_paper.dart';
@@ -10,7 +11,6 @@ import '../../models/paper_model.dart';
 import '../graph_view/connected_graph_view.dart';
 import '../paper_details/citation_bottom_sheet.dart';
 import '../paper_details/paper_details_view.dart';
-import '../../core/utils/paper_url_helper.dart';
 
 class FavoritesView extends StatelessWidget {
   const FavoritesView({super.key});
@@ -23,39 +23,85 @@ class FavoritesView extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            'My Offline Library',
-            style: GoogleFonts.playfairDisplay(
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
+          toolbarHeight: 72,
+          title: const Text(
+            'Library',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.6,
             ),
           ),
-          bottom: const TabBar(
-            tabs: [
-              Tab(
-                icon: Icon(Icons.bookmark_rounded, size: 20),
-                text: 'Saved Papers & Notes',
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(58),
+            child: Container(
+              height: 46,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F3F7),
+                borderRadius: BorderRadius.circular(14),
               ),
-              Tab(
-                icon: Icon(Icons.hub_rounded, size: 20),
-                text: 'Cached Graphs',
+              child: TabBar(
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(isDark ? 30 : 12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                labelColor: isDark
+                    ? AppTheme.primaryLightBlue
+                    : AppTheme.primaryBlue,
+                unselectedLabelColor: isDark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.lightTextSecondary,
+                labelStyle: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+                tabs: const [
+                  Tab(text: 'Papers'),
+                  Tab(text: 'Graphs'),
+                ],
               ),
-            ],
+            ),
           ),
         ),
         body: BlocBuilder<LibraryCubit, LibraryState>(
           builder: (context, state) {
-            final savedPapers = state is LibraryLoaded ? state.savedPapers : <CanonicalPaper>[];
-            final cachedGraphs = state is LibraryLoaded ? state.cachedGraphs : <GraphSnapshot>[];
-            final paperNotes = state is LibraryLoaded ? state.paperNotes : <String, String>{};
+            if (state is LibraryError) {
+              return TabBarView(
+                children: [
+                  _buildLoadError(context, state.message, isDark),
+                  _buildLoadError(context, state.message, isDark),
+                ],
+              );
+            }
+            final papers = state is LibraryLoaded
+                ? state.savedPapers
+                : <CanonicalPaper>[];
+            final graphs = state is LibraryLoaded
+                ? state.cachedGraphs
+                : <GraphSnapshot>[];
+            final notes = state is LibraryLoaded
+                ? state.paperNotes
+                : <String, String>{};
 
             return TabBarView(
               children: [
-                // TAB 1: Saved Papers & Research Notes
-                _buildSavedPapersTab(context, savedPapers, paperNotes, isDark),
-
-                // TAB 2: Cached Literature Graphs
-                _buildCachedGraphsTab(context, cachedGraphs, isDark),
+                _buildPapersTab(context, papers, notes, isDark),
+                _buildGraphsTab(context, graphs, isDark),
               ],
             );
           },
@@ -64,255 +110,227 @@ class FavoritesView extends StatelessWidget {
     );
   }
 
-  // --- TAB 1: SAVED PAPERS & PERSONAL NOTES ---
-  Widget _buildSavedPapersTab(
+  Widget _buildPapersTab(
     BuildContext context,
     List<CanonicalPaper> papers,
     Map<String, String> notes,
     bool isDark,
   ) {
-    return Column(
-      children: [
-        // Offline Hive Status Banner
-        _buildOfflineStatusBanner(
-          title: 'Hive Local Paper Storage',
-          description: 'All ${papers.length} saved papers and personal annotations are stored locally and accessible offline.',
-          isDark: isDark,
-        ),
+    if (papers.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.bookmark_add_outlined,
+        title: 'Build your research library',
+        description:
+            'Save papers you want to revisit. Your notes will stay with each paper.',
+        isDark: isDark,
+      );
+    }
 
-        // Papers List or Empty State
-        Expanded(
-          child: papers.isEmpty
-              ? _buildEmptyState(
-                  icon: Icons.bookmark_outline_rounded,
-                  title: 'No Saved Papers Yet',
-                  description: 'Save landmark research papers and notes by tapping the bookmark icon in search or paper details.',
-                  isDark: isDark,
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  itemCount: papers.length,
-                  itemBuilder: (context, index) {
-                    final paper = papers[index];
-                    final note = notes[paper.canonicalId] ?? '';
-                    return _buildCanonicalPaperCard(context, paper, note, isDark);
-                  },
-                ),
-        ),
-      ],
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
+      itemCount: papers.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final paper = papers[index];
+        return _buildPaperCard(
+          context,
+          paper,
+          notes[paper.canonicalId] ?? '',
+          isDark,
+        );
+      },
     );
   }
 
-  Widget _buildCanonicalPaperCard(
+  Widget _buildPaperCard(
     BuildContext context,
     CanonicalPaper paper,
     String note,
     bool isDark,
   ) {
-    // Convert to PaperModel for existing details / citation views
     final paperModel = PaperModel(
       id: paper.canonicalId,
       title: paper.title,
       authors: paper.authors.map((a) => a.name).toList(),
       year: paper.year ?? 2020,
       journal: paper.venue ?? 'Academic Literature',
-      abstractText: paper.abstractText ?? 'Synthesized research paper.',
+      abstractText: paper.abstractText ?? 'Research paper',
       citationsCount: paper.citationCount,
       influentialCitations: 0,
       connectedPaperIds: const [],
       pdfUrl: '',
       keyTakeaways: const [],
       category: paper.topics.isNotEmpty ? paper.topics.first : 'Research Paper',
-      doi: paper.doi ?? (paper.canonicalId.startsWith('10.') ? paper.canonicalId : ''),
+      doi:
+          paper.doi ??
+          (paper.canonicalId.startsWith('10.') ? paper.canonicalId : ''),
       isFavorite: true,
       personalNotes: note,
     );
+    final secondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => PaperDetailsView(paper: paperModel)),
-          );
-        },
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PaperDetailsView(paper: paperModel),
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 15, 10, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withAlpha(25),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        paper.topics.isNotEmpty ? paper.topics.first : 'Paper',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppTheme.primaryLightBlue,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Expanded(
+                    child: Text(
+                      paper.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        height: 1.3,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    paper.yearDisplay,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
+                  PopupMenuButton<String>(
+                    tooltip: 'Paper options',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.bookmark_rounded, color: AppTheme.accentAmber, size: 22),
-                    tooltip: 'Remove from Library',
-                    onPressed: () {
-                      context.read<LibraryCubit>().removePaper(paper.canonicalId);
+                    icon: Icon(Icons.more_horiz_rounded, color: secondary),
+                    onSelected: (value) {
+                      if (value == 'notes') {
+                        _showEditNotesDialog(context, paper.canonicalId, note);
+                      } else if (value == 'cite') {
+                        CitationBottomSheet.show(context, paperModel);
+                      } else if (value == 'remove') {
+                        _confirmRemovePaper(context, paper);
+                      }
                     },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'notes', child: Text('Edit notes')),
+                      PopupMenuItem(
+                        value: 'cite',
+                        child: Text('Create citation'),
+                      ),
+                      PopupMenuItem(
+                        value: 'remove',
+                        child: Text('Remove from library'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-
-              Text(
-                paper.title,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, height: 1.3),
-              ),
-              const SizedBox(height: 4),
-
+              const SizedBox(height: 7),
               Text(
                 paper.authorDisplay,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                ),
+                style: TextStyle(fontSize: 12.5, color: secondary),
               ),
-
-              // Personal notes indicator and inline editor
+              const SizedBox(height: 9),
+              Wrap(
+                spacing: 12,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _metadata(
+                    Icons.calendar_today_outlined,
+                    paper.yearDisplay,
+                    secondary,
+                  ),
+                  _metadata(
+                    Icons.format_quote_rounded,
+                    '${paper.citationCount} citations',
+                    secondary,
+                  ),
+                  _metadata(
+                    Icons.download_done_rounded,
+                    'Available offline',
+                    isDark ? AppTheme.originGreenDark : AppTheme.originGreen,
+                  ),
+                ],
+              ),
               if (note.isNotEmpty) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 11),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBg : AppTheme.lightBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                    ),
+                    color: isDark
+                        ? AppTheme.darkSurface
+                        : AppTheme.primaryBlue.withAlpha(10),
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.note_rounded, size: 14, color: AppTheme.accentCyan),
-                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.sticky_note_2_outlined,
+                        size: 16,
+                        color: isDark
+                            ? AppTheme.actionPurpleDark
+                            : AppTheme.actionPurple,
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           note,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11.5,
-                            fontStyle: FontStyle.italic,
-                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            fontSize: 12,
+                            height: 1.4,
+                            color: secondary,
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_note_rounded, size: 18),
-                        color: AppTheme.accentCyan,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        tooltip: 'Edit Research Notes',
-                        onPressed: () => _showEditNotesDialog(context, paper.canonicalId, note),
                       ),
                     ],
                   ),
                 ),
               ],
               const SizedBox(height: 12),
-
-              // Action buttons (Responsive Wrap layout - guarantees zero RenderFlex overflow)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              Row(
                 children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ConnectedGraphView(centerPaper: paperModel),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.hub_rounded, size: 14),
-                        label: const Text('Connected Graph', style: TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.accentCyan,
-                          side: const BorderSide(color: AppTheme.accentCyan),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          visualDensity: VisualDensity.compact,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ConnectedGraphView(centerPaper: paperModel),
                         ),
                       ),
-                      if (note.isEmpty)
-                        TextButton.icon(
-                          onPressed: () => _showEditNotesDialog(context, paper.canonicalId, ''),
-                          icon: const Icon(Icons.add_comment_outlined, size: 14),
-                          label: const Text('Add Note', style: TextStyle(fontSize: 12)),
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          ),
-                        ),
-                    ],
+                      icon: const Icon(Icons.hub_outlined, size: 17),
+                      label: const Text('Explore graph'),
+                    ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.open_in_new_rounded, size: 19),
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                        tooltip: 'Open Paper in Browser',
-                        onPressed: () {
-                          final url = PaperUrlHelper.resolvePaperUrl(
-                            doi: paper.doi,
-                            canonicalId: paper.canonicalId,
-                            title: paper.title,
-                          );
-                          PaperUrlHelper.launchPaper(context, url: url, title: paper.title);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.format_quote_rounded, size: 20),
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                        tooltip: 'Cite Paper',
-                        onPressed: () => CitationBottomSheet.show(context, paperModel),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    tooltip: 'Open paper',
+                    onPressed: () {
+                      final url = PaperUrlHelper.resolvePaperUrl(
+                        doi: paper.doi,
+                        canonicalId: paper.canonicalId,
+                        title: paper.title,
+                      );
+                      PaperUrlHelper.launchPaper(
+                        context,
+                        url: url,
+                        title: paper.title,
+                      );
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
                   ),
                 ],
               ),
@@ -323,256 +341,126 @@ class FavoritesView extends StatelessWidget {
     );
   }
 
-  // --- TAB 2: CACHED LITERATURE GRAPHS ---
-  Widget _buildCachedGraphsTab(
+  Widget _buildGraphsTab(
     BuildContext context,
     List<GraphSnapshot> graphs,
     bool isDark,
   ) {
-    final expiredCount = graphs.where((g) => g.isExpired).length;
+    if (graphs.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.hub_outlined,
+        title: 'No graphs yet',
+        description:
+            'Save a graph to keep it in your library for quick access anytime.',
+        isDark: isDark,
+      );
+    }
 
-    return Column(
-      children: [
-        // Offline Cache Header & Prune Action
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryBlue.withAlpha(20),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.primaryBlue.withAlpha(60)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.cloud_done_rounded, color: AppTheme.primaryLightBlue, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Offline Literature Graph Cache',
-                      style: TextStyle(
-                        color: AppTheme.primaryLightBlue,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      '${graphs.length} cached graph snapshots. Opens instantly without internet.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (expiredCount > 0)
-                TextButton.icon(
-                  onPressed: () async {
-                    final pruned = await context.read<LibraryCubit>().pruneExpiredGraphs();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Pruned $pruned expired graph snapshots.'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.auto_delete_outlined, size: 14),
-                  label: Text('Prune ($expiredCount)', style: const TextStyle(fontSize: 11)),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.accentAmber,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-        // Graphs List or Empty State
-        Expanded(
-          child: graphs.isEmpty
-              ? _buildEmptyState(
-                  icon: Icons.hub_outlined,
-                  title: 'No Cached Graphs',
-                  description: 'When viewing any synthesized literature graph, tap the bookmark icon in the top bar to save it for offline access.',
-                  isDark: isDark,
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  itemCount: graphs.length,
-                  itemBuilder: (context, index) {
-                    final snapshot = graphs[index];
-                    return _buildCachedGraphCard(context, snapshot, isDark);
-                  },
-                ),
-        ),
-      ],
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
+      itemCount: graphs.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, index) =>
+          _buildGraphCard(context, graphs[index], isDark),
     );
   }
 
-  Widget _buildCachedGraphCard(
+  Widget _buildGraphCard(
     BuildContext context,
     GraphSnapshot snapshot,
     bool isDark,
   ) {
-    final daysUntilExpiry = snapshot.effectiveExpiresAt.difference(DateTime.now()).inDays;
-    final isExpired = snapshot.isExpired;
+    final secondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    final needsRefresh = snapshot.isExpired;
+
+    void openGraph() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ConnectedGraphView(initialSnapshot: snapshot),
+        ),
+      );
+    }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ConnectedGraphView(initialSnapshot: snapshot),
-            ),
-          );
-        },
+        borderRadius: BorderRadius.circular(12),
+        onTap: openGraph,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 15, 10, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isExpired
-                          ? AppTheme.accentAmber.withAlpha(30)
-                          : AppTheme.accentEmerald.withAlpha(30),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: isExpired ? AppTheme.accentAmber : AppTheme.accentEmerald,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isExpired ? Icons.schedule_rounded : Icons.offline_pin_rounded,
-                          size: 12,
-                          color: isExpired ? AppTheme.accentAmber : AppTheme.accentEmerald,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isExpired
-                              ? 'Expired Cache'
-                              : 'Expires in ${daysUntilExpiry.clamp(0, 365)}d',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isExpired ? AppTheme.accentAmber : AppTheme.accentEmerald,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Schema v${snapshot.schemaVersion} • ${snapshot.algorithmVersion}',
-                      maxLines: 1,
+                      snapshot.origin.title,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        height: 1.3,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  IconButton(
+                  PopupMenuButton<String>(
+                    tooltip: 'Graph options',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppTheme.accentRose),
-                    tooltip: 'Remove Cached Graph',
-                    onPressed: () {
-                      context.read<LibraryCubit>().removeCachedGraph(snapshot.graphId);
+                    icon: Icon(Icons.more_horiz_rounded, color: secondary),
+                    onSelected: (value) {
+                      if (value == 'remove') {
+                        _confirmRemoveGraph(context, snapshot);
+                      }
                     },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'remove',
+                        child: Text('Remove graph'),
+                      ),
+                    ],
                   ),
                 ],
+              ),
+              const SizedBox(height: 7),
+              Text(
+                '${snapshot.nodes.length} papers  •  ${snapshot.citationEdges.length} citations  •  ${snapshot.similarityEdges.length} related links',
+                style: TextStyle(fontSize: 12.5, color: secondary),
               ),
               const SizedBox(height: 10),
-
-              // Seed Paper Title
-              Text(
-                snapshot.origin.title,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, height: 1.3),
-              ),
-              const SizedBox(height: 6),
-
-              // Metadata counts (Responsive Wrap prevents overflow on narrow screens or scaled fonts)
               Wrap(
-                spacing: 12,
-                runSpacing: 4,
+                spacing: 10,
+                runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.description_outlined, size: 14, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${snapshot.nodes.length} papers',
-                        style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                      ),
-                    ],
+                  _statusChip(
+                    context,
+                    icon: needsRefresh
+                        ? Icons.refresh_rounded
+                        : Icons.download_done_rounded,
+                    label: needsRefresh
+                        ? 'Refresh recommended'
+                        : 'Available offline',
+                    warning: needsRefresh,
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.arrow_right_alt, size: 14, color: AppTheme.primaryLightBlue),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${snapshot.citationEdges.length} citations',
-                        style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.share_outlined, size: 14, color: AppTheme.accentCyan),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${snapshot.similarityEdges.length} similarities',
-                        style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                      ),
-                    ],
+                  Text(
+                    _formatUpdated(snapshot.createdAt),
+                    style: TextStyle(fontSize: 11.5, color: secondary),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-
-              // Open Offline Graph CTA (Align ensures zero horizontal overflow on narrow screens)
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ConnectedGraphView(initialSnapshot: snapshot),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.hub_rounded, size: 14),
-                  label: const Text('Open Graph Offline', style: TextStyle(fontSize: 11.5)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
+              const SizedBox(height: 13),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: openGraph,
+                  icon: const Icon(Icons.hub_rounded, size: 17),
+                  label: const Text('Open graph'),
                 ),
               ),
             ],
@@ -582,48 +470,77 @@ class FavoritesView extends StatelessWidget {
     );
   }
 
-  // --- REUSABLE WIDGET HELPERS ---
-  Widget _buildOfflineStatusBanner({
-    required String title,
-    required String description,
-    required bool isDark,
+  Widget _metadata(IconData icon, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 5),
+        Text(label, style: TextStyle(fontSize: 11.5, color: color)),
+      ],
+    );
+  }
+
+  Widget _statusChip(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required bool warning,
   }) {
+    final color = warning
+        ? AppTheme.accentAmber
+        : Theme.of(context).brightness == Brightness.dark
+        ? AppTheme.originGreenDark
+        : AppTheme.originGreen;
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.accentEmerald.withAlpha(25),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.accentEmerald.withAlpha(80)),
+        color: color.withAlpha(18),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.cloud_off_rounded, color: AppTheme.accentEmerald, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppTheme.accentEmerald,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                  ),
-                ),
-              ],
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: color,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadError(BuildContext context, String message, bool isDark) {
+    final secondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.folder_off_outlined, size: 44, color: secondary),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: context.read<LibraryCubit>().loadLibrary,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try again'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -634,34 +551,44 @@ class FavoritesView extends StatelessWidget {
     required String description,
     required bool isDark,
   }) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    final secondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    return Align(
+      alignment: const Alignment(0, -0.28),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 34),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.primaryBlue.withAlpha(20),
+                color: isDark
+                    ? AppTheme.darkSurface
+                    : AppTheme.primaryBlue.withAlpha(12),
+                borderRadius: BorderRadius.circular(22),
               ),
-              child: Icon(icon, size: 48, color: AppTheme.primaryLightBlue),
+              child: Icon(
+                icon,
+                size: 32,
+                color: isDark
+                    ? AppTheme.actionPurpleDark
+                    : AppTheme.primaryBlue,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(
               description,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-              ),
+              style: TextStyle(fontSize: 13, height: 1.5, color: secondary),
             ),
           ],
         ),
@@ -669,26 +596,102 @@ class FavoritesView extends StatelessWidget {
     );
   }
 
-  void _showEditNotesDialog(BuildContext context, String paperId, String initialNote) {
-    final controller = TextEditingController(text: initialNote);
+  String _formatUpdated(DateTime value) {
+    final difference = DateTime.now().difference(value);
+    if (difference.inMinutes < 2) return 'Updated just now';
+    if (difference.inHours < 1) return 'Updated ${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return 'Updated ${difference.inHours}h ago';
+    if (difference.inDays < 7) return 'Updated ${difference.inDays}d ago';
+    return 'Updated ${value.day}/${value.month}/${value.year}';
+  }
 
-    showDialog(
+  Future<void> _confirmRemovePaper(
+    BuildContext context,
+    CanonicalPaper paper,
+  ) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.edit_note_rounded, color: AppTheme.accentCyan),
-            SizedBox(width: 8),
-            Text('Research Notes'),
-          ],
+        title: const Text('Remove paper?'),
+        content: const Text(
+          'The paper and its notes will be removed from your library.',
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.accentRose),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      final removed = await context.read<LibraryCubit>().removePaper(
+        paper.canonicalId,
+      );
+      if (!context.mounted || removed) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Paper could not be removed. Try again.')),
+      );
+    }
+  }
+
+  Future<void> _confirmRemoveGraph(
+    BuildContext context,
+    GraphSnapshot snapshot,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove graph?'),
+        content: const Text(
+          'You will need an internet connection to create it again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.accentRose),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      final removed = await context.read<LibraryCubit>().removeCachedGraph(
+        snapshot.graphId,
+      );
+      if (!context.mounted || removed) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Graph could not be removed. Try again.')),
+      );
+    }
+  }
+
+  void _showEditNotesDialog(
+    BuildContext context,
+    String paperId,
+    String initialNote,
+  ) {
+    final controller = TextEditingController(text: initialNote);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('My notes'),
         content: TextField(
           controller: controller,
-          maxLines: 4,
+          maxLines: 5,
           autofocus: true,
           decoration: const InputDecoration(
-            hintText: 'Enter your research notes, insights, or citations...',
-            border: OutlineInputBorder(),
+            hintText: 'Add an insight, question, or citation note…',
           ),
         ),
         actions: [
@@ -696,14 +699,26 @@ class FavoritesView extends StatelessWidget {
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              context.read<LibraryCubit>().saveNotes(paperId, controller.text);
+          FilledButton(
+            onPressed: () async {
+              final saved = await context.read<LibraryCubit>().saveNotes(
+                paperId,
+                controller.text,
+              );
+              if (!dialogContext.mounted) return;
               Navigator.pop(dialogContext);
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Research notes saved to offline storage!'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text(
+                    saved
+                        ? 'Notes saved'
+                        : 'Notes could not be saved. Try again.',
+                  ),
+                  duration: const Duration(seconds: 2),
+                  backgroundColor: saved
+                      ? AppTheme.accentEmerald
+                      : AppTheme.accentRose,
                 ),
               );
             },
@@ -711,6 +726,6 @@ class FavoritesView extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 }

@@ -11,15 +11,14 @@ class ThemeCubit extends Cubit<ThemeState> {
   void loadTheme() {
     try {
       final isDark = HiveService.isDarkMode();
-      emit(ThemeState(
-        themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-        isDark: isDark,
-      ));
+      emit(
+        ThemeState(
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          isDark: isDark,
+        ),
+      );
     } catch (_) {
-      emit(const ThemeState(
-        themeMode: ThemeMode.dark,
-        isDark: true,
-      ));
+      emit(const ThemeState(themeMode: ThemeMode.dark, isDark: true));
     }
   }
 
@@ -28,10 +27,12 @@ class ThemeCubit extends Cubit<ThemeState> {
     try {
       await HiveService.setDarkMode(newIsDark);
     } catch (_) {}
-    emit(ThemeState(
-      themeMode: newIsDark ? ThemeMode.dark : ThemeMode.light,
-      isDark: newIsDark,
-    ));
+    emit(
+      ThemeState(
+        themeMode: newIsDark ? ThemeMode.dark : ThemeMode.light,
+        isDark: newIsDark,
+      ),
+    );
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -39,9 +40,6 @@ class ThemeCubit extends Cubit<ThemeState> {
     try {
       await HiveService.setDarkMode(isDark);
     } catch (_) {}
-    emit(ThemeState(
-      themeMode: mode,
-      isDark: isDark,
-    ));
+    emit(ThemeState(themeMode: mode, isDark: isDark));
   }
 }

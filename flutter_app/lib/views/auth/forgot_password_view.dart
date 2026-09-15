@@ -140,8 +140,12 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
               prefixIcon: Icon(Icons.email_outlined, size: 20),
             ),
             validator: (val) {
-              if (val == null || val.trim().isEmpty) return 'Email is required';
-              if (!val.contains('@') || !val.contains('.')) return 'Enter a valid email';
+              if (val == null || val.trim().isEmpty) {
+                return 'Email is required';
+              }
+              if (!val.contains('@') || !val.contains('.')) {
+                return 'Enter a valid email';
+              }
               return null;
             },
           ),

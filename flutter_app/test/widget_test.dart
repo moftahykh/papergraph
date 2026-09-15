@@ -35,8 +35,9 @@ void main() {
     await Hive.close();
   });
 
-  testWidgets('App boots into splash and navigates after the timer',
-      (WidgetTester tester) async {
+  testWidgets('App boots into splash and navigates after the timer', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const PaperGraphApp());
 
     // First frame: the app and its splash screen are on stage.

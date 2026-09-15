@@ -62,7 +62,10 @@ class _RegisterViewState extends State<RegisterView> {
     if (password.length >= 6) strength += 0.3;
     if (password.length >= 8) strength += 0.3;
     if (RegExp(r'[A-Z]').hasMatch(password)) strength += 0.2;
-    if (RegExp(r'[0-9]').hasMatch(password) || RegExp(r'[^A-Za-z0-9]').hasMatch(password)) strength += 0.2;
+    if (RegExp(r'[0-9]').hasMatch(password) ||
+        RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
+      strength += 0.2;
+    }
     return strength.clamp(0.0, 1.0);
   }
 
@@ -292,8 +295,12 @@ class _RegisterViewState extends State<RegisterView> {
               prefixIcon: Icon(Icons.email_outlined, size: 20),
             ),
             validator: (val) {
-              if (val == null || val.trim().isEmpty) return 'Email is required';
-              if (!val.contains('@') || !val.contains('.')) return 'Enter a valid email address';
+              if (val == null || val.trim().isEmpty) {
+                return 'Email is required';
+              }
+              if (!val.contains('@') || !val.contains('.')) {
+                return 'Enter a valid email address';
+              }
               return null;
             },
           ),
@@ -370,8 +377,12 @@ class _RegisterViewState extends State<RegisterView> {
               ),
             ),
             validator: (val) {
-              if (val == null || val.isEmpty) return 'Please confirm your password';
-              if (val != _passwordController.text) return 'Passwords do not match';
+              if (val == null || val.isEmpty) {
+                return 'Please confirm your password';
+              }
+              if (val != _passwordController.text) {
+                return 'Passwords do not match';
+              }
               return null;
             },
           ),

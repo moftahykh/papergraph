@@ -7,8 +7,8 @@ class PaperDetailsCubit extends Cubit<PaperDetailsState> {
   final PaperGraphApiClient _apiClient;
 
   PaperDetailsCubit({PaperGraphApiClient? apiClient})
-      : _apiClient = apiClient ?? PaperGraphApiClient(),
-        super(const PaperDetailsInitial());
+    : _apiClient = apiClient ?? PaperGraphApiClient(),
+      super(const PaperDetailsInitial());
 
   Future<void> loadDetails(String paperId, {bool? isSaved}) async {
     final clean = paperId.trim();
@@ -34,9 +34,14 @@ class PaperDetailsCubit extends Cubit<PaperDetailsState> {
         if (newSavedStatus) {
           await HiveService.saveCanonicalPaper(current.details.paper);
         } else {
-          await HiveService.removeCanonicalPaper(current.details.paper.canonicalId);
+          await HiveService.removeCanonicalPaper(
+            current.details.paper.canonicalId,
+          );
         }
-      } catch (_) {}
+      } catch (_) {
+        // Roll back the optimistic UI update when persistence fails.
+        emit(PaperDetailsLoaded(current.details, isSaved: current.isSaved));
+      }
     }
   }
 }

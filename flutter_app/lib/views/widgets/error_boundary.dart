@@ -53,7 +53,9 @@ class GlobalErrorDisplay extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+                    color: isDark
+                        ? AppTheme.darkTextPrimary
+                        : const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -63,7 +65,9 @@ class GlobalErrorDisplay extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.4,
-                    color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : const Color(0xFF64748B),
                   ),
                 ),
                 const SizedBox(height: 20),

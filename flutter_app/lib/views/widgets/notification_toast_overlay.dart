@@ -14,7 +14,8 @@ class NotificationToastOverlay extends StatefulWidget {
   const NotificationToastOverlay({super.key, required this.child});
 
   @override
-  State<NotificationToastOverlay> createState() => _NotificationToastOverlayState();
+  State<NotificationToastOverlay> createState() =>
+      _NotificationToastOverlayState();
 }
 
 class _NotificationToastOverlayState extends State<NotificationToastOverlay>
@@ -34,14 +35,14 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
       duration: const Duration(milliseconds: 320),
     );
 
-    _offsetAnimation = Tween<Offset>(
-      begin: const Offset(0, -0.6),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    ));
+    _offsetAnimation =
+        Tween<Offset>(begin: const Offset(0, -0.6), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animController,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          ),
+        );
 
     _fadeAnimation = CurvedAnimation(
       parent: _animController,
@@ -135,7 +136,10 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                 right: 0,
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: SlideTransition(
                       position: _offsetAnimation,
                       child: FadeTransition(
@@ -153,25 +157,34 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                                     : Colors.white.withValues(alpha: 0.97),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: _getTypeColor(_currentToast!.type).withValues(alpha: 0.35),
+                                  color: _getTypeColor(
+                                    _currentToast!.type,
+                                  ).withValues(alpha: 0.35),
                                   width: 1.2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.4 : 0.12,
+                                    ),
                                     blurRadius: 18,
                                     offset: const Offset(0, 8),
                                   ),
                                 ],
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: _getTypeColor(_currentToast!.type).withValues(alpha: 0.12),
+                                      color: _getTypeColor(
+                                        _currentToast!.type,
+                                      ).withValues(alpha: 0.12),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
@@ -183,7 +196,8 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
@@ -191,7 +205,9 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w700,
-                                            color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+                                            color: isDark
+                                                ? AppTheme.darkTextPrimary
+                                                : const Color(0xFF0F172A),
                                           ),
                                         ),
                                         const SizedBox(height: 2),
@@ -219,7 +235,9 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                                       child: Icon(
                                         Icons.close_rounded,
                                         size: 18,
-                                        color: isDark ? Colors.white54 : Colors.black45,
+                                        color: isDark
+                                            ? Colors.white54
+                                            : Colors.black45,
                                       ),
                                     ),
                                   ),

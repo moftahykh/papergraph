@@ -59,10 +59,7 @@ class NotificationState {
   final List<InAppNotification> notifications;
   final InAppNotification? latestToast;
 
-  const NotificationState({
-    this.notifications = const [],
-    this.latestToast,
-  });
+  const NotificationState({this.notifications = const [], this.latestToast});
 
   int get unreadCount => notifications.where((n) => !n.isRead).length;
 

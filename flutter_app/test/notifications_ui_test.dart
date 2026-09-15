@@ -21,43 +21,49 @@ void main() {
       notifCubit.close();
     });
 
-    testWidgets('renders child and displays animated toast on notification dispatch', (tester) async {
-      await tester.pumpWidget(
-        BlocProvider<NotificationCubit>.value(
-          value: notifCubit,
-          child: const MaterialApp(
-            home: NotificationToastOverlay(
-              child: Scaffold(body: Text('Main Screen Content')),
+    testWidgets(
+      'renders child and displays animated toast on notification dispatch',
+      (tester) async {
+        await tester.pumpWidget(
+          BlocProvider<NotificationCubit>.value(
+            value: notifCubit,
+            child: const MaterialApp(
+              home: NotificationToastOverlay(
+                child: Scaffold(body: Text('Main Screen Content')),
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('Main Screen Content'), findsOneWidget);
-      expect(find.text('Graph Ready'), findsNothing);
+        expect(find.text('Main Screen Content'), findsOneWidget);
+        expect(find.text('Graph Ready'), findsNothing);
 
-      // Trigger notification
-      notifCubit.notify(
-        title: 'Graph Ready',
-        message: 'Synthesized 24 papers successfully.',
-        type: NotificationType.success,
-      );
+        // Trigger notification
+        notifCubit.notify(
+          title: 'Graph Ready',
+          message: 'Synthesized 24 papers successfully.',
+          type: NotificationType.success,
+        );
 
-      // Pump animation
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 350));
+        // Pump animation
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
 
-      expect(find.text('Graph Ready'), findsOneWidget);
-      expect(find.text('Synthesized 24 papers successfully.'), findsOneWidget);
+        expect(find.text('Graph Ready'), findsOneWidget);
+        expect(
+          find.text('Synthesized 24 papers successfully.'),
+          findsOneWidget,
+        );
 
-      // Tap close button on toast
-      final closeIcon = find.byIcon(Icons.close_rounded);
-      expect(closeIcon, findsOneWidget);
-      await tester.tap(closeIcon);
-      await tester.pumpAndSettle();
+        // Tap close button on toast
+        final closeIcon = find.byIcon(Icons.close_rounded);
+        expect(closeIcon, findsOneWidget);
+        await tester.tap(closeIcon);
+        await tester.pumpAndSettle();
 
-      expect(find.text('Graph Ready'), findsNothing);
-    });
+        expect(find.text('Graph Ready'), findsNothing);
+      },
+    );
   });
 
   group('NotificationsSheet Tests', () {
@@ -75,18 +81,16 @@ void main() {
       await tester.pumpWidget(
         BlocProvider<NotificationCubit>.value(
           value: notifCubit,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: NotificationsSheet(),
-            ),
-          ),
+          child: const MaterialApp(home: Scaffold(body: NotificationsSheet())),
         ),
       );
 
       expect(find.text('All caught up!'), findsOneWidget);
     });
 
-    testWidgets('displays notifications and allows mark read and clear', (tester) async {
+    testWidgets('displays notifications and allows mark read and clear', (
+      tester,
+    ) async {
       notifCubit.notify(
         title: 'Literature Graph Ready',
         message: 'Synthesized 10 papers.',
@@ -96,11 +100,7 @@ void main() {
       await tester.pumpWidget(
         BlocProvider<NotificationCubit>.value(
           value: notifCubit,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: NotificationsSheet(),
-            ),
-          ),
+          child: const MaterialApp(home: Scaffold(body: NotificationsSheet())),
         ),
       );
 
@@ -131,8 +131,14 @@ void main() {
       );
 
       expect(cubit.state.notifications.isNotEmpty, isTrue);
-      expect(cubit.state.notifications.first.type, equals(NotificationType.error));
-      expect(cubit.state.notifications.first.title, equals('Graph Generation Failed'));
+      expect(
+        cubit.state.notifications.first.type,
+        equals(NotificationType.error),
+      );
+      expect(
+        cubit.state.notifications.first.title,
+        equals('Graph Generation Failed'),
+      );
       cubit.close();
     });
   });

@@ -159,8 +159,12 @@ class _LoginViewState extends State<LoginView> {
                       prefixIcon: Icon(Icons.email_outlined, size: 20),
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'Email is required';
-                      if (!val.contains('@')) return 'Enter a valid email address';
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Email is required';
+                      }
+                      if (!val.contains('@')) {
+                        return 'Enter a valid email address';
+                      }
                       return null;
                     },
                   ),
@@ -195,8 +199,12 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'Password is required';
-                      if (val.length < 6) return 'Password must be at least 6 chars';
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Password is required';
+                      }
+                      if (val.length < 6) {
+                        return 'Password must be at least 6 chars';
+                      }
                       return null;
                     },
                   ),

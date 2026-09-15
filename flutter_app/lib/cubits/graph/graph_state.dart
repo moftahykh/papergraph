@@ -18,6 +18,7 @@ class GraphCreating extends GraphState {
 
 class GraphPolling extends GraphState {
   final String graphId;
+  final String originId;
   final GraphJobStatus status;
   final double progress;
   final GraphJobStatus currentStage;
@@ -26,6 +27,7 @@ class GraphPolling extends GraphState {
 
   const GraphPolling({
     required this.graphId,
+    this.originId = '',
     required this.status,
     required this.progress,
     required this.currentStage,
@@ -40,6 +42,9 @@ class GraphLoaded extends GraphState {
   final List<GraphWarning> warnings;
   final DataCompleteness dataCompleteness;
   final bool fromOfflineCache;
+  final bool isNewlyGenerated;
+  final bool isPersisted;
+  final String? persistenceWarning;
 
   const GraphLoaded({
     required this.snapshot,
@@ -47,6 +52,9 @@ class GraphLoaded extends GraphState {
     this.warnings = const [],
     this.dataCompleteness = const DataCompleteness(),
     this.fromOfflineCache = false,
+    this.isNewlyGenerated = false,
+    this.isPersisted = true,
+    this.persistenceWarning,
   });
 }
 
@@ -55,9 +63,5 @@ class GraphError extends GraphState {
   final bool canRetry;
   final String? graphId;
 
-  const GraphError(
-    this.message, {
-    this.canRetry = true,
-    this.graphId,
-  });
+  const GraphError(this.message, {this.canRetry = true, this.graphId});
 }

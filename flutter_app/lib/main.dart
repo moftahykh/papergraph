@@ -5,8 +5,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/local_notification_service.dart';
 import 'core/theme/app_theme.dart';
+import 'cubits/graph/graph_cubit.dart';
+import 'cubits/graph/graph_state.dart';
 import 'cubits/library/library_cubit.dart';
 import 'cubits/notification/notification_cubit.dart';
+import 'cubits/notification/notification_state.dart';
 import 'cubits/paper_details/paper_details_cubit.dart';
 import 'cubits/search/search_cubit.dart';
 import 'cubits/theme/theme_cubit.dart';
@@ -33,7 +36,9 @@ void main() async {
   // Graceful fallback for unexpected framework exceptions
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    debugPrint('Captured unhandled framework error: ${details.exceptionAsString()}');
+    debugPrint(
+      'Captured unhandled framework error: ${details.exceptionAsString()}',
+    );
   };
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -55,6 +60,9 @@ class PaperGraphApp extends StatelessWidget {
         BlocProvider<PaperDetailsCubit>(create: (_) => PaperDetailsCubit()),
         BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
         BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),
+        BlocProvider<GraphCubit>(
+          create: (_) => GraphCubit(resumePendingJob: true),
+        ),
       ],
       child: MultiProvider(
         providers: [
@@ -62,22 +70,55 @@ class PaperGraphApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => PapersProvider()),
           ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ],
-        child: BlocBuilder<ThemeCubit, ThemeState>(
-          builder: (context, themeState) {
-            return MaterialApp(
-              title: 'PaperGraph',
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              themeMode: themeState.themeMode,
-              builder: (context, child) {
-                return NotificationToastOverlay(
-                  child: child ?? const SizedBox.shrink(),
-                );
+        child: MultiBlocListener(
+          listeners: [
+            BlocListener<GraphCubit, GraphState>(
+              listener: (context, state) {
+                if (state is GraphLoaded && state.isNewlyGenerated) {
+                  if (state.isPersisted) {
+                    context.read<LibraryCubit>().loadLibrary();
+                    LocalNotificationService.onGraphCompleted(
+                      graphId: state.snapshot.graphId,
+                      nodeCount: state.snapshot.nodes.length,
+                      isPartial: state.isPartial,
+                      notificationCubit: context.read<NotificationCubit>(),
+                    );
+                  } else {
+                    context.read<NotificationCubit>().notify(
+                      title: 'Graph ready, but not saved',
+                      message:
+                          state.persistenceWarning ??
+                          'Keep the graph open and try saving it again.',
+                      type: NotificationType.error,
+                    );
+                  }
+                } else if (state is GraphError && state.graphId != null) {
+                  LocalNotificationService.onGraphFailed(
+                    graphId: state.graphId!,
+                    error: state.message,
+                    notificationCubit: context.read<NotificationCubit>(),
+                  );
+                }
               },
-              home: const SplashView(),
-            );
-          },
+            ),
+          ],
+          child: BlocBuilder<ThemeCubit, ThemeState>(
+            builder: (context, themeState) {
+              return MaterialApp(
+                title: 'PaperGraph',
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.lightTheme,
+                darkTheme: AppTheme.darkTheme,
+                themeMode: themeState.themeMode,
+                builder: (context, child) {
+                  return NotificationToastOverlay(
+                    child: child ?? const SizedBox.shrink(),
+                  );
+                },
+                home: const SplashView(),
+              );
+            },
+          ),
         ),
       ),
     );

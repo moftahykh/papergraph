@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:paper_graph/core/theme/app_theme.dart';
+import 'package:paper_graph/core/utils/connection_reason_helper.dart';
 import 'package:paper_graph/cubits/graph/graph_cubit.dart';
 import 'package:paper_graph/cubits/graph/graph_state.dart';
 import 'package:paper_graph/cubits/library/library_cubit.dart';
@@ -138,7 +139,7 @@ Widget createTestGraphApp({
   return MultiBlocProvider(
     providers: [
       BlocProvider<GraphCubit>(create: (_) => GraphCubit()),
-      BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
+      BlocProvider<LibraryCubit>(create: (_) => LibraryCubit.seeded()),
       BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),
       BlocProvider<PaperDetailsCubit>(create: (_) => PaperDetailsCubit()),
     ],
@@ -162,7 +163,97 @@ Widget createTestGraphApp({
 }
 
 void main() {
+
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('ConnectionReasonHelper evidence tests', () {
+    test('reports citation direction from snapshot edges', () {
+      final snapshot = createSampleSnapshot();
+
+      final citedByStart = ConnectionReasonHelper.explainConnection(
+        node: snapshot.nodes[1],
+        snapshot: snapshot,
+      );
+      final citesStart = ConnectionReasonHelper.explainConnection(
+        node: snapshot.nodes[2],
+        snapshot: snapshot,
+      );
+
+      expect(citedByStart.title, 'Cited by the starting paper');
+      expect(citedByStart.evidence.single.value,
+          'The starting paper cites this paper');
+      expect(citesStart.title, 'Cites the starting paper');
+      expect(citesStart.evidence.single.value,
+          'This paper cites the starting paper');
+    });
+
+    test('shows the similarity value supplied by the graph snapshot', () {
+      final snapshot = createSampleSnapshot();
+      final explanation = ConnectionReasonHelper.explainConnection(
+        node: snapshot.nodes[3],
+        snapshot: snapshot,
+      );
+
+      expect(explanation.category, ConnectionCategory.similarity);
+      expect(explanation.badgeLabel, '76% SIMILAR');
+      expect(explanation.evidence.single.value, '76%');
+      expect(explanation.evidenceLimited, isFalse);
+    });
+
+    test('labels date-only classification as limited evidence', () {
+      final snapshot = createSampleSnapshot();
+      const dateOnlyNode = GraphNode(
+        id: 'date-only',
+        canonicalId: 'date-only',
+        title: 'Older paper without a recorded edge',
+        year: 2010,
+      );
+      final explanation = ConnectionReasonHelper.explainConnection(
+        node: dateOnlyNode,
+        snapshot: snapshot,
+      );
+
+      expect(explanation.title, 'Published earlier');
+      expect(explanation.evidenceLimited, isTrue);
+      expect(explanation.description, contains('No direct citation'));
+    });
+
+    testWidgets('distinguishes a real zero score from missing data',
+        (tester) async {
+      final snapshot = createSampleSnapshot();
+      const node = GraphNode(
+        id: 'metric-test',
+        canonicalId: 'metric-test',
+        title: 'Metric availability test',
+        year: 2017,
+        finalScore: 0.5,
+        scores: {
+          'wbc': MetricResult(
+            value: 0,
+            availability: MetricAvailability.available,
+          ),
+          'ncc': MetricResult(
+            availability: MetricAvailability.unavailable,
+          ),
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GraphBottomSheet(
+              snapshot: snapshot,
+              selectedNode: node,
+              onNodeSelected: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('0%'), findsOneWidget);
+      expect(find.text('Not enough data'), findsOneWidget);
+    });
+  });
 
   group('GraphCanvasPainter Mathematical & Visual Tests', () {
     test('computeNodeRadius bounds radius between 14.0 and 30.0', () {
@@ -242,41 +333,41 @@ void main() {
       );
 
       // Verify all 4 tabs exist
-      expect(find.text('Selected Paper'), findsOneWidget);
-      expect(find.text('Prior Works'), findsOneWidget);
-      expect(find.text('Derivative Works'), findsOneWidget);
-      expect(find.text('List View'), findsOneWidget);
+      expect(find.text('Paper'), findsOneWidget);
+      expect(find.text('Earlier works'), findsOneWidget);
+      expect(find.text('Later works'), findsOneWidget);
+      expect(find.text('All papers'), findsOneWidget);
 
-      // Verify Selected Paper details
+      // Verify paper details
       expect(find.text('Attention Is All You Need'), findsOneWidget);
-      expect(find.text('SEED ORIGIN'), findsOneWidget);
-      expect(find.text('WBC Metric'), findsOneWidget);
-      expect(find.text('NCC Metric'), findsOneWidget);
-      expect(find.text('Final Score'), findsOneWidget);
+      expect(find.text('STARTING PAPER'), findsOneWidget);
+      expect(find.text('Shared references'), findsOneWidget);
+      expect(find.text('Co-citation'), findsOneWidget);
+      expect(find.text('Overall relevance'), findsOneWidget);
 
-      // Switch to Prior Works Tab
-      await tester.tap(find.text('Prior Works'));
+      // Switch to Earlier works tab
+      await tester.tap(find.text('Earlier works'));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Neural Machine Translation'),
         findsOneWidget,
       );
 
-      // Switch to Derivative Works Tab
-      await tester.tap(find.text('Derivative Works'));
+      // Switch to Later works tab
+      await tester.tap(find.text('Later works'));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('BERT: Pre-training'),
         findsOneWidget,
       );
 
-      // Switch to List View Tab
-      await tester.tap(find.text('List View'));
+      // Switch to All papers tab
+      await tester.tap(find.text('All papers'));
       await tester.pumpAndSettle();
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('Citations'), findsOneWidget);
 
-      // Test List View filtering
+      // Test paper list filtering
       await tester.enterText(find.byType(TextField), 'GPT-3');
       await tester.pumpAndSettle();
       expect(find.text('Language Models are Few-Shot Learners (GPT-3)'), findsOneWidget);
@@ -300,7 +391,12 @@ void main() {
       expect(find.byType(CustomPaint), findsWidgets);
       expect(find.byType(GraphYearLegend), findsOneWidget);
       expect(find.text('Attention Is All You Need'), findsOneWidget);
-      expect(find.textContaining('4 papers • 2 citations • 1 similarities'), findsOneWidget);
+      expect(
+        find.textContaining(
+          '4 papers · 2 citation links · 1 similarity link',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('displays partial graph warning banner when isPartial is true', (tester) async {
@@ -340,7 +436,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
-      expect(find.text('Offline Cached Graph Snapshot'), findsOneWidget);
+      expect(find.text('Available offline'), findsOneWidget);
     });
 
     testWidgets('toggles bottom sheet details visibility via floating button', (tester) async {
@@ -357,14 +453,14 @@ void main() {
       expect(find.byType(GraphBottomSheet), findsNothing);
 
       // Tap floating button to open bottom sheet
-      await tester.tap(find.byTooltip('Show Details'));
+      await tester.tap(find.byIcon(Icons.keyboard_arrow_up_rounded));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.byType(GraphBottomSheet), findsOneWidget);
 
       // Tap close button in bottom sheet
-      await tester.tap(find.byTooltip('Close Sheet'));
+      await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 

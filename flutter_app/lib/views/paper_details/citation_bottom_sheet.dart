@@ -48,7 +48,11 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Text('$_selectedFormat Citation copied to clipboard!'),
           ],
@@ -109,7 +113,11 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
                       color: AppTheme.accentAmber.withAlpha(30),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.format_quote_rounded, color: AppTheme.accentAmber, size: 24),
+                    child: const Icon(
+                      Icons.format_quote_rounded,
+                      color: AppTheme.accentAmber,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -124,7 +132,9 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary,
                             ),
                           ),
                         ),
@@ -132,7 +142,9 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
                           'Instant copy in standard academic formats',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -162,10 +174,16 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
                         labelStyle: TextStyle(
                           color: isSelected
                               ? Colors.white
-                              : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              : (isDark
+                                    ? AppTheme.darkTextSecondary
+                                    : AppTheme.lightTextSecondary),
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     );
                   }).toList(),
@@ -181,7 +199,9 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
                     color: isDark ? AppTheme.darkCard : AppTheme.lightBg,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                      color: isDark
+                          ? AppTheme.darkBorder
+                          : AppTheme.lightBorder,
                     ),
                   ),
                   child: Scrollbar(
@@ -190,10 +210,14 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
                       child: SelectableText(
                         _currentCitationText,
                         style: TextStyle(
-                          fontFamily: _selectedFormat == 'BibTeX' ? 'monospace' : null,
+                          fontFamily: _selectedFormat == 'BibTeX'
+                              ? 'monospace'
+                              : null,
                           fontSize: 12.5,
                           height: 1.5,
-                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.lightTextPrimary,
                         ),
                       ),
                     ),
@@ -211,7 +235,9 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   backgroundColor: AppTheme.primaryBlue,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -14,8 +15,13 @@ import 'citation_bottom_sheet.dart';
 
 class PaperDetailsView extends StatefulWidget {
   final PaperModel paper;
+  final bool loadDetailsOnOpen;
 
-  const PaperDetailsView({super.key, required this.paper});
+  const PaperDetailsView({
+    super.key,
+    required this.paper,
+    this.loadDetailsOnOpen = true,
+  });
 
   @override
   State<PaperDetailsView> createState() => _PaperDetailsViewState();
@@ -33,14 +39,17 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
     );
 
     // Fetch deep metadata if not already loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final current = context.read<PaperDetailsCubit>().state;
-        if (current is! PaperDetailsLoaded || current.details.paper.canonicalId != widget.paper.id) {
-          context.read<PaperDetailsCubit>().loadDetails(widget.paper.id);
+    if (widget.loadDetailsOnOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final current = context.read<PaperDetailsCubit>().state;
+          if (current is! PaperDetailsLoaded ||
+              current.details.paper.canonicalId != widget.paper.id) {
+            context.read<PaperDetailsCubit>().loadDetails(widget.paper.id);
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   @override
@@ -49,13 +58,16 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
     super.dispose();
   }
 
-  void _saveNotes() {
-    context.read<LibraryCubit>().saveNotes(widget.paper.id, _notesController.text);
+  Future<void> _saveNotes() async {
+    final saved = await context
+        .read<LibraryCubit>()
+        .saveNotes(widget.paper.id, _notesController.text);
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Research notes saved to local storage!'),
-        backgroundColor: AppTheme.accentEmerald,
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text(saved ? 'Notes saved' : 'Notes could not be saved. Try again.'),
+        backgroundColor: saved ? AppTheme.accentEmerald : AppTheme.accentRose,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -108,7 +120,9 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
           if (loaded.paper.authors.isNotEmpty) {
             effectiveAuthors = loaded.paper.authors.map((a) => a.name).toList();
           }
-          if (loaded.paper.year != null) effectiveYear = loaded.paper.year!;
+          if (loaded.paper.year != null) {
+            effectiveYear = loaded.paper.year!;
+          }
           if (loaded.paper.venue != null && loaded.paper.venue!.isNotEmpty) {
             effectiveVenue = loaded.paper.venue!;
           }
@@ -145,169 +159,149 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Research Paper Details',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
+            title: const Text(
+              'Paper',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
             actions: [
-              // Direct external paper link action
-              if (resolvedUrl.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.open_in_new_rounded),
-                  tooltip: 'Open Original Paper in Browser',
-                  onPressed: () => PaperUrlHelper.launchPaper(
-                    context,
-                    url: resolvedUrl,
-                    title: effectiveTitle,
-                  ),
-                ),
               IconButton(
                 icon: Icon(
                   isFav ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                   color: isFav ? AppTheme.accentAmber : null,
                 ),
-                tooltip: isFav ? 'Remove from Library' : 'Save to Library (Hive)',
-                onPressed: () {
-                  final canonical = _toCanonicalPaper(dynamicPaperModel);
-                  context.read<LibraryCubit>().toggleSavePaper(canonical);
+                tooltip: isFav ? 'Remove from library' : 'Save to library',
+                onPressed: () async {
+                  final wasSaved = isFav;
+                  final succeeded = await context
+                      .read<LibraryCubit>()
+                      .toggleSavePaper(_toCanonicalPaper(dynamicPaperModel));
+                  if (!context.mounted) {
+                    return;
+                  }
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        isFav
-                            ? 'Removed from Library'
-                            : 'Saved to Library for offline reading!',
+                        succeeded
+                            ? (wasSaved
+                                ? 'Removed from library'
+                                : 'Saved to library')
+                            : 'Your change could not be saved. Try again.',
                       ),
-                      duration: const Duration(seconds: 1),
-                      backgroundColor: isFav ? AppTheme.accentAmber : AppTheme.accentEmerald,
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.format_quote_rounded),
-                tooltip: 'Export Citation',
-                onPressed: () => CitationBottomSheet.show(context, dynamicPaperModel),
+                icon: const Icon(Icons.share_outlined),
+                tooltip: 'Share paper',
+                onPressed: () async {
+                  final shareText = resolvedUrl.isNotEmpty
+                      ? resolvedUrl
+                      : (effectiveDoi.isNotEmpty
+                          ? 'https://doi.org/$effectiveDoi'
+                          : effectiveTitle);
+                  await Clipboard.setData(ClipboardData(text: shareText));
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Paper link copied')),
+                  );
+                },
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'More options',
+                onSelected: (value) {
+                  if (value == 'citation') {
+                    CitationBottomSheet.show(context, dynamicPaperModel);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'citation',
+                    child: Row(
+                      children: [
+                        Icon(Icons.format_quote_rounded, size: 18),
+                        SizedBox(width: 10),
+                        Text('Export citation'),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           body: Column(
             children: [
               if (isLoadingDetails)
-                const LinearProgressIndicator(
-                  minHeight: 3,
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryLightBlue),
-                ),
+                const LinearProgressIndicator(minHeight: 2),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 40),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Responsive Badges (Category, Year, Citations)
                       Wrap(
-                        spacing: 8,
+                        spacing: 12,
                         runSpacing: 8,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryBlue.withAlpha(25),
-                              borderRadius: BorderRadius.circular(20),
+                          if (widget.paper.category.isNotEmpty)
+                            _buildMetadataItem(
+                              Icons.category_outlined,
+                              widget.paper.category,
+                              isDark,
                             ),
-                            child: Text(
-                              widget.paper.category.isNotEmpty ? widget.paper.category : 'Research Paper',
-                              style: const TextStyle(
-                                color: AppTheme.primaryLightBlue,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
+                          _buildMetadataItem(
+                            Icons.calendar_today_outlined,
+                            '$effectiveYear',
+                            isDark,
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Published $effectiveYear',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentEmerald.withAlpha(25),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.show_chart_rounded, size: 14, color: AppTheme.accentEmerald),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '$effectiveCitations citations',
-                                  style: const TextStyle(
-                                    color: AppTheme.accentEmerald,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          _buildMetadataItem(
+                            Icons.format_quote_rounded,
+                            '$effectiveCitations citations',
+                            isDark,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-
-                      // Title
+                      const SizedBox(height: 18),
                       Text(
                         effectiveTitle,
                         style: const TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w900,
-                          height: 1.3,
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                          height: 1.22,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 10),
-
-                      // Authors
-                      if (effectiveAuthors.isNotEmpty)
+                      if (effectiveAuthors.isNotEmpty) ...[
+                        const SizedBox(height: 12),
                         Text(
                           effectiveAuthors.join(' • '),
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            height: 1.45,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
                           ),
                         ),
-                      const SizedBox(height: 6),
-
-                      // Journal & DOI (clean formatting without empty labels)
+                      ],
                       if (effectiveVenue.isNotEmpty || effectiveDoi.isNotEmpty) ...[
+                        const SizedBox(height: 8),
                         Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 4,
+                          spacing: 10,
+                          runSpacing: 6,
                           children: [
                             if (effectiveVenue.isNotEmpty)
                               Text(
                                 effectiveVenue,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.5,
                                   fontStyle: FontStyle.italic,
                                   color: isDark
-                                      ? AppTheme.darkTextSecondary.withAlpha(180)
+                                      ? AppTheme.darkTextSecondary
                                       : AppTheme.lightTextSecondary,
                                 ),
                               ),
@@ -321,359 +315,217 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                                   ),
                                   title: effectiveTitle,
                                 ),
-                                borderRadius: BorderRadius.circular(4),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.link_rounded, size: 13, color: AppTheme.primaryLightBlue),
-                                      const SizedBox(width: 3),
-                                      Flexible(
-                                        child: Text(
-                                          'DOI: $effectiveDoi',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppTheme.primaryLightBlue,
-                                            decoration: TextDecoration.underline,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
+                                child: Text(
+                                  'DOI: $effectiveDoi',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppTheme.primaryLightBlue,
+                                    decoration: TextDecoration.underline,
                                   ),
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 18),
                       ],
-
-                      // ACTION BUTTONS (Read Paper / PDF & Explore Graph)
+                      const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
                           onPressed: () {
-                            PaperUrlHelper.launchPaper(
-                              context,
-                              url: resolvedUrl,
-                              title: effectiveTitle,
-                            );
-                          },
-                          icon: const Icon(Icons.open_in_browser_rounded, size: 20),
-                          label: const Text(
-                            'Read Original Paper / PDF',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                            backgroundColor: AppTheme.accentEmerald,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => ConnectedGraphView(centerPaper: dynamicPaperModel),
+                                builder: (_) => ConnectedGraphView(
+                                  centerPaper: dynamicPaperModel,
+                                ),
                               ),
                             );
                           },
-                          icon: const Icon(Icons.hub_rounded, size: 20),
-                          label: const Text(
-                            'Explore Connected Papers Graph',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
+                          icon: const Icon(Icons.hub_rounded, size: 19),
+                          label: const Text('Explore graph'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            backgroundColor: isDark
+                                ? AppTheme.actionPurpleDark
+                                : AppTheme.primaryBlue,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                            foregroundColor: AppTheme.primaryLightBlue,
-                            side: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-
-                      // TL;DR Section (if available)
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: resolvedUrl.isEmpty
+                              ? null
+                              : () => PaperUrlHelper.launchPaper(
+                                    context,
+                                    url: resolvedUrl,
+                                    title: effectiveTitle,
+                                  ),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                          label: const Text('Read paper'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
                       if (tldr != null && tldr.isNotEmpty) ...[
-                        _buildSectionHeader('TL;DR Summary', Icons.auto_awesome_rounded),
+                        const SizedBox(height: 28),
+                        _buildSectionHeader(
+                          'Quick summary',
+                          Icons.auto_awesome_rounded,
+                        ),
                         const SizedBox(height: 10),
                         Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryBlue.withAlpha(20),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppTheme.primaryBlue.withAlpha(60)),
+                            color: isDark
+                                ? AppTheme.actionPurple.withAlpha(24)
+                                : const Color(0xFFF3F1FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.actionPurple.withAlpha(55),
+                            ),
                           ),
                           child: Text(
                             tldr,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              height: 1.5,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                            ),
+                            style: const TextStyle(fontSize: 14, height: 1.55),
                           ),
                         ),
-                        const SizedBox(height: 22),
                       ],
-
-                      // Key Takeaways Section
-                      if (widget.paper.keyTakeaways.isNotEmpty) ...[
-                        _buildSectionHeader('Key Takeaways & Core Findings', Icons.lightbulb_outline_rounded),
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppTheme.darkCard : Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-                          ),
-                          child: Column(
-                            children: widget.paper.keyTakeaways.map((takeaway) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle_rounded,
-                                      color: AppTheme.accentEmerald,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        takeaway,
-                                        style: TextStyle(
-                                          fontSize: 13.5,
-                                          height: 1.4,
-                                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                      ],
-
-                      // Abstract Section
+                      const SizedBox(height: 28),
                       _buildSectionHeader('Abstract', Icons.description_outlined),
                       const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppTheme.darkCard : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                      if (effectiveAbstract.isNotEmpty &&
+                          !effectiveAbstract.contains(
+                            'Synthesized node from PaperGraph',
+                          ))
+                        Text(
+                          effectiveAbstract,
+                          style: const TextStyle(fontSize: 14.5, height: 1.7),
+                        )
+                      else if (isLoadingDetails)
+                        Text(
+                          'Retrieving the full abstract…',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
+                          ),
+                        )
+                      else
+                        Text(
+                          'The abstract is not available from the current source. Open the paper to read the full publication.',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            height: 1.55,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
+                          ),
                         ),
-                        child: (effectiveAbstract.isNotEmpty && !effectiveAbstract.contains('Synthesized node from PaperGraph'))
-                            ? Text(
-                                effectiveAbstract,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  height: 1.7,
-                                  color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                      const SizedBox(height: 24),
+                      _buildExpandableSection(
+                        title: 'My notes',
+                        icon: Icons.edit_note_rounded,
+                        isDark: isDark,
+                        children: [
+                          TextField(
+                            controller: _notesController,
+                            minLines: 3,
+                            maxLines: 6,
+                            decoration: const InputDecoration(
+                              hintText: 'Add an insight, question, or citation note…',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: FilledButton.icon(
+                              onPressed: _saveNotes,
+                              icon: const Icon(Icons.save_outlined, size: 17),
+                              label: const Text('Save note'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _buildExpandableSection(
+                        title: 'Citations ($effectiveCitations)',
+                        icon: Icons.format_quote_rounded,
+                        isDark: isDark,
+                        children: [
+                          Text(
+                            '$effectiveCitations citations are recorded for this paper.',
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: () => CitationBottomSheet.show(
+                              context,
+                              dynamicPaperModel,
+                            ),
+                            icon: const Icon(Icons.copy_rounded, size: 17),
+                            label: const Text('Export citation'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _buildExpandableSection(
+                        title: 'Connected papers (${connectedPapers.length})',
+                        icon: Icons.hub_outlined,
+                        isDark: isDark,
+                        children: connectedPapers.isEmpty
+                            ? [
+                                Text(
+                                  'No connected papers are stored for this paper yet.',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? AppTheme.darkTextSecondary
+                                        : AppTheme.lightTextSecondary,
+                                  ),
                                 ),
-                              )
-                            : isLoadingDetails
-                                ? Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 14,
-                                            height: 14,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                isDark ? const Color(0xFF38BDF8) : AppTheme.primaryBlue,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              'Retrieving full abstract from academic providers…',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 12.5,
-                                                fontStyle: FontStyle.italic,
-                                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  )
-                                : Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.info_outline_rounded,
-                                            size: 16,
-                                            color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              'Publisher Abstract Unavailable via Open Access',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 12.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'The full abstract is not provided openly by the upstream repository. You can read the original work and full publication directly via the publisher link.',
-                                        style: TextStyle(
-                                          fontSize: 12.5,
-                                          height: 1.5,
-                                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                              ]
+                            : connectedPapers
+                                .map(
+                                  (paper) => ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                      paper.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(
+                                      '${paper.year} • ${paper.citationsCount} citations',
+                                    ),
+                                    trailing: const Icon(
+                                      Icons.chevron_right_rounded,
+                                    ),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => PaperDetailsView(
+                                          paper: paper,
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
+                                )
+                                .toList(),
                       ),
-                      const SizedBox(height: 22),
-
-                      // Personal Research Notes (Saved to Hive)
-                      _buildSectionHeader('Private Researcher Notes (Stored Offline)', Icons.edit_note_rounded),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppTheme.darkCard : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(5),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder.withAlpha(100),
-                                ),
-                              ),
-                              child: TextField(
-                                controller: _notesController,
-                                maxLines: 4,
-                                minLines: 2,
-                                decoration: InputDecoration(
-                                  hintText: 'Add personal study notes, insights, or citation references...',
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  hintStyle: TextStyle(
-                                    fontSize: 13,
-                                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: FilledButton.icon(
-                                onPressed: _saveNotes,
-                                icon: const Icon(Icons.save_rounded, size: 16),
-                                label: const Text('Save Note'),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryBlue,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-
-                      // Connected Papers Previews
-                      _buildSectionHeader(
-                        'Connected Papers in This Network (${connectedPapers.length})',
-                        Icons.hub_rounded,
-                      ),
-                      const SizedBox(height: 10),
-                      ...connectedPapers.map((cp) {
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentCyan.withAlpha(30),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.science_rounded, color: AppTheme.accentCyan, size: 20),
-                            ),
-                            title: Text(
-                              cp.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            subtitle: Text(
-                              '${cp.authors.isNotEmpty ? cp.authors.first : "Author"} et al. (${cp.year}) • ${cp.citationsCount} citations',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-                              ),
-                            ),
-                            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => PaperDetailsView(paper: cp)),
-                              );
-                            },
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
@@ -682,6 +534,65 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMetadataItem(
+    IconData icon,
+    String label,
+    bool isDark,
+  ) {
+    final color = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExpandableSection({
+    required String title,
+    required IconData icon,
+    required bool isDark,
+    required List<Widget> children,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          leading: Icon(icon, size: 20, color: AppTheme.primaryLightBlue),
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+          ),
+          children: [
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            ...children,
+          ],
+        ),
+      ),
     );
   }
 

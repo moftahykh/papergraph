@@ -4,6 +4,8 @@ import '../core/services/hive_service.dart';
 import 'auth_provider.dart';
 
 class PapersProvider extends ChangeNotifier {
+  final bool useStorage;
+  final bool listenToAuth;
   List<PaperModel> _allPapers = [];
   String _searchQuery = '';
   String _selectedCategory = 'All';
@@ -18,56 +20,75 @@ class PapersProvider extends ChangeNotifier {
     'Optimization & Algorithms',
   ];
 
-  PapersProvider() {
-    _initPapers();
-    AuthProvider.addAuthListener(reloadPapers);
+  PapersProvider({
+    this.useStorage = true,
+    this.listenToAuth = true,
+    List<PaperModel> initialPapers = const [],
+  }) : _allPapers = List<PaperModel>.from(initialPapers) {
+    if (useStorage) _initPapers();
+    if (listenToAuth) AuthProvider.addAuthListener(reloadPapers);
+  }
+
+  factory PapersProvider.seeded([List<PaperModel> papers = const []]) {
+    return PapersProvider(
+      useStorage: false,
+      listenToAuth: false,
+      initialPapers: papers,
+    );
   }
 
   @override
   void dispose() {
-    AuthProvider.removeAuthListener(reloadPapers);
+    if (listenToAuth) AuthProvider.removeAuthListener(reloadPapers);
     super.dispose();
   }
 
   void reloadPapers() {
-    _initPapers();
+    if (useStorage) _initPapers();
   }
 
   void _initPapers() {
     final Set<String> ids = {};
     final List<PaperModel> loaded = [];
 
-    // 1. Load saved/favorite papers from Hive
-    for (var paper in HiveService.getFavoritePapers()) {
-      if (!ids.contains(paper.id)) {
-        ids.add(paper.id);
-        loaded.add(paper);
-      }
-    }
-
-    // 2. Extract synthesized nodes from all cached graphs in Hive
-    for (var snapshot in HiveService.getCachedGraphs(includeExpired: true)) {
-      for (var node in snapshot.nodes) {
-        if (!ids.contains(node.canonicalId)) {
-          ids.add(node.canonicalId);
-          loaded.add(PaperModel(
-            id: node.canonicalId,
-            title: node.title,
-            authors: node.authors,
-            abstractText: '',
-            category: 'Computer Science',
-            year: node.year ?? 0,
-            citationsCount: node.citationCount,
-            influentialCitations: 0,
-            connectedPaperIds: const [],
-            pdfUrl: '',
-            journal: node.venue ?? '',
-            doi: '',
-            keyTakeaways: const [],
-            isFavorite: HiveService.isPaperFavorite(node.canonicalId),
-          ));
+    try {
+      // Load saved papers.
+      for (var paper in HiveService.getFavoritePapers()) {
+        if (!ids.contains(paper.id)) {
+          ids.add(paper.id);
+          loaded.add(paper);
         }
       }
+
+      // Include papers discovered in saved graphs.
+      for (var snapshot in HiveService.getCachedGraphs(includeExpired: true)) {
+        for (var node in snapshot.nodes) {
+          if (!ids.contains(node.canonicalId)) {
+            ids.add(node.canonicalId);
+            loaded.add(
+              PaperModel(
+                id: node.canonicalId,
+                title: node.title,
+                authors: node.authors,
+                abstractText: '',
+                category: 'Computer Science',
+                year: node.year ?? 0,
+                citationsCount: node.citationCount,
+                influentialCitations: 0,
+                connectedPaperIds: const [],
+                pdfUrl: '',
+                journal: node.venue ?? '',
+                doi: '',
+                keyTakeaways: const [],
+                isFavorite: HiveService.isPaperFavorite(node.canonicalId),
+              ),
+            );
+          }
+        }
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Papers could not be refreshed: $error\n$stackTrace');
+      return;
     }
 
     _allPapers = loaded;
@@ -81,9 +102,12 @@ class PapersProvider extends ChangeNotifier {
     return _allPapers.where((paper) {
       final matchesCategory =
           _selectedCategory == 'All' || paper.category == _selectedCategory;
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           paper.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          paper.authors.any((a) => a.toLowerCase().contains(_searchQuery.toLowerCase())) ||
+          paper.authors.any(
+            (a) => a.toLowerCase().contains(_searchQuery.toLowerCase()),
+          ) ||
           paper.abstractText.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     }).toList();
@@ -116,21 +140,31 @@ class PapersProvider extends ChangeNotifier {
   List<PaperModel> getConnectedPapers(PaperModel paper) {
     // 1. Direct match by IDs
     final direct = _allPapers
-        .where((p) =>
-            p.id != paper.id &&
-            (paper.connectedPaperIds.contains(p.id) ||
-                p.connectedPaperIds.contains(paper.id)))
+        .where(
+          (p) =>
+              p.id != paper.id &&
+              (paper.connectedPaperIds.contains(p.id) ||
+                  p.connectedPaperIds.contains(paper.id)),
+        )
         .toList();
     if (direct.isNotEmpty) return direct;
 
-    // 2. Match from cached graph edges
-    final cached = HiveService.getCachedGraphs(includeExpired: true);
+    // 2. Match from saved graph edges when storage is enabled.
     final Set<String> connectedNodeIds = {};
-    for (var g in cached) {
-      final allEdges = [...g.citationEdges, ...g.similarityEdges];
-      for (var edge in allEdges) {
-        if (edge.source == paper.id) connectedNodeIds.add(edge.target);
-        if (edge.target == paper.id) connectedNodeIds.add(edge.source);
+    if (useStorage) {
+      try {
+        final savedGraphs = HiveService.getCachedGraphs(includeExpired: true);
+        for (var graph in savedGraphs) {
+          final allEdges = [...graph.citationEdges, ...graph.similarityEdges];
+          for (var edge in allEdges) {
+            if (edge.source == paper.id) connectedNodeIds.add(edge.target);
+            if (edge.target == paper.id) connectedNodeIds.add(edge.source);
+          }
+        }
+      } catch (error, stackTrace) {
+        debugPrint(
+          'Related papers could not read saved graphs: $error\n$stackTrace',
+        );
       }
     }
     final graphConnected = _allPapers

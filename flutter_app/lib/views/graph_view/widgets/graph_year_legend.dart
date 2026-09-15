@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
-class GraphYearLegend extends StatelessWidget {
+/// Compact, disciplined scientific graph legend.
+///
+/// Explains relationship edge types, node semantic rings, size mapping,
+/// and publication timeline without visual clutter.
+class GraphYearLegend extends StatefulWidget {
   final int minYear;
   final int maxYear;
   final bool isDark;
@@ -14,112 +18,222 @@ class GraphYearLegend extends StatelessWidget {
   });
 
   @override
+  State<GraphYearLegend> createState() => _GraphYearLegendState();
+}
+
+class _GraphYearLegendState extends State<GraphYearLegend> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final isDark = widget.isDark;
     final bgColor = isDark
-        ? AppTheme.darkCard.withAlpha(235)
-        : const Color(0xEEFFFFFF);
-    final borderColor = isDark
-        ? AppTheme.darkBorder
-        : const Color(0xFFE2E8F0);
+        ? AppTheme.darkCard.withValues(alpha: 0.94)
+        : Colors.white.withValues(alpha: 0.94);
+    final borderColor = isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0);
     final textColor = isDark
         ? AppTheme.darkTextSecondary
         : const Color(0xFF64748B);
+    final labelColor = isDark
+        ? AppTheme.darkTextPrimary
+        : const Color(0xFF0F172A);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(isDark ? 80 : 25),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withAlpha(isDark ? 50 : 15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Year Gradient Spectrum Bar
+          // Primary row: Compact relationships + Time bounds
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Min Year
               Text(
-                '$minYear',
+                '${widget.minYear}',
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontFamily: 'monospace',
                   color: textColor,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 120,
-                height: 8,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF10B981), // Mint Teal
-                      Color(0xFF06B6D4), // Sky Cyan
-                      Color(0xFF2563EB), // Electric Blue
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '$maxYear',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          // Edge Types Legend
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Citation Arrow Indicator
-              Container(
-                width: 14,
-                height: 2,
-                color: const Color(0xFF3B82F6),
               ),
               const SizedBox(width: 4),
-              const Icon(
+              Text('→', style: TextStyle(fontSize: 10, color: textColor)),
+              const SizedBox(width: 4),
+              // Max Year
+              Text(
+                '${widget.maxYear}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Citation indicator
+              Container(
+                width: 10,
+                height: 2.5,
+                color: isDark
+                    ? AppTheme.citationBlueDark
+                    : AppTheme.citationBlue,
+              ),
+              const SizedBox(width: 3),
+              Icon(
                 Icons.arrow_right_alt,
                 size: 14,
-                color: Color(0xFF3B82F6),
+                color: isDark
+                    ? AppTheme.citationBlueDark
+                    : AppTheme.citationBlue,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               Text(
                 'Citation',
-                style: TextStyle(fontSize: 10, color: textColor),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: labelColor,
+                ),
               ),
-              const SizedBox(width: 14),
-              // Similarity Dashed Indicator
+              const SizedBox(width: 12),
+
+              // Similarity indicator
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 4, height: 2, color: const Color(0xFF06B6D4)),
+                  Container(
+                    width: 3,
+                    height: 2,
+                    color: isDark
+                        ? AppTheme.similarityCyanDark
+                        : AppTheme.similarityCyan,
+                  ),
                   const SizedBox(width: 2),
-                  Container(width: 4, height: 2, color: const Color(0xFF06B6D4)),
+                  Container(
+                    width: 3,
+                    height: 2,
+                    color: isDark
+                        ? AppTheme.similarityCyanDark
+                        : AppTheme.similarityCyan,
+                  ),
                   const SizedBox(width: 2),
-                  Container(width: 4, height: 2, color: const Color(0xFF06B6D4)),
+                  Container(
+                    width: 3,
+                    height: 2,
+                    color: isDark
+                        ? AppTheme.similarityCyanDark
+                        : AppTheme.similarityCyan,
+                  ),
                 ],
               ),
               const SizedBox(width: 4),
               Text(
                 'Similarity',
-                style: TextStyle(fontSize: 10, color: textColor),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: labelColor,
+                ),
+              ),
+              const SizedBox(width: 6),
+
+              // Info / expand button
+              InkWell(
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    _isExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.info_outline_rounded,
+                    size: 14,
+                    color: textColor,
+                  ),
+                ),
               ),
             ],
           ),
+
+          // Expanded details (Node semantics & size mapping)
+          if (_isExpanded) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.only(top: 6),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: borderColor, width: 0.8)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Origin Node
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark
+                            ? AppTheme.originGreenDark
+                            : AppTheme.originGreen,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Starting paper',
+                    style: TextStyle(fontSize: 10, color: textColor),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Selected Node
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark
+                            ? AppTheme.actionPurpleDark
+                            : AppTheme.actionPurple,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Selected',
+                    style: TextStyle(fontSize: 10, color: textColor),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Size mapping
+                  Icon(Icons.bubble_chart_outlined, size: 12, color: textColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Size = Citations',
+                    style: TextStyle(fontSize: 10, color: textColor),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

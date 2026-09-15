@@ -17,6 +17,7 @@ import 'package:paper_graph/models/api_schemas.dart';
 import 'package:paper_graph/models/canonical_paper.dart';
 import 'package:paper_graph/models/graph_job_status.dart';
 import 'package:paper_graph/models/graph_models.dart';
+import 'test_hive.dart';
 
 class FakePaperGraphApiClient extends PaperGraphApiClient {
   SearchResponse? mockSearchResponse;
@@ -91,6 +92,11 @@ class FakePaperGraphApiClient extends PaperGraphApiClient {
 }
 
 void main() {
+  final hiveEnvironment = TestHiveEnvironment();
+  setUpAll(hiveEnvironment.start);
+  setUp(hiveEnvironment.reset);
+  tearDownAll(hiveEnvironment.stop);
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('SearchCubit Tests', () {
@@ -202,11 +208,7 @@ void main() {
             title: 'Origin Paper',
             isOrigin: true,
           ),
-          GraphNode(
-            id: 'node-p1',
-            canonicalId: 'p1',
-            title: 'Related Paper 1',
-          ),
+          GraphNode(id: 'node-p1', canonicalId: 'p1', title: 'Related Paper 1'),
         ],
         createdAt: DateTime.now(),
       );
@@ -255,6 +257,7 @@ void main() {
       expect(loadedState.snapshot.nodes.length, 2);
       expect(loadedState.isPartial, false);
       expect(loadedState.fromOfflineCache, false);
+      expect(loadedState.isNewlyGenerated, true);
     });
 
     test('Failed graph job emits GraphError', () async {
@@ -360,7 +363,10 @@ void main() {
 
       expect(cubit.state, isA<PaperDetailsLoaded>());
       final loaded = cubit.state as PaperDetailsLoaded;
-      expect(loaded.details.paper.title, 'Deep Residual Learning for Image Recognition');
+      expect(
+        loaded.details.paper.title,
+        'Deep Residual Learning for Image Recognition',
+      );
       expect(loaded.isSaved, false);
 
       cubit.toggleSaved();
@@ -412,7 +418,7 @@ void main() {
       expect(state.savedPapers.isEmpty, true);
     });
 
-    test('cacheGraph and removeCachedGraph manage snapshot cache', () async {
+    test('saveGraph and removeGraph manage the saved Library list', () async {
       final snapshot = GraphSnapshot(
         graphId: 'cache-g-1',
         origin: const GraphOrigin(
@@ -501,14 +507,17 @@ void main() {
       expect(cubit.state.notifications.first.title, 'Graph Ready (Partial)');
     });
 
-    test('dismissToast clears active toast without removing notification history', () {
-      cubit.notify(title: 'Alert', message: 'Something happened');
-      expect(cubit.state.latestToast, isNotNull);
+    test(
+      'dismissToast clears active toast without removing notification history',
+      () {
+        cubit.notify(title: 'Alert', message: 'Something happened');
+        expect(cubit.state.latestToast, isNotNull);
 
-      cubit.dismissToast();
-      expect(cubit.state.latestToast, isNull);
-      expect(cubit.state.notifications.length, 1);
-    });
+        cubit.dismissToast();
+        expect(cubit.state.latestToast, isNull);
+        expect(cubit.state.notifications.length, 1);
+      },
+    );
 
     test('markAsRead updates isRead state and unreadCount', () {
       cubit.notify(title: 'Notice', message: 'Hello');

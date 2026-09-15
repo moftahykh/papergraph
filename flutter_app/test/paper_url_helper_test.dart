@@ -73,7 +73,9 @@ void main() {
       );
       expect(
         url,
-        equals('https://scholar.google.com/scholar?q=Deep%20Image%20Matting%3A%20A%20Comprehensive%20Survey'),
+        equals(
+          'https://scholar.google.com/scholar?q=Deep%20Image%20Matting%3A%20A%20Comprehensive%20Survey',
+        ),
       );
     });
 

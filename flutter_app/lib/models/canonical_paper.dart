@@ -7,12 +7,7 @@ class Author {
   final int? position;
   final String? affiliation;
 
-  const Author({
-    this.id,
-    required this.name,
-    this.position,
-    this.affiliation,
-  });
+  const Author({this.id, required this.name, this.position, this.affiliation});
 
   factory Author.fromJson(Map<String, dynamic> json) {
     return Author(
@@ -129,7 +124,8 @@ class CanonicalPaper {
       openAlexId: json['open_alex_id'] as String?,
       title: (json['title'] as String?) ?? 'Untitled Work',
       normalizedTitle: (json['normalized_title'] as String?) ?? '',
-      authors: (json['authors'] as List<dynamic>?)
+      authors:
+          (json['authors'] as List<dynamic>?)
               ?.map((a) => Author.fromJson(Map<String, dynamic>.from(a as Map)))
               .toList() ??
           const [],
@@ -138,15 +134,18 @@ class CanonicalPaper {
       abstractText: json['abstract'] as String?,
       citationCount: (json['citation_count'] as num?)?.toInt() ?? 0,
       referenceCount: (json['reference_count'] as num?)?.toInt() ?? 0,
-      referenceIds: (json['reference_ids'] as List<dynamic>?)
+      referenceIds:
+          (json['reference_ids'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
-      citationIds: (json['citation_ids'] as List<dynamic>?)
+      citationIds:
+          (json['citation_ids'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
-      topics: (json['topics'] as List<dynamic>?)
+      topics:
+          (json['topics'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],

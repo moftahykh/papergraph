@@ -69,10 +69,10 @@ class GraphWarning {
   }
 
   Map<String, dynamic> toJson() => {
-        'code': code,
-        'message': message,
-        'severity': severity,
-      };
+    'code': code,
+    'message': message,
+    'severity': severity,
+  };
 }
 
 @immutable
@@ -100,11 +100,11 @@ class DataCompleteness {
   }
 
   Map<String, dynamic> toJson() => {
-        'metadata': metadata,
-        'references': references,
-        'citations': citations,
-        'semantic': semantic,
-      };
+    'metadata': metadata,
+    'references': references,
+    'citations': citations,
+    'semantic': semantic,
+  };
 }
 
 @immutable
@@ -134,12 +134,12 @@ class GraphOrigin {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'canonical_id': canonicalId,
-        'title': title,
-        'year': year,
-        'doi': doi,
-      };
+    'id': id,
+    'canonical_id': canonicalId,
+    'title': title,
+    'year': year,
+    'doi': doi,
+  };
 }
 
 @immutable
@@ -188,11 +188,12 @@ class GraphNode {
     Map<String, MetricResult>? parsedScores;
     if (json['scores'] != null && json['scores'] is Map) {
       parsedScores = {};
-      final map = json['scores'] as Map<String, dynamic>;
-      for (final key in map.keys) {
-        if (map[key] is Map) {
-          parsedScores[key] = MetricResult.fromJson(
-            Map<String, dynamic>.from(map[key] as Map),
+      final rawScores = json['scores'] as Map;
+      for (final entry in rawScores.entries) {
+        final rawMetric = entry.value;
+        if (rawMetric is Map) {
+          parsedScores[entry.key.toString()] = MetricResult.fromJson(
+            Map<String, dynamic>.from(rawMetric),
           );
         }
       }
@@ -203,7 +204,11 @@ class GraphNode {
       canonicalId: (json['canonical_id'] as String?) ?? '',
       title: (json['title'] as String?) ?? 'Untitled',
       shortTitle: json['short_title'] as String?,
-      authors: (json['authors'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      authors:
+          (json['authors'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
       year: (json['year'] as num?)?.toInt(),
       venue: json['venue'] as String?,
       citationCount: (json['citation_count'] as num?)?.toInt() ?? 0,
@@ -222,24 +227,24 @@ class GraphNode {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'canonical_id': canonicalId,
-        'title': title,
-        'short_title': shortTitle,
-        'authors': authors,
-        'year': year,
-        'venue': venue,
-        'citation_count': citationCount,
-        'is_origin': isOrigin,
-        'radius': radius,
-        'x': x,
-        'y': y,
-        'final_score': finalScore,
-        'confidence': confidence?.value,
-        'scores': scores?.map((k, v) => MapEntry(k, v.toJson())),
-        'cluster': cluster,
-        'archetype': archetype,
-      };
+    'id': id,
+    'canonical_id': canonicalId,
+    'title': title,
+    'short_title': shortTitle,
+    'authors': authors,
+    'year': year,
+    'venue': venue,
+    'citation_count': citationCount,
+    'is_origin': isOrigin,
+    'radius': radius,
+    'x': x,
+    'y': y,
+    'final_score': finalScore,
+    'confidence': confidence?.value,
+    'scores': scores?.map((k, v) => MapEntry(k, v.toJson())),
+    'cluster': cluster,
+    'archetype': archetype,
+  };
 }
 
 @immutable
@@ -264,7 +269,8 @@ class GraphEdge {
 
   factory GraphEdge.fromJson(Map<String, dynamic> json) {
     final edgeType = EdgeType.fromString(json['type'] as String?);
-    final isDirected = (json['directed'] as bool?) ?? (edgeType == EdgeType.citation);
+    final isDirected =
+        (json['directed'] as bool?) ?? (edgeType == EdgeType.citation);
 
     return GraphEdge(
       source: (json['source'] as String?) ?? '',
@@ -280,14 +286,14 @@ class GraphEdge {
   }
 
   Map<String, dynamic> toJson() => {
-        'source': source,
-        'target': target,
-        'type': type.value,
-        'weight': weight,
-        'directed': directed,
-        'label': label,
-        'metadata': metadata,
-      };
+    'source': source,
+    'target': target,
+    'type': type.value,
+    'weight': weight,
+    'directed': directed,
+    'label': label,
+    'metadata': metadata,
+  };
 }
 
 @immutable
@@ -321,7 +327,8 @@ class GraphSnapshot {
   });
 
   /// Computed expiration date (defaults to 14 days after creation if not explicitly set)
-  DateTime get effectiveExpiresAt => expiresAt ?? createdAt.add(const Duration(days: 14));
+  DateTime get effectiveExpiresAt =>
+      expiresAt ?? createdAt.add(const Duration(days: 14));
 
   /// Whether this cached graph snapshot has passed its validity TTL.
   bool get isExpired => DateTime.now().isAfter(effectiveExpiresAt);
@@ -340,16 +347,25 @@ class GraphSnapshot {
         Map<String, dynamic>.from((json['origin'] as Map?) ?? {}),
       ),
       status: GraphJobStatus.fromString(json['status'] as String?),
-      nodes: (json['nodes'] as List<dynamic>?)
-              ?.map((n) => GraphNode.fromJson(Map<String, dynamic>.from(n as Map)))
+      nodes:
+          (json['nodes'] as List<dynamic>?)
+              ?.map(
+                (n) => GraphNode.fromJson(Map<String, dynamic>.from(n as Map)),
+              )
               .toList() ??
           const [],
-      similarityEdges: (json['similarity_edges'] as List<dynamic>?)
-              ?.map((e) => GraphEdge.fromJson(Map<String, dynamic>.from(e as Map)))
+      similarityEdges:
+          (json['similarity_edges'] as List<dynamic>?)
+              ?.map(
+                (e) => GraphEdge.fromJson(Map<String, dynamic>.from(e as Map)),
+              )
               .toList() ??
           const [],
-      citationEdges: (json['citation_edges'] as List<dynamic>?)
-              ?.map((e) => GraphEdge.fromJson(Map<String, dynamic>.from(e as Map)))
+      citationEdges:
+          (json['citation_edges'] as List<dynamic>?)
+              ?.map(
+                (e) => GraphEdge.fromJson(Map<String, dynamic>.from(e as Map)),
+              )
               .toList() ??
           const [],
       dataCompleteness: DataCompleteness.fromJson(
@@ -357,8 +373,12 @@ class GraphSnapshot {
             ? Map<String, dynamic>.from(json['data_completeness'] as Map)
             : null,
       ),
-      warnings: (json['warnings'] as List<dynamic>?)
-              ?.map((w) => GraphWarning.fromJson(Map<String, dynamic>.from(w as Map)))
+      warnings:
+          (json['warnings'] as List<dynamic>?)
+              ?.map(
+                (w) =>
+                    GraphWarning.fromJson(Map<String, dynamic>.from(w as Map)),
+              )
               .toList() ??
           const [],
       schemaVersion: (json['schema_version'] as num?)?.toInt() ?? 1,
@@ -371,19 +391,19 @@ class GraphSnapshot {
   }
 
   Map<String, dynamic> toJson() => {
-        'graph_id': graphId,
-        'origin': origin.toJson(),
-        'status': status.value,
-        'nodes': nodes.map((n) => n.toJson()).toList(),
-        'similarity_edges': similarityEdges.map((e) => e.toJson()).toList(),
-        'citation_edges': citationEdges.map((e) => e.toJson()).toList(),
-        'data_completeness': dataCompleteness.toJson(),
-        'warnings': warnings.map((w) => w.toJson()).toList(),
-        'schema_version': schemaVersion,
-        'algorithm_version': algorithmVersion,
-        'created_at': createdAt.toIso8601String(),
-        'expires_at': effectiveExpiresAt.toIso8601String(),
-      };
+    'graph_id': graphId,
+    'origin': origin.toJson(),
+    'status': status.value,
+    'nodes': nodes.map((n) => n.toJson()).toList(),
+    'similarity_edges': similarityEdges.map((e) => e.toJson()).toList(),
+    'citation_edges': citationEdges.map((e) => e.toJson()).toList(),
+    'data_completeness': dataCompleteness.toJson(),
+    'warnings': warnings.map((w) => w.toJson()).toList(),
+    'schema_version': schemaVersion,
+    'algorithm_version': algorithmVersion,
+    'created_at': createdAt.toIso8601String(),
+    'expires_at': effectiveExpiresAt.toIso8601String(),
+  };
 
   GraphSnapshot copyWith({
     String? graphId,
@@ -448,10 +468,16 @@ class GraphStatusResponse {
       currentStage: GraphJobStatus.fromString(json['current_stage'] as String?),
       pollUrl: (json['poll_url'] as String?) ?? '',
       snapshot: json['snapshot'] != null
-          ? GraphSnapshot.fromJson(Map<String, dynamic>.from(json['snapshot'] as Map))
+          ? GraphSnapshot.fromJson(
+              Map<String, dynamic>.from(json['snapshot'] as Map),
+            )
           : null,
-      warnings: (json['warnings'] as List<dynamic>?)
-              ?.map((w) => GraphWarning.fromJson(Map<String, dynamic>.from(w as Map)))
+      warnings:
+          (json['warnings'] as List<dynamic>?)
+              ?.map(
+                (w) =>
+                    GraphWarning.fromJson(Map<String, dynamic>.from(w as Map)),
+              )
               .toList() ??
           const [],
       dataCompleteness: json['data_completeness'] != null
@@ -464,16 +490,16 @@ class GraphStatusResponse {
   }
 
   Map<String, dynamic> toJson() => {
-        'graph_id': graphId,
-        'status': status.value,
-        'progress': progress,
-        'current_stage': currentStage.value,
-        'poll_url': pollUrl,
-        'snapshot': snapshot?.toJson(),
-        'warnings': warnings.map((w) => w.toJson()).toList(),
-        'data_completeness': dataCompleteness?.toJson(),
-        'error': error,
-      };
+    'graph_id': graphId,
+    'status': status.value,
+    'progress': progress,
+    'current_stage': currentStage.value,
+    'poll_url': pollUrl,
+    'snapshot': snapshot?.toJson(),
+    'warnings': warnings.map((w) => w.toJson()).toList(),
+    'data_completeness': dataCompleteness?.toJson(),
+    'error': error,
+  };
 }
 
 @immutable
@@ -495,13 +521,13 @@ class CreateGraphRequest {
   });
 
   Map<String, dynamic> toJson() => {
-        'origin_id': originId,
-        'max_nodes': maxNodes,
-        'include_prior_works': includePriorWorks,
-        'include_derivative_works': includeDerivativeWorks,
-        'weight_profile': weightProfile,
-        'algorithm_version': algorithmVersion,
-      };
+    'origin_id': originId,
+    'max_nodes': maxNodes,
+    'include_prior_works': includePriorWorks,
+    'include_derivative_works': includeDerivativeWorks,
+    'weight_profile': weightProfile,
+    'algorithm_version': algorithmVersion,
+  };
 }
 
 @immutable
@@ -530,9 +556,9 @@ class CreateGraphResponse {
   }
 
   Map<String, dynamic> toJson() => {
-        'graph_id': graphId,
-        'status': status.value,
-        'poll_url': pollUrl,
-        'created_at': createdAt.toIso8601String(),
-      };
+    'graph_id': graphId,
+    'status': status.value,
+    'poll_url': pollUrl,
+    'created_at': createdAt.toIso8601String(),
+  };
 }

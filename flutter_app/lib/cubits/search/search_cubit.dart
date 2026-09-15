@@ -83,9 +83,13 @@ class SearchCubit extends Cubit<SearchState> {
       }
     } on ApiException catch (e) {
       if (e.message.contains('cancelled')) return; // superseded — stay silent
-      if (!isClosed) emit(SearchError(clean, e.message));
+      if (!isClosed) {
+        emit(SearchError(clean, e.message));
+      }
     } catch (e) {
-      if (!isClosed) emit(SearchError(clean, 'Failed to search literature: $e'));
+      if (!isClosed) {
+        emit(SearchError(clean, 'Failed to search literature: $e'));
+      }
     }
   }
 

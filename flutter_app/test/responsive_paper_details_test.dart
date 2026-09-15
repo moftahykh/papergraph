@@ -11,6 +11,7 @@ import 'package:paper_graph/views/paper_details/paper_details_view.dart';
 import 'package:paper_graph/views/paper_details/citation_bottom_sheet.dart';
 
 void main() {
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('PaperDetailsView renders on narrow 360px viewport without RenderFlex overflow', (tester) async {
@@ -42,13 +43,13 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider<PapersProvider>(create: (_) => PapersProvider()),
-          BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
+          ChangeNotifierProvider<PapersProvider>(create: (_) => PapersProvider.seeded()),
+          BlocProvider<LibraryCubit>(create: (_) => LibraryCubit.seeded()),
           BlocProvider<PaperDetailsCubit>(create: (_) => PaperDetailsCubit()),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
-          home: PaperDetailsView(paper: paper),
+          home: PaperDetailsView(paper: paper, loadDetailsOnOpen: false),
         ),
       ),
     );
@@ -57,13 +58,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // Verify Title and Section Headers render cleanly
-    expect(find.text('Research Paper Details'), findsOneWidget);
+    expect(find.text('Paper'), findsOneWidget);
     expect(find.text('Deep Image Matting: A Comprehensive Survey and Experimental Study'), findsOneWidget);
-    expect(find.text('Private Researcher Notes (Stored Offline)'), findsOneWidget);
+    expect(find.text('My notes'), findsOneWidget);
 
     // Verify Read Paper & Explore Graph buttons exist
-    expect(find.text('Read Original Paper / PDF'), findsOneWidget);
-    expect(find.text('Explore Connected Papers Graph'), findsOneWidget);
+    expect(find.text('Read paper'), findsOneWidget);
+    expect(find.text('Explore graph'), findsOneWidget);
+    expect(find.byIcon(Icons.share_outlined), findsOneWidget);
+    expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+    expect(find.text('Abstract'), findsOneWidget);
+    expect(find.text('Citations (23)'), findsOneWidget);
+    expect(find.text('Connected papers (0)'), findsOneWidget);
 
     // Verify DOI is formatted cleanly with clickable link
     expect(find.text('DOI: 10.1109/TPAMI.2023.12345'), findsOneWidget);

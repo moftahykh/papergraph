@@ -19,8 +19,10 @@ class OtpVerificationView extends StatefulWidget {
 }
 
 class _OtpVerificationViewState extends State<OtpVerificationView> {
-  final List<TextEditingController> _digitControllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _digitControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   final PaperGraphApiClient _apiClient = PaperGraphApiClient();
@@ -178,10 +180,7 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Verify Email'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Verify Email'), elevation: 0),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 20),
@@ -207,7 +206,11 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.mark_email_read_rounded, color: Colors.white, size: 38),
+                  child: const Icon(
+                    Icons.mark_email_read_rounded,
+                    color: Colors.white,
+                    size: 38,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -219,7 +222,9 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.4,
-                  color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                  color: isDark
+                      ? AppTheme.darkTextPrimary
+                      : AppTheme.lightTextPrimary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -229,7 +234,9 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.5,
-                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
                 ),
               ),
               const SizedBox(height: 32),
@@ -237,7 +244,10 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
               // 6-Pin Input Boxes
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (index) => _buildPinBox(index, isDark)),
+                children: List.generate(
+                  6,
+                  (index) => _buildPinBox(index, isDark),
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -249,11 +259,17 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                   decoration: BoxDecoration(
                     color: AppTheme.accentRose.withAlpha(25),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.accentRose.withAlpha(80)),
+                    border: Border.all(
+                      color: AppTheme.accentRose.withAlpha(80),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: AppTheme.accentRose, size: 20),
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: AppTheme.accentRose,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -285,11 +301,17 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                     ? const SizedBox(
                         width: 22,
                         height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text(
                         'Verify & Continue',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
               ),
               const SizedBox(height: 24),
@@ -303,14 +325,18 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                           Icon(
                             Icons.timer_outlined,
                             size: 17,
-                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Resend code in 0:${_secondsRemaining.toString().padLeft(2, '0')}',
                             style: TextStyle(
                               fontSize: 13.5,
-                              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -322,7 +348,9 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                             ? const SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.refresh_rounded, size: 18),
                         label: const Text(

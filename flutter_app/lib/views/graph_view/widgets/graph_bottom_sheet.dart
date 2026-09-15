@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/connection_reason_helper.dart';
 import '../../../core/utils/paper_url_helper.dart';
 import '../../../models/graph_models.dart';
 import '../../../models/metric_result.dart';
 
+/// Contextual bottom sheet for literature exploration.
+///
+/// Features progressive disclosure: starts as a compact peek showing
+/// identity, relationship reason, and primary actions, and expands smoothly
+/// for deep metrics and connected works.
 class GraphBottomSheet extends StatefulWidget {
   final GraphSnapshot snapshot;
   final GraphNode? selectedNode;
   final ValueChanged<GraphNode> onNodeSelected;
   final ValueChanged<String>? onRecenterGraph;
   final ValueChanged<GraphNode>? onOpenFullDetails;
+  final ValueChanged<GraphNode>? onFocusNode;
   final VoidCallback? onClose;
   final int initialTabIndex;
 
@@ -20,6 +27,7 @@ class GraphBottomSheet extends StatefulWidget {
     required this.onNodeSelected,
     this.onRecenterGraph,
     this.onOpenFullDetails,
+    this.onFocusNode,
     this.onClose,
     this.initialTabIndex = 0,
   });
@@ -31,7 +39,7 @@ class GraphBottomSheet extends StatefulWidget {
 class _GraphBottomSheetState extends State<GraphBottomSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final TextEditingController _searchFilterController = TextEditingController();
+  final TextEditingController _listFilterController = TextEditingController();
   String _listFilter = '';
   String _sortBy = 'citations'; // citations, year, score
   double _sheetHeight = 380.0;
@@ -58,7 +66,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   @override
   void dispose() {
     _tabController.dispose();
-    _searchFilterController.dispose();
+    _listFilterController.dispose();
     super.dispose();
   }
 
@@ -72,37 +80,37 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       height: _sheetHeight,
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: borderColor, width: 1.5)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border(top: BorderSide(color: borderColor, width: 1.0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(isDark ? 120 : 30),
-            blurRadius: 20,
+            color: Colors.black.withAlpha(isDark ? 80 : 20),
+            blurRadius: 16,
             offset: const Offset(0, -4),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Drag Handle and Close Button
+          // Drag Handle and Close Row
           GestureDetector(
             onVerticalDragUpdate: (details) {
               setState(() {
                 _sheetHeight -= details.delta.dy;
-                if (_sheetHeight < 250) _sheetHeight = 250;
+                if (_sheetHeight < 240) _sheetHeight = 240;
                 final maxHeight = MediaQuery.of(context).size.height * 0.85;
                 if (_sheetHeight > maxHeight) _sheetHeight = maxHeight;
               });
             },
             child: Container(
-              color: Colors.transparent, // Capture drags on empty space
+              color: Colors.transparent,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(width: 40),
+                  const SizedBox(width: 36),
                   Container(
-                    width: 40,
+                    width: 36,
                     height: 4,
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF4B4F59) : const Color(0xFFCBD5E1),
@@ -110,11 +118,11 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20),
+                    icon: const Icon(Icons.close_rounded, size: 18),
                     onPressed: widget.onClose,
-                    tooltip: 'Close Sheet',
+                    tooltip: 'Close sheet',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 32),
                   ),
                 ],
               ),
@@ -126,35 +134,35 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            indicatorColor: AppTheme.primaryBlue,
-            indicatorWeight: 3,
-            labelColor: isDark ? Colors.white : AppTheme.primaryBlue,
-            unselectedLabelColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
+            indicatorColor: isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple,
+            indicatorWeight: 2.5,
+            labelColor: isDark ? AppTheme.darkTextPrimary : AppTheme.actionPurple,
+            unselectedLabelColor: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12.5),
             tabs: const [
               Tab(
-                icon: Icon(Icons.article_outlined, size: 18),
-                text: 'Selected Paper',
+                icon: Icon(Icons.article_outlined, size: 16),
+                text: 'Paper',
               ),
               Tab(
-                icon: Icon(Icons.history_edu_outlined, size: 18),
-                text: 'Prior Works',
+                icon: Icon(Icons.history_edu_outlined, size: 16),
+                text: 'Earlier works',
               ),
               Tab(
-                icon: Icon(Icons.trending_up_outlined, size: 18),
-                text: 'Derivative Works',
+                icon: Icon(Icons.trending_up_outlined, size: 16),
+                text: 'Later works',
               ),
               Tab(
-                icon: Icon(Icons.list_alt_outlined, size: 18),
-                text: 'List View',
+                icon: Icon(Icons.list_alt_outlined, size: 16),
+                text: 'All papers',
               ),
             ],
           ),
 
           const Divider(height: 1, thickness: 1),
 
-          // Tab Views
+          // Tab Content
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -181,21 +189,21 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
           children: [
             Icon(
               Icons.touch_app_outlined,
-              size: 44,
-              color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
+              size: 36,
+              color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF94A3B8),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
-              'Select a Paper Node',
+              'Select a paper',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
                 color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Tap any node in the graph to inspect metrics, citations, and relationships.',
+              'Tap any node in the graph to inspect relationships and citation context.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
@@ -207,13 +215,34 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       );
     }
 
-    final textColor = isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A);
-    final subtextColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B);
+    final textColor = isDark ? AppTheme.darkTextPrimary : const Color(0xFF111827);
+    final subtextColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF6B7280);
+
+    // Explain connection to seed/origin
+    final explanation = ConnectionReasonHelper.explainConnection(
+      node: node,
+      snapshot: widget.snapshot,
+    );
+
+    Color badgeColor;
+    switch (explanation.category) {
+      case ConnectionCategory.origin:
+        badgeColor = isDark ? AppTheme.originGreenDark : AppTheme.originGreen;
+        break;
+      case ConnectionCategory.citation:
+        badgeColor = isDark ? AppTheme.citationBlueDark : AppTheme.citationBlue;
+        break;
+      case ConnectionCategory.similarity:
+        badgeColor = isDark ? AppTheme.similarityCyanDark : AppTheme.similarityCyan;
+        break;
+      default:
+        badgeColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B);
+    }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       children: [
-        // Title & Badges
+        // Title and Origin / Category badge
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -221,39 +250,38 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               child: Text(
                 node.title,
                 style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
                   color: textColor,
                 ),
-                maxLines: 3,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (node.isOrigin) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withAlpha(40),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
-                ),
-                child: const Text(
-                  'SEED ORIGIN',
-                  style: TextStyle(
-                    color: Color(0xFFF59E0B),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: badgeColor.withAlpha(25),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: badgeColor.withAlpha(80), width: 0.8),
+              ),
+              child: Text(
+                node.isOrigin ? 'STARTING PAPER' : explanation.badgeLabel,
+                style: TextStyle(
+                  color: badgeColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
+            ),
           ],
         ),
 
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
 
-        // Authors & Meta
+        // Authors & Publication Venue
         Text(
           node.authors.isNotEmpty ? node.authors.join(', ') : 'Unknown Authors',
           style: TextStyle(fontSize: 12, color: subtextColor),
@@ -265,100 +293,59 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
 
         // Badges Row (Year, Citations, Confidence)
         Wrap(
-          spacing: 8,
-          runSpacing: 6,
+          spacing: 6,
+          runSpacing: 4,
           children: [
             if (node.year != null)
-              _buildBadge(
+              _buildMetaTag(
                 Icons.calendar_today_rounded,
                 '${node.year}',
-                const Color(0xFF10B981),
                 isDark,
               ),
-            _buildBadge(
+            _buildMetaTag(
               Icons.format_quote_rounded,
-              '${node.citationCount} Citations',
-              const Color(0xFF3B82F6),
+              '${node.citationCount} citations',
               isDark,
             ),
             if (node.confidence != null)
-              _buildBadge(
+              _buildMetaTag(
                 Icons.verified_outlined,
-                '${node.confidence!.value.toUpperCase()} CONFIDENCE',
-                _confidenceColor(node.confidence!),
-                isDark,
-              ),
-            if (node.archetype != null)
-              _buildBadge(
-                Icons.category_outlined,
-                node.archetype!.toUpperCase(),
-                const Color(0xFF8B5CF6),
+                '${_confidenceLabel(node.confidence!)} confidence',
                 isDark,
               ),
           ],
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // Metrics Breakdown Row (WBC, NCC, Score)
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildMetricColumn(
-                  'WBC Metric',
-                  node.scores?['wbc']?.value,
-                  node.scores?['wbc']?.availability ?? MetricAvailability.unavailable,
-                  isDark,
-                ),
-              ),
-              Container(width: 1, height: 32, color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
-              Expanded(
-                child: _buildMetricColumn(
-                  'NCC Metric',
-                  node.scores?['ncc']?.value,
-                  node.scores?['ncc']?.availability ?? MetricAvailability.unavailable,
-                  isDark,
-                ),
-              ),
-              Container(width: 1, height: 32, color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
-              Expanded(
-                child: _buildMetricColumn(
-                  'Final Score',
-                  node.finalScore,
-                  node.finalScore != null ? MetricAvailability.available : MetricAvailability.unavailable,
-                  isDark,
-                ),
-              ),
-            ],
-          ),
+        _buildConnectionSummary(
+          explanation: explanation,
+          accent: badgeColor,
+          isDark: isDark,
         ),
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
-        // Action Buttons (Responsive Wrap layout - guarantees zero RenderFlex overflow)
+        _buildRankingSignals(node, isDark),
+
+        const SizedBox(height: 10),
+
+        // Action Buttons Row (Directly accessible actions)
         Wrap(
           spacing: 8,
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            // External Paper / PDF
             Tooltip(
-              message: 'Read Original Paper / PDF in Browser',
+              message: 'Open Paper / PDF in Browser',
               child: IconButton.filled(
-                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                icon: const Icon(Icons.open_in_new_rounded, size: 16),
                 style: IconButton.styleFrom(
-                  backgroundColor: AppTheme.accentEmerald,
+                  backgroundColor: isDark ? AppTheme.originGreenDark : AppTheme.originGreen,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.all(10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.all(8),
                 ),
                 onPressed: () {
                   final url = PaperUrlHelper.resolvePaperUrl(
@@ -369,33 +356,55 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 },
               ),
             ),
+
+            // Full Details & BibTeX
             ElevatedButton.icon(
               onPressed: () => widget.onOpenFullDetails?.call(node),
-              icon: const Icon(Icons.menu_book_rounded, size: 16),
-              label: const Text('Full Details & BibTeX', style: TextStyle(fontSize: 12)),
+              icon: const Icon(Icons.menu_book_rounded, size: 15),
+              label: const Text('Paper details', style: TextStyle(fontSize: 11.5)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryBlue,
+                backgroundColor: isDark ? AppTheme.actionPurple : AppTheme.primaryBlue,
                 foregroundColor: Colors.white,
                 visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
+
+            // Re-center Graph
             if (!node.isOrigin)
               OutlinedButton.icon(
                 onPressed: () => widget.onRecenterGraph?.call(node.canonicalId),
-                icon: const Icon(Icons.hub_outlined, size: 16),
-                label: const Text('Re-center', style: TextStyle(fontSize: 12)),
+                icon: const Icon(Icons.refresh_rounded, size: 15),
+                label: const Text('Center graph', style: TextStyle(fontSize: 11.5)),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryLightBlue,
-                  side: const BorderSide(color: AppTheme.primaryBlue),
+                  foregroundColor: isDark ? AppTheme.darkTextSecondary : const Color(0xFF475569),
+                  side: BorderSide(color: isDark ? AppTheme.darkBorder : const Color(0xFFCBD5E1)),
                   visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
+
+            // Focus on Node in Graph
+            OutlinedButton.icon(
+              onPressed: () => widget.onFocusNode?.call(node),
+              icon: const Icon(Icons.center_focus_strong_rounded, size: 15),
+              label: const Text('Focus', style: TextStyle(fontSize: 11.5)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple,
+                side: BorderSide(color: isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
           ],
         ),
+
+        const SizedBox(height: 10),
+
+
       ],
     );
   }
@@ -403,7 +412,6 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   // TAB 2: Prior Works
   Widget _buildPriorWorksTab(bool isDark) {
     final originYear = widget.snapshot.origin.year ?? 2020;
-    // Nodes that are foundational: either scored as prior_score or published prior to origin
     final priorNodes = widget.snapshot.nodes.where((n) {
       if (n.isOrigin) return false;
       final pScore = n.scores?['prior_score']?.value;
@@ -411,20 +419,13 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       if (n.archetype == 'foundational') return true;
       if (n.year != null && n.year! < originYear) return true;
       return false;
-    }).toList();
-
-    // Sort descending by prior_score or year
-    priorNodes.sort((a, b) {
-      final scoreA = a.scores?['prior_score']?.value ?? 0.0;
-      final scoreB = b.scores?['prior_score']?.value ?? 0.0;
-      if (scoreA != scoreB) return scoreB.compareTo(scoreA);
-      return (b.year ?? 0).compareTo(a.year ?? 0);
-    });
+    }).toList()
+      ..sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0));
 
     if (priorNodes.isEmpty) {
       return _buildEmptyTab(
-        'No Prior Works Identified',
-        'No foundational pre-dating literature was classified for this graph.',
+        'No earlier works identified',
+        'No papers classified as earlier or foundational are available in this graph.',
         Icons.history_edu_outlined,
         isDark,
       );
@@ -433,18 +434,13 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: priorNodes.length,
-      itemBuilder: (context, idx) {
-        final item = priorNodes[idx];
-        final score = item.scores?['prior_score']?.value;
-        return _buildNodeListTile(item, idx + 1, score, 'PriorScore', isDark);
-      },
+      itemBuilder: (context, idx) => _buildSimpleNodeTile(priorNodes[idx], isDark),
     );
   }
 
   // TAB 3: Derivative Works
   Widget _buildDerivativeWorksTab(bool isDark) {
     final originYear = widget.snapshot.origin.year ?? 2020;
-    // Nodes that are derivative: either scored as derivative_score or published after origin
     final derivNodes = widget.snapshot.nodes.where((n) {
       if (n.isOrigin) return false;
       final dScore = n.scores?['derivative_score']?.value;
@@ -452,20 +448,13 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       if (n.archetype == 'subsequent' || n.archetype == 'derivative') return true;
       if (n.year != null && n.year! >= originYear) return true;
       return false;
-    }).toList();
-
-    // Sort descending by derivative_score or citations
-    derivNodes.sort((a, b) {
-      final scoreA = a.scores?['derivative_score']?.value ?? 0.0;
-      final scoreB = b.scores?['derivative_score']?.value ?? 0.0;
-      if (scoreA != scoreB) return scoreB.compareTo(scoreA);
-      return b.citationCount.compareTo(a.citationCount);
-    });
+    }).toList()
+      ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
 
     if (derivNodes.isEmpty) {
       return _buildEmptyTab(
-        'No Derivative Works Identified',
-        'No subsequent derivative papers were found citing this seed.',
+        'No later works identified',
+        'No papers classified as later or follow-up research are available in this graph.',
         Icons.trending_up_outlined,
         isDark,
       );
@@ -474,301 +463,344 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: derivNodes.length,
-      itemBuilder: (context, idx) {
-        final item = derivNodes[idx];
-        final score = item.scores?['derivative_score']?.value;
-        return _buildNodeListTile(item, idx + 1, score, 'DerivScore', isDark);
-      },
+      itemBuilder: (context, idx) => _buildSimpleNodeTile(derivNodes[idx], isDark),
     );
   }
 
-  // TAB 4: List View with Search and Filter
+  // TAB 4: List View Tab with Filter & Sorting
   Widget _buildListViewTab(bool isDark) {
-    var list = widget.snapshot.nodes.where((n) {
-      if (_listFilter.isEmpty) return true;
+    var displayNodes = widget.snapshot.nodes.where((n) {
+      if (_listFilter.isEmpty) {
+        return true;
+      }
       final q = _listFilter.toLowerCase();
-      final titleMatch = n.title.toLowerCase().contains(q);
-      final authorMatch = n.authors.any((a) => a.toLowerCase().contains(q));
-      return titleMatch || authorMatch;
+      return n.title.toLowerCase().contains(q) ||
+          n.authors.any((a) => a.toLowerCase().contains(q));
     }).toList();
 
-    if (_sortBy == 'citations') {
-      list.sort((a, b) => b.citationCount.compareTo(a.citationCount));
-    } else if (_sortBy == 'year') {
-      list.sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0));
-    } else if (_sortBy == 'score') {
-      list.sort((a, b) => (b.finalScore ?? 0.0).compareTo(a.finalScore ?? 0.0));
-    }
+    // Sorting
+    displayNodes.sort((a, b) {
+      if (_sortBy == 'year') {
+        return (b.year ?? 0).compareTo(a.year ?? 0);
+      } else if (_sortBy == 'score') {
+        return (b.finalScore ?? 0.0).compareTo(a.finalScore ?? 0.0);
+      }
+      return b.citationCount.compareTo(a.citationCount);
+    });
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 36,
-                  child: TextField(
-                    controller: _searchFilterController,
-                    onChanged: (val) => setState(() => _listFilter = val.trim()),
-                    style: const TextStyle(fontSize: 12),
-                    decoration: InputDecoration(
-                      hintText: 'Filter by title or author...',
-                      prefixIcon: const Icon(Icons.search, size: 16),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      filled: true,
-                      fillColor: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
-                    ),
+                child: TextField(
+                  controller: _listFilterController,
+                  onChanged: (val) => setState(() => _listFilter = val.trim()),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Search papers…',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    suffixIcon: _listFilter.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 16),
+                            onPressed: () {
+                              _listFilterController.clear();
+                              setState(() => _listFilter = '');
+                            },
+                          )
+                        : null,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              DropdownButton<String>(
-                value: _sortBy,
-                underline: const SizedBox(),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isDark ? AppTheme.darkTextPrimary : AppTheme.primaryBlue,
-                  fontWeight: FontWeight.bold,
+              PopupMenuButton<String>(
+                initialValue: _sortBy,
+                onSelected: (val) => setState(() => _sortBy = val),
+                tooltip: 'Sort papers',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _sortBy == 'citations'
+                            ? 'Citations'
+                            : (_sortBy == 'year' ? 'Year' : 'Score'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_drop_down_rounded, size: 16),
+                    ],
+                  ),
                 ),
-                dropdownColor: isDark ? AppTheme.darkCard : Colors.white,
-                items: const [
-                  DropdownMenuItem(value: 'citations', child: Text('Citations')),
-                  DropdownMenuItem(value: 'year', child: Text('Year')),
-                  DropdownMenuItem(value: 'score', child: Text('Score')),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'citations', child: Text('Citations')),
+                  PopupMenuItem(value: 'year', child: Text('Year')),
+                  PopupMenuItem(value: 'score', child: Text('Overall relevance')),
                 ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _sortBy = val);
-                },
               ),
             ],
           ),
         ),
+        const Divider(height: 1, thickness: 1),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            itemCount: list.length,
-            itemBuilder: (context, idx) {
-              final item = list[idx];
-              return _buildNodeListTile(
-                item,
-                idx + 1,
-                item.finalScore,
-                'Score',
-                isDark,
-              );
-            },
+            itemCount: displayNodes.length,
+            itemBuilder: (context, idx) => _buildSimpleNodeTile(displayNodes[idx], isDark),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildNodeListTile(
-    GraphNode node,
-    int rank,
-    double? scoreValue,
-    String scoreLabel,
-    bool isDark,
-  ) {
-    final isSelected = node.canonicalId == widget.selectedNode?.canonicalId;
-    final cardBg = isSelected
-        ? (isDark ? AppTheme.primaryLightBlue.withAlpha(50) : const Color(0xFFDBEAFE))
-        : (isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC));
-    final borderColor = isSelected
-        ? AppTheme.accentCyan
-        : (isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0));
-
-    return GestureDetector(
-      onTap: () {
-        widget.onNodeSelected(node);
-        _tabController.animateTo(0);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1.0),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 13,
-              backgroundColor: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
-              child: Text(
-                '$rank',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : AppTheme.primaryBlue,
+  Widget _buildConnectionSummary({
+    required ConnectionExplanation explanation,
+    required Color accent,
+    required bool isDark,
+  }) {
+    final textColor =
+        isDark ? AppTheme.darkTextPrimary : const Color(0xFF111827);
+    final subtextColor =
+        isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: accent.withAlpha(isDark ? 18 : 12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withAlpha(55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.link_rounded, size: 17, color: accent),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  'Why this paper appears',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    node.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              if (explanation.evidenceLimited)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.darkSurface
+                        : const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Limited evidence',
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      color: AppTheme.accentAmber,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${node.year ?? "N/A"} • ${node.citationCount} citations',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (scoreValue != null) ...[
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    scoreValue.toStringAsFixed(2),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF38BDF8),
-                    ),
-                  ),
-                  Text(
-                    scoreLabel,
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                    ),
-                  ),
-                ],
-              ),
+                ),
             ],
-            const SizedBox(width: 4),
-            IconButton(
-              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-              tooltip: 'Open Paper in Browser',
-              color: isDark ? const Color(0xFF38BDF8) : AppTheme.primaryBlue,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              onPressed: () {
-                final url = PaperUrlHelper.resolvePaperUrl(
-                  canonicalId: node.canonicalId,
-                  title: node.title,
-                );
-                PaperUrlHelper.launchPaper(context, url: url, title: node.title);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetricColumn(
-    String label,
-    double? value,
-    MetricAvailability availability,
-    bool isDark,
-  ) {
-    final valText = value != null ? value.toStringAsFixed(2) : '—';
-    final subText = availability == MetricAvailability.available ? 'Evaluated' : availability.value;
-    final color = availability == MetricAvailability.available ? const Color(0xFF10B981) : const Color(0xFF94A3B8);
-
-    return Column(
-      children: [
-        Text(
-          valText,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-          ),
-        ),
-        Text(
-          subText,
-          style: TextStyle(fontSize: 9, color: color),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBadge(IconData icon, String text, Color color, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withAlpha(isDark ? 35 : 25),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withAlpha(isDark ? 80 : 120)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
+          const SizedBox(height: 8),
           Text(
-            text,
+            explanation.title,
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: color,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: textColor,
             ),
           ),
+          const SizedBox(height: 3),
+          Text(
+            explanation.description,
+            style: TextStyle(fontSize: 11.5, height: 1.4, color: subtextColor),
+          ),
+          if (explanation.evidence.isNotEmpty) ...[
+            const SizedBox(height: 9),
+            for (final evidence in explanation.evidence)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.check_circle_outline_rounded,
+                        size: 14, color: accent),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          style: TextStyle(
+                            fontSize: 10.8,
+                            height: 1.35,
+                            color: subtextColor,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: '${evidence.label}: ',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: textColor,
+                              ),
+                            ),
+                            TextSpan(text: evidence.value),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildEmptyTab(String title, String desc, IconData icon, bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 36,
-              color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+  Widget _buildRankingSignals(GraphNode node, bool isDark) {
+    final signals = <Widget>[
+      _buildMetricSignal(
+        label: 'Shared references',
+        result: node.scores?['wbc'],
+        help: 'Similarity based on references both papers cite.',
+        isDark: isDark,
+      ),
+      _buildMetricSignal(
+        label: 'Co-citation',
+        result: node.scores?['ncc'],
+        help: 'How strongly the papers are cited together.',
+        isDark: isDark,
+      ),
+      _buildMetricSignal(
+        label: 'Overall relevance',
+        result: MetricResult(
+          value: node.finalScore,
+          availability: node.finalScore == null
+              ? MetricAvailability.unavailable
+              : MetricAvailability.available,
+        ),
+        help: 'Combined ranking score returned by the graph service.',
+        isDark: isDark,
+      ),
+      if (node.scores?.containsKey('prior_score') == true)
+        _buildMetricSignal(
+          label: 'Foundation signal',
+          result: node.scores?['prior_score'],
+          help: 'Signal used to classify earlier foundational work.',
+          isDark: isDark,
+        ),
+      if (node.scores?.containsKey('derivative_score') == true)
+        _buildMetricSignal(
+          label: 'Follow-up signal',
+          result: node.scores?['derivative_score'],
+          help: 'Signal used to classify later follow-up work.',
+          isDark: isDark,
+        ),
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Ranking signals',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : const Color(0xFF111827),
             ),
-            const SizedBox(height: 8),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'These scores explain ranking, not research quality.',
+            style: TextStyle(
+              fontSize: 10.5,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 9),
+          Wrap(spacing: 8, runSpacing: 8, children: signals),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricSignal({
+    required String label,
+    required MetricResult? result,
+    required String help,
+    required bool isDark,
+  }) {
+    final value = _metricDisplayValue(result);
+    final available = result?.isAvailable == true;
+    final tooltip = result?.reason?.trim().isNotEmpty == true
+        ? result!.reason!.trim()
+        : help;
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 104),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkCard : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              title,
+              label,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                fontSize: 9.8,
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : const Color(0xFF64748B),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
-              desc,
-              textAlign: TextAlign.center,
+              value,
               style: TextStyle(
-                fontSize: 11,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: available
+                    ? (isDark
+                        ? AppTheme.darkTextPrimary
+                        : const Color(0xFF111827))
+                    : (isDark
+                        ? AppTheme.darkTextSecondary
+                        : const Color(0xFF94A3B8)),
               ),
             ),
           ],
@@ -777,16 +809,133 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     );
   }
 
-  Color _confidenceColor(ConfidenceLevel level) {
-    switch (level) {
-      case ConfidenceLevel.high:
-        return const Color(0xFF10B981);
-      case ConfidenceLevel.medium:
-        return const Color(0xFF38BDF8);
-      case ConfidenceLevel.low:
-        return const Color(0xFFF59E0B);
-      case ConfidenceLevel.insufficient:
-        return const Color(0xFFEF4444);
+  String _metricDisplayValue(MetricResult? result) {
+    if (result?.isAvailable == true) {
+      return '${(result!.value!.clamp(0.0, 1.0) * 100).round()}%';
     }
+    switch (result?.availability) {
+      case MetricAvailability.providerError:
+        return 'Source unavailable';
+      case MetricAvailability.notApplicable:
+        return 'Not applicable';
+      case MetricAvailability.available:
+      case MetricAvailability.unavailable:
+      case null:
+        return 'Not enough data';
+    }
+  }
+
+  String _confidenceLabel(ConfidenceLevel confidence) {
+    switch (confidence) {
+      case ConfidenceLevel.high:
+        return 'High';
+      case ConfidenceLevel.medium:
+        return 'Medium';
+      case ConfidenceLevel.low:
+        return 'Low';
+      case ConfidenceLevel.insufficient:
+        return 'Limited';
+    }
+  }
+
+  Widget _buildSimpleNodeTile(GraphNode node, bool isDark) {
+    final isSelected = widget.selectedNode?.canonicalId == node.canonicalId;
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        dense: true,
+        selected: isSelected,
+        selectedTileColor: isDark ? AppTheme.actionPurple.withAlpha(30) : const Color(0xFFEEF2FF),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        title: Text(
+          node.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+            color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF111827),
+          ),
+        ),
+        subtitle: Text(
+          '${node.year ?? 'N/A'} · ${node.citationCount} citations',
+          style: TextStyle(
+            fontSize: 11,
+            color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF6B7280),
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+        onTap: () {
+          widget.onNodeSelected(node);
+          _tabController.animateTo(0);
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyTab(String title, String description, IconData icon, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF94A3B8)),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetaTag(IconData icon, String text, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF334155),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

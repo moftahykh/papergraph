@@ -44,7 +44,7 @@ GraphSnapshot createSmokeSnapshot({
               code: 'DEGRADED_SOURCE',
               message: 'Semantic Scholar rate limited; degraded completeness.',
               severity: 'warning',
-            )
+            ),
           ]
         : const [],
     nodes: const [
@@ -61,7 +61,10 @@ GraphSnapshot createSmokeSnapshot({
         finalScore: 1.0,
         confidence: ConfidenceLevel.high,
         scores: {
-          'wbc': MetricResult(value: 0.90, availability: MetricAvailability.available),
+          'wbc': MetricResult(
+            value: 0.90,
+            availability: MetricAvailability.available,
+          ),
         },
       ),
       GraphNode(
@@ -77,7 +80,10 @@ GraphSnapshot createSmokeSnapshot({
         finalScore: 0.85,
         confidence: ConfidenceLevel.medium,
         scores: {
-          'wbc': MetricResult(value: 0.70, availability: MetricAvailability.available),
+          'wbc': MetricResult(
+            value: 0.70,
+            availability: MetricAvailability.available,
+          ),
         },
       ),
     ],
@@ -102,15 +108,13 @@ Widget createSmokeTestApp({
     providers: [
       BlocProvider<GraphCubit>.value(value: cubit),
       BlocProvider<PaperDetailsCubit>(create: (_) => PaperDetailsCubit()),
-      BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
+      BlocProvider<LibraryCubit>(create: (_) => LibraryCubit.seeded()),
       BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),
     ],
     child: MaterialApp(
       theme: AppTheme.darkTheme,
       home: Scaffold(
-        body: ConnectedGraphView(
-          initialSnapshot: initialSnapshot,
-        ),
+        body: ConnectedGraphView(initialSnapshot: initialSnapshot),
       ),
     ),
   );
@@ -118,91 +122,120 @@ Widget createSmokeTestApp({
 
 void main() {
   group('Release Smoke Tests: 4 Core UI States', () {
-    testWidgets('1. Loading State renders progress bar, stage description, and cancel action', (tester) async {
-      final cubit = TestGraphCubit(const GraphPolling(
-        graphId: 'job-smoke-1',
-        status: GraphJobStatus.computingWbc,
-        currentStage: GraphJobStatus.computingWbc,
-        progress: 0.55,
-      ));
+    testWidgets(
+      '1. Loading State renders progress bar, stage description, and cancel action',
+      (tester) async {
+        final cubit = TestGraphCubit(
+          const GraphPolling(
+            graphId: 'job-smoke-1',
+            status: GraphJobStatus.computingWbc,
+            currentStage: GraphJobStatus.computingWbc,
+            progress: 0.55,
+          ),
+        );
 
-      await tester.pumpWidget(createSmokeTestApp(cubit: cubit));
-      await tester.pump();
+        await tester.pumpWidget(createSmokeTestApp(cubit: cubit));
+        await tester.pump();
 
-      // Verify progress indicators
-      expect(find.byType(Lottie), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+        // Verify progress indicators
+        expect(find.byType(Lottie), findsOneWidget);
+        expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
-      // Verify stage description text
-      expect(find.text('Computing Bibliographic Coupling (WBC) matrix...'), findsOneWidget);
+        // Verify stage description text
+        expect(find.text('Comparing shared references…'), findsOneWidget);
 
-      // Verify Cancel Job action button
-      expect(find.text('Cancel Job'), findsOneWidget);
+        // The current API has no server-side cancellation endpoint, so the UI
+        // accurately offers to stop client tracking instead.
+        expect(find.text('Stop tracking'), findsOneWidget);
 
-      // Verify Contextual "Notify me when done" opt-in button exists
-      expect(find.text('Notify me when done'), findsOneWidget);
-    });
+        // Users can leave while the app-level job continues polling.
+        expect(find.text('Continue exploring'), findsOneWidget);
 
-    testWidgets('2. Error State renders error icon, error message, and retry button', (tester) async {
-      final cubit = TestGraphCubit(const GraphError(
-        'Could not connect to PaperGraph server. Connection refused.',
-        canRetry: true,
-        graphId: 'failed_job_1',
-      ));
+        // Verify Contextual "Notify me when done" opt-in button exists
+        expect(find.text('Notify me when done'), findsOneWidget);
+      },
+    );
 
-      await tester.pumpWidget(createSmokeTestApp(cubit: cubit));
-      await tester.pump();
+    testWidgets(
+      '2. Error State renders error icon, error message, and retry button',
+      (tester) async {
+        final cubit = TestGraphCubit(
+          const GraphError(
+            'Could not connect to PaperGraph server. Connection refused.',
+            canRetry: true,
+            graphId: 'failed_job_1',
+          ),
+        );
 
-      // Verify error icon
-      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+        await tester.pumpWidget(createSmokeTestApp(cubit: cubit));
+        await tester.pump();
 
-      // Verify error title and message
-      expect(find.text('Unable to Generate Graph'), findsOneWidget);
-      expect(find.text('Could not connect to PaperGraph server. Connection refused.'), findsOneWidget);
+        // Verify error icon
+        expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
 
-      // Verify Retry button
-      expect(find.text('Retry'), findsOneWidget);
-    });
+        // Verify error title and message
+        expect(find.text('Unable to Generate Graph'), findsOneWidget);
+        expect(
+          find.text(
+            'Could not connect to PaperGraph server. Connection refused.',
+          ),
+          findsOneWidget,
+        );
 
-    testWidgets('3. Partial State renders graph canvas and persistent partial warning banner', (tester) async {
-      final partialSnapshot = createSmokeSnapshot(isPartial: true);
-      final cubit = TestGraphCubit(GraphLoaded(
-        snapshot: partialSnapshot,
-        isPartial: true,
-        warnings: partialSnapshot.warnings,
-      ));
+        // Verify Retry button
+        expect(find.text('Retry'), findsOneWidget);
+      },
+    );
 
-      await tester.pumpWidget(createSmokeTestApp(
-        cubit: cubit,
-        initialSnapshot: partialSnapshot,
-      ));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+    testWidgets(
+      '3. Partial State renders graph canvas and persistent partial warning banner',
+      (tester) async {
+        final partialSnapshot = createSmokeSnapshot(isPartial: true);
+        final cubit = TestGraphCubit(
+          GraphLoaded(
+            snapshot: partialSnapshot,
+            isPartial: true,
+            warnings: partialSnapshot.warnings,
+          ),
+        );
 
-      // Verify CustomPaint graph canvas is rendered
-      expect(find.byType(CustomPaint), findsWidgets);
+        await tester.pumpWidget(
+          createSmokeTestApp(cubit: cubit, initialSnapshot: partialSnapshot),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      // Verify partial warning banner is present with warning message
-      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-      expect(find.text('Semantic Scholar rate limited; degraded completeness.'), findsOneWidget);
-    });
+        // Verify CustomPaint graph canvas is rendered
+        expect(find.byType(CustomPaint), findsWidgets);
 
-    testWidgets('4. Offline State renders cached snapshot with offline badge', (tester) async {
-      final cachedSnapshot = createSmokeSnapshot(isPartial: false, isExpired: false);
-      final cubit = TestGraphCubit(GraphLoaded(
-        snapshot: cachedSnapshot,
-        fromOfflineCache: true,
-      ));
+        // Verify partial warning banner is present with warning message
+        expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+        expect(
+          find.text('Semantic Scholar rate limited; degraded completeness.'),
+          findsOneWidget,
+        );
+      },
+    );
 
-      await tester.pumpWidget(createSmokeTestApp(
-        cubit: cubit,
-        initialSnapshot: cachedSnapshot,
-      ));
+    testWidgets('4. Offline State renders cached snapshot with offline badge', (
+      tester,
+    ) async {
+      final cachedSnapshot = createSmokeSnapshot(
+        isPartial: false,
+        isExpired: false,
+      );
+      final cubit = TestGraphCubit(
+        GraphLoaded(snapshot: cachedSnapshot, fromOfflineCache: true),
+      );
+
+      await tester.pumpWidget(
+        createSmokeTestApp(cubit: cubit, initialSnapshot: cachedSnapshot),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       // Verify offline cached badge is displayed
-      expect(find.text('Offline Cached Graph Snapshot'), findsOneWidget);
+      expect(find.text('Available offline'), findsOneWidget);
       expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
 
       // Verify canvas rendered

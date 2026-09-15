@@ -91,7 +91,8 @@ enum GraphJobStatus {
     }
   }
 
-  bool get isDone => this == GraphJobStatus.completed || this == GraphJobStatus.partial;
+  bool get isDone =>
+      this == GraphJobStatus.completed || this == GraphJobStatus.partial;
   bool get isFailed => this == GraphJobStatus.failed;
   bool get isActive => !isDone && !isFailed;
 }

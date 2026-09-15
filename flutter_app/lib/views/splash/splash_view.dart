@@ -6,6 +6,7 @@ import '../../core/network/api_client.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../auth/login_view.dart';
 import '../main_nav_view.dart';
 import '../onboarding/onboarding_view.dart';
 
@@ -16,7 +17,8 @@ class SplashView extends StatefulWidget {
   State<SplashView> createState() => _SplashViewState();
 }
 
-class _SplashViewState extends State<SplashView> with SingleTickerProviderStateMixin {
+class _SplashViewState extends State<SplashView>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
 
@@ -49,27 +51,46 @@ class _SplashViewState extends State<SplashView> with SingleTickerProviderStateM
     final onboardingCompleted = HiveService.isOnboardingCompleted();
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    if (onboardingCompleted || authProvider.isAuthenticated) {
+    if (!onboardingCompleted) {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 800),
-          pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationView(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const OnboardingView(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) =>
               FadeTransition(opacity: animation, child: child),
         ),
       );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 800),
-          pageBuilder: (context, animation, secondaryAnimation) => const OnboardingView(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              FadeTransition(opacity: animation, child: child),
-        ),
-      );
+      return;
     }
+
+    if (!authProvider.isAuthenticated) {
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 800),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const LoginView(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 800),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            MainNavigationView(
+              requireInitialUnlock: HiveService.isBiometricsEnabled(),
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(opacity: animation, child: child),
+      ),
+    );
   }
 
   @override

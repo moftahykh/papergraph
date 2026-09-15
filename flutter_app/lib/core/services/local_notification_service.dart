@@ -20,7 +20,8 @@ class LocalNotificationService {
 
   static const String channelId = 'paper_graph_channel';
   static const String channelName = 'PaperGraph Notifications';
-  static const String channelDescription = 'Literature synthesis and alerts for PaperGraph';
+  static const String channelDescription =
+      'Literature synthesis and alerts for PaperGraph';
 
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -31,7 +32,9 @@ class LocalNotificationService {
     if (_isInitialized) return;
     try {
       final activePlugin = plugin ?? _notificationsPlugin;
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
       const darwinSettings = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -109,7 +112,8 @@ class LocalNotificationService {
   /// Whether the contextual permission prompt has already been shown.
   static bool isContextualPromptShown() {
     if (!Hive.isBoxOpen(HiveService.settingsBoxName)) return false;
-    return HiveService.settingsBox.get(_promptShownKey, defaultValue: false) as bool;
+    return HiveService.settingsBox.get(_promptShownKey, defaultValue: false)
+        as bool;
   }
 
   /// Records that the contextual prompt was presented.
@@ -122,11 +126,18 @@ class LocalNotificationService {
   /// Checks if notifications are specifically requested for a given graph job.
   static bool isGraphNotificationEnabled(String graphId) {
     if (!Hive.isBoxOpen(HiveService.settingsBoxName)) return false;
-    return HiveService.settingsBox.get('$_graphNotifPrefix$graphId', defaultValue: false) as bool;
+    return HiveService.settingsBox.get(
+          '$_graphNotifPrefix$graphId',
+          defaultValue: false,
+        )
+        as bool;
   }
 
   /// Sets notification preference for a specific graph job.
-  static Future<void> setGraphNotificationEnabled(String graphId, bool enabled) async {
+  static Future<void> setGraphNotificationEnabled(
+    String graphId,
+    bool enabled,
+  ) async {
     if (Hive.isBoxOpen(HiveService.settingsBoxName)) {
       await HiveService.settingsBox.put('$_graphNotifPrefix$graphId', enabled);
     }
@@ -146,15 +157,18 @@ class LocalNotificationService {
       isPartial: isPartial,
     );
 
-    // 2. Dispatch OS system tray notification if enabled or permission granted
+    // 2. Dispatch an OS notification only when this graph was explicitly
+    // opted in and the operating-system permission is still granted.
     final wasEnabled = isGraphNotificationEnabled(graphId);
     bool permitted = false;
     try {
       permitted = await hasPermission();
     } catch (_) {}
 
-    if (wasEnabled || permitted) {
-      final title = isPartial ? 'Graph Ready (Partial)' : 'Literature Graph Ready';
+    if (wasEnabled && permitted) {
+      final title = isPartial
+          ? 'Graph Ready (Partial)'
+          : 'Literature Graph Ready';
       final body = isPartial
           ? 'Synthesized $nodeCount papers with partial source coverage.'
           : 'Synthesized $nodeCount papers and citation relationships.';
@@ -186,7 +200,7 @@ class LocalNotificationService {
       permitted = await hasPermission();
     } catch (_) {}
 
-    if (wasEnabled || permitted) {
+    if (wasEnabled && permitted) {
       await showSystemNotification(
         id: graphId.hashCode.abs() % 100000,
         title: 'Graph Generation Failed',

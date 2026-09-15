@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../cubits/graph/graph_cubit.dart';
+import '../../cubits/graph/graph_state.dart';
 import '../../cubits/library/library_cubit.dart';
 import '../../cubits/library/library_state.dart';
 import '../../cubits/notification/notification_cubit.dart';
@@ -57,13 +59,40 @@ class _HomeViewState extends State<HomeView> {
     return true;
   }
 
-  void _openGraphFor(String identifier) {
+  Future<void> _openGraphFor(String identifier) async {
+    final graphState = context.read<GraphCubit>().state;
+    if (graphState is GraphCreating || graphState is GraphPolling) {
+      _showActiveGraphJobMessage();
+      return;
+    }
+
     if (!_checkGuestSearchLimit()) return;
     final clean = identifier.trim();
     if (clean.isEmpty) return;
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ConnectedGraphView(seedDoi: clean)),
     );
+    if (!mounted) return;
+    context.read<LibraryCubit>().loadLibrary();
+  }
+
+  Future<void> _openActiveGraphJob() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ConnectedGraphView()));
+    if (!mounted) return;
+    context.read<LibraryCubit>().loadLibrary();
+  }
+
+  void _showActiveGraphJobMessage() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('A literature graph is already being built.'),
+          action: SnackBarAction(label: 'View', onPressed: _openActiveGraphJob),
+        ),
+      );
   }
 
   /// Matches DOIs, paper URLs, and bare IDs (arXiv, PMID/PMC, OpenAlex, S2) —
@@ -93,7 +122,9 @@ class _HomeViewState extends State<HomeView> {
         title: Row(
           children: [
             Image.asset(
-              isDark ? 'assets/images/logo_dark.png' : 'assets/images/logo_light.png',
+              isDark
+                  ? 'assets/images/logo_dark.png'
+                  : 'assets/images/logo_light.png',
               width: 24,
               height: 24,
               fit: BoxFit.contain,
@@ -108,7 +139,9 @@ class _HomeViewState extends State<HomeView> {
         actions: [
           BlocBuilder<NotificationCubit, NotificationState>(
             builder: (context, notifState) {
-              final unreadCount = notifState.notifications.where((n) => !n.isRead).length;
+              final unreadCount = notifState.notifications
+                  .where((n) => !n.isRead)
+                  .length;
               return IconButton(
                 tooltip: 'Notifications',
                 icon: Badge(
@@ -136,25 +169,25 @@ class _HomeViewState extends State<HomeView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               Text(
                 'Explore connected literature.',
                 style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: -0.4,
-                  height: 1.2,
+                  height: 1.25,
                   color: isDark
                       ? AppTheme.darkTextPrimary
                       : AppTheme.lightTextPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
-                'Search any paper to grow its graph — prior works, derivative works, and the neighbors in between.',
+                'Discover the papers connected to your research — citations, similarities, and foundational prior works.',
                 style: TextStyle(
-                  fontSize: 13.5,
-                  height: 1.5,
+                  fontSize: 13,
+                  height: 1.45,
                   color: isDark
                       ? AppTheme.darkTextSecondary
                       : AppTheme.lightTextSecondary,
@@ -164,15 +197,105 @@ class _HomeViewState extends State<HomeView> {
               _buildGuestTrialBanner(isDark),
               const SizedBox(height: 12),
               _buildSearchField(isDark),
+              _buildActiveGraphJob(isDark, accent),
               const SizedBox(height: 6),
               _buildSearchResults(isDark, accent),
-              const SizedBox(height: 26),
+              const SizedBox(height: 24),
               _buildRecentGraphs(isDark, accent),
               const SizedBox(height: 24),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildActiveGraphJob(bool isDark, Color accent) {
+    return BlocBuilder<GraphCubit, GraphState>(
+      builder: (context, graphState) {
+        if (graphState is! GraphCreating && graphState is! GraphPolling) {
+          return const SizedBox.shrink();
+        }
+
+        final progress = graphState is GraphPolling
+            ? graphState.progress.clamp(0.05, 0.98).toDouble()
+            : 0.05;
+        final originId = graphState is GraphCreating
+            ? graphState.originId
+            : (graphState as GraphPolling).originId;
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Material(
+            color: accent.withAlpha(isDark ? 24 : 14),
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: _openActiveGraphJob,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 38,
+                      height: 38,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 3,
+                        backgroundColor: accent.withAlpha(35),
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Building literature graph',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            originId.isEmpty
+                                ? '${(progress * 100).round()}% completed'
+                                : '${(progress * 100).round()}% · $originId',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'View',
+                      style: TextStyle(
+                        color: accent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.chevron_right_rounded, color: accent, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -189,21 +312,33 @@ class _HomeViewState extends State<HomeView> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: hasSearchLeft
-            ? (isDark ? AppTheme.primaryLightBlue.withAlpha(22) : const Color(0xFFF0F9FF))
-            : (isDark ? AppTheme.accentRose.withAlpha(22) : const Color(0xFFFFF1F2)),
+            ? (isDark
+                  ? AppTheme.primaryLightBlue.withAlpha(22)
+                  : const Color(0xFFF0F9FF))
+            : (isDark
+                  ? AppTheme.accentRose.withAlpha(22)
+                  : const Color(0xFFFFF1F2)),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: hasSearchLeft
-              ? (isDark ? AppTheme.accentCyan.withAlpha(60) : const Color(0xFFBAE6FD))
-              : (isDark ? AppTheme.accentRose.withAlpha(60) : const Color(0xFFFECDD3)),
+              ? (isDark
+                    ? AppTheme.accentCyan.withAlpha(60)
+                    : const Color(0xFFBAE6FD))
+              : (isDark
+                    ? AppTheme.accentRose.withAlpha(60)
+                    : const Color(0xFFFECDD3)),
         ),
       ),
       child: Row(
         children: [
           Icon(
-            hasSearchLeft ? Icons.info_outline_rounded : Icons.lock_outline_rounded,
+            hasSearchLeft
+                ? Icons.info_outline_rounded
+                : Icons.lock_outline_rounded,
             size: 18,
-            color: hasSearchLeft ? AppTheme.primaryLightBlue : AppTheme.accentRose,
+            color: hasSearchLeft
+                ? AppTheme.primaryLightBlue
+                : AppTheme.accentRose,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -224,7 +359,10 @@ class _HomeViewState extends State<HomeView> {
             GestureDetector(
               onTap: () => AuthGateBottomSheet.show(context),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.accentRose,
                   borderRadius: BorderRadius.circular(8),
@@ -253,7 +391,8 @@ class _HomeViewState extends State<HomeView> {
         setState(() {}); // refresh the clear-button visibility
 
         final auth = Provider.of<AuthProvider>(context, listen: false);
-        final hasSearchLeft = auth.isAuthenticated || HiveService.getGuestSearchCount() < 1;
+        final hasSearchLeft =
+            auth.isAuthenticated || HiveService.getGuestSearchCount() < 1;
         if (!hasSearchLeft) {
           // Do not spam backend queries when guest limit is exhausted
           return;
@@ -268,10 +407,10 @@ class _HomeViewState extends State<HomeView> {
         }
       },
       onSubmitted: (value) {
-        if (!_checkGuestSearchLimit()) return;
         if (_looksLikeIdentifier(value)) {
           _openGraphFor(value);
         } else {
+          if (!_checkGuestSearchLimit()) return;
           context.read<SearchCubit>().search(value, immediate: true);
         }
       },
@@ -309,8 +448,10 @@ class _HomeViewState extends State<HomeView> {
           );
         }
         if (state is SearchEmpty) {
-          return _hint(isDark,
-              'No papers matched. Try a full title or paste the DOI directly.');
+          return _hint(
+            isDark,
+            'No papers matched. Try a full title or paste the DOI directly.',
+          );
         }
         if (state is SearchError) {
           return _hint(isDark, state.message);
@@ -420,7 +561,7 @@ class _HomeViewState extends State<HomeView> {
         return BlocBuilder<LibraryCubit, LibraryState>(
           builder: (context, libState) {
             final graphs = libState is LibraryLoaded
-                ? libState.cachedGraphs
+                ? libState.recentGraphs
                 : const <GraphSnapshot>[];
 
             return Column(
@@ -454,8 +595,10 @@ class _HomeViewState extends State<HomeView> {
                 ),
                 const SizedBox(height: 6),
                 if (graphs.isEmpty)
-                  _hint(isDark,
-                      'Graphs you generate will appear here for quick re-opening — even offline.')
+                  _hint(
+                    isDark,
+                    'Graphs you generate will appear here for quick re-opening — even offline.',
+                  )
                 else
                   for (final graph in graphs.take(3))
                     _recentGraphTile(graph, isDark, accent),
@@ -476,11 +619,20 @@ class _HomeViewState extends State<HomeView> {
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ConnectedGraphView(initialSnapshot: graph),
-        ),
-      ),
+      onTap: () async {
+        final graphState = context.read<GraphCubit>().state;
+        if (graphState is GraphCreating || graphState is GraphPolling) {
+          _showActiveGraphJobMessage();
+          return;
+        }
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ConnectedGraphView(initialSnapshot: graph),
+          ),
+        );
+        if (!mounted) return;
+        context.read<LibraryCubit>().loadLibrary();
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
         child: Row(

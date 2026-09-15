@@ -10,8 +10,9 @@ class GraphCanvasPainter extends CustomPainter {
   final String? selectedNodeId;
   final bool isDark;
   final Map<String, Offset>? draggedPositions;
+  final double zoomScale;
 
-  // Cached year bounds for gradient mapping
+  // Cached year and citation bounds
   final int minYear;
   final int maxYear;
   final int maxCitations;
@@ -23,9 +24,10 @@ class GraphCanvasPainter extends CustomPainter {
     this.selectedNodeId,
     this.isDark = true,
     this.draggedPositions,
-  })  : minYear = calcMinYear(nodes),
-        maxYear = calcMaxYear(nodes),
-        maxCitations = calcMaxCitations(nodes);
+    this.zoomScale = 1.0,
+  }) : minYear = calcMinYear(nodes),
+       maxYear = calcMaxYear(nodes),
+       maxCitations = calcMaxCitations(nodes);
 
   static int calcMinYear(List<GraphNode> nodes) {
     int min = 3000;
@@ -69,19 +71,19 @@ class GraphCanvasPainter extends CustomPainter {
 
   /// Resolves node position (either dragged override or canonical coordinate)
   Offset getNodePosition(GraphNode node) {
-    if (draggedPositions != null && draggedPositions!.containsKey(node.canonicalId)) {
+    if (draggedPositions != null &&
+        draggedPositions!.containsKey(node.canonicalId)) {
       return draggedPositions![node.canonicalId]!;
     }
     return Offset(node.x, node.y);
   }
 
-  /// Color mapping by publication year (Mint-Teal for older -> Obsidian Blue for newer)
+  /// Color mapping by publication year (Mint Teal for older -> Cyan -> Electric Blue for newer)
   Color getNodeColor(int? year) {
     if (year == null) return const Color(0xFF64748B);
     if (maxYear == minYear) return const Color(0xFF2563EB);
 
     final t = ((year - minYear) / (maxYear - minYear)).clamp(0.0, 1.0);
-    // Gradient: Mint Teal (0xFF10B981) -> Sky Cyan (0xFF06B6D4) -> Electric Blue (0xFF2563EB)
     if (t < 0.5) {
       return Color.lerp(
         const Color(0xFF10B981),
@@ -97,6 +99,20 @@ class GraphCanvasPainter extends CustomPainter {
     }
   }
 
+  /// Semantic node coloring:
+  /// - Purple for Selected node
+  /// - Emerald Green for Seed Origin
+  /// - Year gradient tone for standard literature nodes
+  Color resolveNodeColor(GraphNode node, bool isSelected) {
+    if (isSelected) {
+      return isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple;
+    }
+    if (node.isOrigin) {
+      return isDark ? AppTheme.originGreenDark : AppTheme.originGreen;
+    }
+    return getNodeColor(node.year);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final nodeMap = <String, GraphNode>{};
@@ -106,7 +122,10 @@ class GraphCanvasPainter extends CustomPainter {
     for (final n in nodes) {
       nodeMap[n.canonicalId] = n;
       positionMap[n.canonicalId] = getNodePosition(n);
-      radiusMap[n.canonicalId] = computeNodeRadius(n.citationCount, maxCitations);
+      radiusMap[n.canonicalId] = computeNodeRadius(
+        n.citationCount,
+        maxCitations,
+      );
     }
 
     final connectedNodeIds = <String>{};
@@ -131,7 +150,7 @@ class GraphCanvasPainter extends CustomPainter {
     // 3. Draw nodes, halos, and selection rings
     _drawNodes(canvas, nodeMap, positionMap, radiusMap, connectedNodeIds);
 
-    // 4. Draw smart, de-cluttered node labels
+    // 4. Draw high-contrast, uncluttered node labels
     _drawLabels(canvas, nodeMap, positionMap, radiusMap, connectedNodeIds);
   }
 
@@ -141,33 +160,58 @@ class GraphCanvasPainter extends CustomPainter {
     Map<String, double> radiusMap,
     Set<String> connectedNodeIds,
   ) {
+    final cyanColor = isDark
+        ? AppTheme.similarityCyanDark
+        : AppTheme.similarityCyan;
+
     for (final edge in similarityEdges) {
       final p1 = posMap[edge.source];
       final p2 = posMap[edge.target];
       if (p1 == null || p2 == null) continue;
+      final sourceRadius = radiusMap[edge.source] ?? 14.0;
+      final targetRadius = radiusMap[edge.target] ?? 14.0;
+      final dx = p2.dx - p1.dx;
+      final dy = p2.dy - p1.dy;
+      final distance = math.sqrt(dx * dx + dy * dy);
+      if (distance <= sourceRadius + targetRadius) continue;
+      final ux = dx / distance;
+      final uy = dy / distance;
+      final start = Offset(
+        p1.dx + ux * sourceRadius,
+        p1.dy + uy * sourceRadius,
+      );
+      final end = Offset(p2.dx - ux * targetRadius, p2.dy - uy * targetRadius);
 
-      final isConnectedToSelected = selectedNodeId != null &&
+      final isConnectedToSelected =
+          selectedNodeId != null &&
           (edge.source == selectedNodeId || edge.target == selectedNodeId);
 
       final int alpha;
       final double width;
       if (selectedNodeId == null) {
-        alpha = isDark ? 90 : 110;
-        width = 1.3;
+        alpha = isDark ? 115 : 135;
+        width = 1.25;
       } else if (isConnectedToSelected) {
-        alpha = 230;
-        width = 2.0;
+        alpha = 240;
+        width = 2.2;
       } else {
-        alpha = 25; // Dimmed when focusing on selected node
+        alpha = isDark ? 45 : 60;
         width = 0.9;
       }
 
       final simPaint = Paint()
-        ..color = (isDark ? const Color(0xFF06B6D4) : const Color(0xFF0891B2)).withAlpha(alpha)
+        ..color = cyanColor.withAlpha(alpha)
         ..strokeWidth = width
         ..style = PaintingStyle.stroke;
 
-      _drawDashedLine(canvas, p1, p2, simPaint, dashLength: 6.0, spaceLength: 4.0);
+      _drawDashedLine(
+        canvas,
+        start,
+        end,
+        simPaint,
+        dashLength: 6.0,
+        spaceLength: 4.0,
+      );
     }
   }
 
@@ -206,49 +250,57 @@ class GraphCanvasPainter extends CustomPainter {
     Map<String, double> radiusMap,
     Set<String> connectedNodeIds,
   ) {
+    final blueColor = isDark
+        ? AppTheme.citationBlueDark
+        : AppTheme.citationBlue;
+
     for (final edge in citationEdges) {
       final p1 = posMap[edge.source];
       final p2 = posMap[edge.target];
       if (p1 == null || p2 == null) continue;
 
-      final targetRadius = radiusMap[edge.target] ?? 16.0;
-      final sourceRadius = radiusMap[edge.source] ?? 16.0;
+      final targetRadius = radiusMap[edge.target] ?? 14.0;
+      final sourceRadius = radiusMap[edge.source] ?? 14.0;
 
       final dx = p2.dx - p1.dx;
       final dy = p2.dy - p1.dy;
       final dist = math.sqrt(dx * dx + dy * dy);
       if (dist <= (sourceRadius + targetRadius)) continue;
 
-      final isConnectedToSelected = selectedNodeId != null &&
+      final isConnectedToSelected =
+          selectedNodeId != null &&
           (edge.source == selectedNodeId || edge.target == selectedNodeId);
 
       final int alpha;
       final double width;
       if (selectedNodeId == null) {
-        alpha = isDark ? 180 : 200;
-        width = 1.8;
+        alpha = isDark ? 175 : 195;
+        width = 1.45;
       } else if (isConnectedToSelected) {
         alpha = 255;
-        width = 2.5;
+        width = 2.4;
       } else {
-        alpha = 30; // Dimmed
-        width = 1.0;
+        alpha = isDark ? 50 : 65;
+        width = 0.9;
       }
 
       final edgePaint = Paint()
-        ..color = (isDark ? const Color(0xFF3B82F6) : const Color(0xFF1D4ED8)).withAlpha(alpha)
+        ..color = blueColor.withAlpha(alpha)
         ..strokeWidth = width
         ..style = PaintingStyle.stroke;
 
       final arrowPaint = Paint()
-        ..color = (isDark ? const Color(0xFF60A5FA) : const Color(0xFF1E40AF)).withAlpha(alpha)
+        ..color = blueColor.withAlpha(alpha)
         ..style = PaintingStyle.fill;
 
       final ux = dx / dist;
       final uy = dy / dist;
 
       // Start just outside source node, end right at target node border
-      final start = Offset(p1.dx + ux * sourceRadius, p1.dy + uy * sourceRadius);
+      final start = Offset(
+        p1.dx + ux * sourceRadius,
+        p1.dy + uy * sourceRadius,
+      );
       final tip = Offset(p2.dx - ux * targetRadius, p2.dy - uy * targetRadius);
 
       canvas.drawLine(start, tip, edgePaint);
@@ -257,13 +309,21 @@ class GraphCanvasPainter extends CustomPainter {
       const arrowLength = 9.0;
       const arrowWidth = 5.0;
 
-      // Normal vector perpendicular to direction
       final nx = -uy;
       final ny = ux;
 
-      final baseCenter = Offset(tip.dx - ux * arrowLength, tip.dy - uy * arrowLength);
-      final corner1 = Offset(baseCenter.dx + nx * arrowWidth, baseCenter.dy + ny * arrowWidth);
-      final corner2 = Offset(baseCenter.dx - nx * arrowWidth, baseCenter.dy - ny * arrowWidth);
+      final baseCenter = Offset(
+        tip.dx - ux * arrowLength,
+        tip.dy - uy * arrowLength,
+      );
+      final corner1 = Offset(
+        baseCenter.dx + nx * arrowWidth,
+        baseCenter.dy + ny * arrowWidth,
+      );
+      final corner2 = Offset(
+        baseCenter.dx - nx * arrowWidth,
+        baseCenter.dy - ny * arrowWidth,
+      );
 
       final arrowPath = Path()
         ..moveTo(tip.dx, tip.dy)
@@ -286,60 +346,80 @@ class GraphCanvasPainter extends CustomPainter {
       final pos = posMap[node.canonicalId]!;
       final radius = radiusMap[node.canonicalId]!;
       final isSelected = node.canonicalId == selectedNodeId;
-      final isConnected = selectedNodeId != null && connectedNodeIds.contains(node.canonicalId);
+      final isConnected =
+          selectedNodeId != null && connectedNodeIds.contains(node.canonicalId);
       final isDimmed = selectedNodeId != null && !isConnected && !node.isOrigin;
 
-      final nodeColor = getNodeColor(node.year);
+      final baseColor = resolveNodeColor(node, isSelected);
 
-      // 1. Origin Node Clean Double Ring
+      // 1. Origin Node Distinct Emerald Outer Ring
       if (node.isOrigin) {
         final originRingPaint = Paint()
-          ..color = const Color(0xFFF59E0B)
+          ..color = (isDark ? AppTheme.originGreenDark : AppTheme.originGreen)
+              .withAlpha(isDimmed ? 80 : 230)
           ..strokeWidth = 2.4
           ..style = PaintingStyle.stroke;
-        canvas.drawCircle(pos, radius + 4.0, originRingPaint);
+        canvas.drawCircle(pos, radius + 4.5, originRingPaint);
       }
 
       // 2. Selection Ring
       if (isSelected) {
-        final selRingPaint = Paint()
-          ..color = isDark ? Colors.white : AppTheme.primaryBlue
+        final selOuterRingPaint = Paint()
+          ..color = (isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple)
           ..strokeWidth = 3.0
           ..style = PaintingStyle.stroke;
-        canvas.drawCircle(pos, radius + 4.5, selRingPaint);
+        canvas.drawCircle(pos, radius + 5.0, selOuterRingPaint);
+
+        final selInnerContrastPaint = Paint()
+          ..color = Colors.white
+          ..strokeWidth = 1.5
+          ..style = PaintingStyle.stroke;
+        canvas.drawCircle(pos, radius + 2.0, selInnerContrastPaint);
       }
 
-      // 3. Node Base Circle with Subtle Shadow
+      // 3. Node Base Subtle Shadow
       final shadowPaint = Paint()
-        ..color = Colors.black.withAlpha(isDark ? (isDimmed ? 30 : 90) : (isDimmed ? 15 : 40))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
-      canvas.drawCircle(Offset(pos.dx, pos.dy + 2.0), radius, shadowPaint);
+        ..color = Colors.black.withAlpha(
+          isDark ? (isDimmed ? 20 : 60) : (isDimmed ? 10 : 30),
+        )
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
+      canvas.drawCircle(Offset(pos.dx, pos.dy + 1.5), radius, shadowPaint);
 
-      // 4. Node Fill with Year Gradient Tone
+      // 4. Node Fill
       final nodePaint = Paint()
-        ..color = isDimmed ? nodeColor.withAlpha(75) : nodeColor
+        ..color = isDimmed ? baseColor.withAlpha(isDark ? 105 : 135) : baseColor
         ..style = PaintingStyle.fill;
       canvas.drawCircle(pos, radius, nodePaint);
 
       // 5. Border Accent Ring
       final borderPaint = Paint()
         ..color = isDark
-            ? (isDimmed ? Colors.white.withAlpha(25) : Colors.white.withAlpha(80))
-            : (isDimmed ? Colors.white.withAlpha(70) : Colors.white.withAlpha(200))
-        ..strokeWidth = 1.2
+            ? (isDimmed
+                  ? Colors.white.withAlpha(15)
+                  : Colors.white.withAlpha(50))
+            : (isDimmed
+                  ? Colors.black.withAlpha(15)
+                  : Colors.white.withAlpha(160))
+        ..strokeWidth = 1.0
         ..style = PaintingStyle.stroke;
       canvas.drawCircle(pos, radius, borderPaint);
 
-      // 6. Year Indicator Inside Node for all nodes with radius >= 13.0
-      if (radius >= 13.0 && node.year != null) {
+      // 6. Years remain useful on the focused/seed node and at closer zoom.
+      // Hiding tiny years when zoomed out avoids unreadable visual noise.
+      final showYear = isSelected || node.isOrigin || zoomScale >= 1.15;
+      if (showYear && radius * zoomScale >= 11.0 && node.year != null) {
+        final yearFontSize =
+            ((isSelected || node.isOrigin ? 10.0 : 9.0) / zoomScale)
+                .clamp(7.5, 13.0)
+                .toDouble();
         final yearTextPainter = TextPainter(
           text: TextSpan(
             text: '${node.year}',
             style: TextStyle(
-              color: isDimmed ? Colors.white.withAlpha(100) : Colors.white,
-              fontSize: 10.0,
-              fontWeight: FontWeight.bold,
-              shadows: const [Shadow(color: Colors.black54, blurRadius: 2.0)],
+              color: isDimmed ? Colors.white.withAlpha(155) : Colors.white,
+              fontSize: yearFontSize,
+              fontWeight: FontWeight.w600,
+              shadows: const [Shadow(color: Colors.black45, blurRadius: 1.5)],
             ),
           ),
           textDirection: TextDirection.ltr,
@@ -347,7 +427,10 @@ class GraphCanvasPainter extends CustomPainter {
 
         yearTextPainter.paint(
           canvas,
-          Offset(pos.dx - yearTextPainter.width / 2, pos.dy - yearTextPainter.height / 2),
+          Offset(
+            pos.dx - yearTextPainter.width / 2,
+            pos.dy - yearTextPainter.height / 2,
+          ),
         );
       }
     }
@@ -360,64 +443,125 @@ class GraphCanvasPainter extends CustomPainter {
     Map<String, double> radiusMap,
     Set<String> connectedNodeIds,
   ) {
-    for (final node in nodes) {
-      final isSelected = node.canonicalId == selectedNodeId;
+    final candidates = List<GraphNode>.from(nodes)
+      ..sort(
+        (a, b) => _labelPriority(
+          b,
+          connectedNodeIds,
+        ).compareTo(_labelPriority(a, connectedNodeIds)),
+      );
 
-      // Strict Anti-AI-Slop & Scientific Clutter Reduction:
-      // Only show floating label for the actively selected node, or origin node when nothing is selected.
-      // Never render dozens of simultaneous labels on mobile.
-      final shouldShow = isSelected || (selectedNodeId == null && node.isOrigin);
-      if (!shouldShow) continue;
+    final int maxLabels;
+    if (zoomScale < 0.52) {
+      maxLabels = 3;
+    } else if (zoomScale < 0.95) {
+      maxLabels = 7;
+    } else if (zoomScale < 1.55) {
+      maxLabels = 12;
+    } else {
+      maxLabels = math.min(nodes.length, 20);
+    }
+
+    final occupiedRects = <Rect>[];
+    int labelsPainted = 0;
+
+    for (final node in candidates) {
+      if (labelsPainted >= maxLabels) break;
 
       final pos = posMap[node.canonicalId]!;
       final radius = radiusMap[node.canonicalId]!;
-
-      final labelText = node.displayTitle;
-      final maxChars = isSelected ? 35 : 22;
-      final truncated = labelText.length > maxChars ? '${labelText.substring(0, maxChars - 2)}...' : labelText;
+      final isSelected = node.canonicalId == selectedNodeId;
+      final isEssential = isSelected || node.isOrigin;
+      final screenFontSize = isSelected ? 12.5 : (node.isOrigin ? 12.0 : 11.0);
+      final canvasFontSize = (screenFontSize / zoomScale)
+          .clamp(8.0, 28.0)
+          .toDouble();
+      final maxLabelWidth = ((isEssential ? 190.0 : 150.0) / zoomScale)
+          .clamp(120.0, 260.0)
+          .toDouble();
 
       final textSpan = TextSpan(
-        text: truncated,
+        text: node.displayTitle,
         style: TextStyle(
           color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
-          fontSize: isSelected ? 12.0 : 10.5,
-          fontWeight: (isSelected || node.isOrigin) ? FontWeight.bold : FontWeight.w500,
+          fontSize: canvasFontSize,
+          height: 1.18,
+          fontWeight: (isSelected || node.isOrigin)
+              ? FontWeight.w700
+              : FontWeight.w600,
         ),
       );
 
       final textPainter = TextPainter(
         text: textSpan,
-        maxLines: 1,
+        maxLines: isEssential ? 2 : 1,
+        ellipsis: '…',
         textDirection: TextDirection.ltr,
-      )..layout(maxWidth: 160);
+      )..layout(maxWidth: maxLabelWidth);
 
-      final textOffset = Offset(
-        pos.dx - textPainter.width / 2,
-        pos.dy + radius + 4.0,
-      );
-
-      // Background pill for contrast
-      final pillRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          textOffset.dx - 5,
-          textOffset.dy - 2,
-          textPainter.width + 10,
-          textPainter.height + 4,
+      final horizontalPadding = 6.0 / zoomScale;
+      final verticalPadding = 3.5 / zoomScale;
+      final gap = 7.0 / zoomScale;
+      final candidateOffsets = [
+        Offset(pos.dx - textPainter.width / 2, pos.dy + radius + gap),
+        Offset(
+          pos.dx - textPainter.width / 2,
+          pos.dy - radius - gap - textPainter.height,
         ),
-        const Radius.circular(5.0),
+        Offset(pos.dx + radius + gap, pos.dy - textPainter.height / 2),
+        Offset(
+          pos.dx - radius - gap - textPainter.width,
+          pos.dy - textPainter.height / 2,
+        ),
+      ];
+
+      Offset? textOffset;
+      Rect? labelRect;
+      for (final offset in candidateOffsets) {
+        final rect = Rect.fromLTWH(
+          offset.dx - horizontalPadding,
+          offset.dy - verticalPadding,
+          textPainter.width + horizontalPadding * 2,
+          textPainter.height + verticalPadding * 2,
+        );
+        final collisionPadding = 4.0 / zoomScale;
+        final collides = occupiedRects.any(
+          (occupied) => occupied.overlaps(rect.inflate(collisionPadding)),
+        );
+        if (!collides) {
+          textOffset = offset;
+          labelRect = rect;
+          break;
+        }
+      }
+
+      if (textOffset == null || labelRect == null) {
+        if (!isEssential) continue;
+        textOffset = candidateOffsets.first;
+        labelRect = Rect.fromLTWH(
+          textOffset.dx - horizontalPadding,
+          textOffset.dy - verticalPadding,
+          textPainter.width + horizontalPadding * 2,
+          textPainter.height + verticalPadding * 2,
+        );
+      }
+
+      final pillRect = RRect.fromRectAndRadius(
+        labelRect,
+        Radius.circular(6.0 / zoomScale),
       );
 
       final pillColor = isDark
           ? (isSelected
-              ? const Color(0xFF2563EB)
-              : (node.isOrigin ? const Color(0xFF92400E) : AppTheme.darkCard.withValues(alpha: 0.92)))
+                ? AppTheme.darkSurface
+                : (node.isOrigin ? const Color(0xFF064E3B) : AppTheme.darkCard))
           : (isSelected
-              ? const Color(0xFFDBEAFE)
-              : (node.isOrigin ? const Color(0xFFFEF3C7) : const Color(0xF2FFFFFF)));
+                ? const Color(0xFFEEF2FF)
+                : (node.isOrigin ? const Color(0xFFECFDF5) : Colors.white));
 
       final borderPillColor = isDark
-          ? (isSelected ? Colors.white : AppTheme.darkBorder)
-          : (isSelected ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1));
+          ? (isSelected ? AppTheme.actionPurpleDark : AppTheme.darkBorder)
+          : (isSelected ? AppTheme.actionPurple : const Color(0xFFE2E8F0));
 
       final pillPaint = Paint()
         ..color = pillColor
@@ -425,13 +569,28 @@ class GraphCanvasPainter extends CustomPainter {
 
       final borderPillPaint = Paint()
         ..color = borderPillColor
-        ..strokeWidth = isSelected ? 1.5 : 1.0
+        ..strokeWidth = (isSelected ? 1.5 : 1.0) / zoomScale
         ..style = PaintingStyle.stroke;
 
       canvas.drawRRect(pillRect, pillPaint);
       canvas.drawRRect(pillRect, borderPillPaint);
       textPainter.paint(canvas, textOffset);
+      occupiedRects.add(labelRect);
+      labelsPainted++;
     }
+  }
+
+  double _labelPriority(GraphNode node, Set<String> connectedNodeIds) {
+    if (node.canonicalId == selectedNodeId) return 1000000000;
+    if (node.isOrigin) return 900000000;
+
+    var score = 0.0;
+    if (connectedNodeIds.contains(node.canonicalId)) {
+      score += 10000000;
+    }
+    score += (node.finalScore ?? 0) * 1000000;
+    score += math.log(node.citationCount + 1) * 10000;
+    return score;
   }
 
   @override
@@ -439,6 +598,7 @@ class GraphCanvasPainter extends CustomPainter {
     return oldDelegate.nodes != nodes ||
         oldDelegate.selectedNodeId != selectedNodeId ||
         oldDelegate.isDark != isDark ||
+        oldDelegate.zoomScale != zoomScale ||
         oldDelegate.draggedPositions != draggedPositions ||
         oldDelegate.citationEdges != citationEdges ||
         oldDelegate.similarityEdges != similarityEdges;

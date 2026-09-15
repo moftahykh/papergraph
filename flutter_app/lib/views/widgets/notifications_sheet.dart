@@ -98,7 +98,10 @@ class NotificationsSheet extends StatelessWidget {
 
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     const Icon(Icons.notifications_outlined, size: 22),
@@ -109,7 +112,9 @@ class NotificationsSheet extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -118,7 +123,10 @@ class NotificationsSheet extends StatelessWidget {
                     if (unreadCount > 0) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.accentEmerald,
                           borderRadius: BorderRadius.circular(10),
@@ -146,7 +154,10 @@ class NotificationsSheet extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                           ),
-                          child: const Text('Read all', style: TextStyle(fontSize: 12.5)),
+                          child: const Text(
+                            'Read all',
+                            style: TextStyle(fontSize: 12.5),
+                          ),
                         ),
                       IconButton(
                         tooltip: 'Clear all',
@@ -165,7 +176,10 @@ class NotificationsSheet extends StatelessWidget {
                 Flexible(
                   child: SingleChildScrollView(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 40,
+                        horizontal: 24,
+                      ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -185,7 +199,7 @@ class NotificationsSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Graph generation alerts and cache updates will appear here.',
+                            'Updates about your graphs will appear here.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
@@ -201,7 +215,10 @@ class NotificationsSheet extends StatelessWidget {
                 Flexible(
                   child: ListView.separated(
                     shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     itemCount: notifications.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
@@ -227,12 +244,20 @@ class NotificationsSheet extends StatelessWidget {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: notif.isRead
-                                ? (isDark ? AppTheme.darkSurface.withValues(alpha: 0.5) : const Color(0xFFF8FAFC))
-                                : (isDark ? AppTheme.darkSurface : Colors.white),
+                                ? (isDark
+                                      ? AppTheme.darkSurface.withValues(
+                                          alpha: 0.5,
+                                        )
+                                      : const Color(0xFFF8FAFC))
+                                : (isDark
+                                      ? AppTheme.darkSurface
+                                      : Colors.white),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: notif.isRead
-                                  ? (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06))
+                                  ? (isDark
+                                        ? Colors.white10
+                                        : Colors.black.withValues(alpha: 0.06))
                                   : color.withValues(alpha: 0.35),
                               width: notif.isRead ? 1 : 1.4,
                             ),
@@ -264,8 +289,12 @@ class NotificationsSheet extends StatelessWidget {
                                             notif.title,
                                             style: TextStyle(
                                               fontSize: 13.5,
-                                              fontWeight: notif.isRead ? FontWeight.w600 : FontWeight.w700,
-                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                              fontWeight: notif.isRead
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF0F172A),
                                             ),
                                           ),
                                         ),
@@ -273,7 +302,9 @@ class NotificationsSheet extends StatelessWidget {
                                           _formatTimestamp(notif.timestamp),
                                           style: TextStyle(
                                             fontSize: 11,
-                                            color: isDark ? Colors.white38 : Colors.black38,
+                                            color: isDark
+                                                ? Colors.white38
+                                                : Colors.black38,
                                           ),
                                         ),
                                       ],
@@ -283,14 +314,20 @@ class NotificationsSheet extends StatelessWidget {
                                       notif.message,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+                                        color: isDark
+                                            ? AppTheme.darkTextSecondary
+                                            : const Color(0xFF64748B),
                                       ),
                                     ),
                                     if (notif.relatedGraphId != null) ...[
                                       const SizedBox(height: 6),
                                       Row(
                                         children: [
-                                          Icon(Icons.hub_outlined, size: 12, color: color),
+                                          Icon(
+                                            Icons.hub_outlined,
+                                            size: 12,
+                                            color: color,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             'Tap to view graph',

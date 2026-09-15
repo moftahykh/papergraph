@@ -48,12 +48,15 @@ class MetricResult {
     this.reason,
   });
 
-  bool get isAvailable => availability == MetricAvailability.available && value != null;
+  bool get isAvailable =>
+      availability == MetricAvailability.available && value != null;
 
   factory MetricResult.fromJson(Map<String, dynamic> json) {
     return MetricResult(
       value: (json['value'] as num?)?.toDouble(),
-      availability: MetricAvailability.fromString(json['availability'] as String?),
+      availability: MetricAvailability.fromString(
+        json['availability'] as String?,
+      ),
       reason: json['reason'] as String?,
     );
   }
@@ -79,5 +82,6 @@ class MetricResult {
   int get hashCode => Object.hash(value, availability, reason);
 
   @override
-  String toString() => 'MetricResult(value: $value, availability: ${availability.value}, reason: $reason)';
+  String toString() =>
+      'MetricResult(value: $value, availability: ${availability.value}, reason: $reason)';
 }

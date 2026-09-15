@@ -29,14 +29,20 @@ class GraphErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.accentRose),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: AppTheme.accentRose,
+            ),
             const SizedBox(height: 16),
             Text(
               'Unable to Generate Graph',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+                color: isDark
+                    ? AppTheme.darkTextPrimary
+                    : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 8),
@@ -45,7 +51,9 @@ class GraphErrorView extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : const Color(0xFF64748B),
               ),
             ),
             const SizedBox(height: 20),
@@ -55,7 +63,9 @@ class GraphErrorView extends StatelessWidget {
                 OutlinedButton(
                   onPressed: onGoBack,
                   style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   child: const Text('Go Back'),
                 ),
@@ -67,7 +77,9 @@ class GraphErrorView extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryBlue,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],
@@ -106,7 +118,9 @@ class GraphEmptyStateView extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : const Color(0xFF0F172A),
             ),
           ),
           const SizedBox(height: 8),
@@ -115,7 +129,9 @@ class GraphEmptyStateView extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
-              color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : const Color(0xFF64748B),
             ),
           ),
           const SizedBox(height: 20),
@@ -126,7 +142,9 @@ class GraphEmptyStateView extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryBlue,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ],

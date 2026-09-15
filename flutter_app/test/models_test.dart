@@ -84,29 +84,32 @@ void main() {
   });
 
   group('GraphEdge Edge-Typing Tests (Non-Negotiable Rule #9)', () {
-    test('differentiates directional citation vs non-directional similarity', () {
-      final citationJson = {
-        'source': 'doi:paper_a',
-        'target': 'doi:paper_b',
-        'type': 'citation',
-        'weight': 1.0,
-        'directed': true,
-      };
-      final citationEdge = GraphEdge.fromJson(citationJson);
-      expect(citationEdge.type, EdgeType.citation);
-      expect(citationEdge.directed, isTrue);
+    test(
+      'differentiates directional citation vs non-directional similarity',
+      () {
+        final citationJson = {
+          'source': 'doi:paper_a',
+          'target': 'doi:paper_b',
+          'type': 'citation',
+          'weight': 1.0,
+          'directed': true,
+        };
+        final citationEdge = GraphEdge.fromJson(citationJson);
+        expect(citationEdge.type, EdgeType.citation);
+        expect(citationEdge.directed, isTrue);
 
-      final similarityJson = {
-        'source': 'doi:paper_a',
-        'target': 'doi:paper_b',
-        'type': 'similarity',
-        'weight': 0.78,
-        'directed': false,
-      };
-      final similarityEdge = GraphEdge.fromJson(similarityJson);
-      expect(similarityEdge.type, EdgeType.similarity);
-      expect(similarityEdge.directed, isFalse);
-    });
+        final similarityJson = {
+          'source': 'doi:paper_a',
+          'target': 'doi:paper_b',
+          'type': 'similarity',
+          'weight': 0.78,
+          'directed': false,
+        };
+        final similarityEdge = GraphEdge.fromJson(similarityJson);
+        expect(similarityEdge.type, EdgeType.similarity);
+        expect(similarityEdge.directed, isFalse);
+      },
+    );
   });
 
   group('GraphJobStatus 16 Lifecycle Stages Tests', () {
@@ -157,7 +160,7 @@ void main() {
             'citation_count': 100,
             'radius': 24.0,
             'confidence': 'high',
-          }
+          },
         ],
         'similarity_edges': [],
         'citation_edges': [],
@@ -172,7 +175,7 @@ void main() {
             'code': 'ncc_unavailable',
             'message': 'Citation enrichment partially unavailable.',
             'severity': 'warning',
-          }
+          },
         ],
         'algorithm_version': 'v1.0',
         'created_at': '2026-09-10T20:00:00Z',
@@ -200,7 +203,7 @@ void main() {
             'authors': ['Diego Ongaro'],
             'year': 2014,
             'citation_count': 3500,
-          }
+          },
         ],
         'disambiguation_needed': false,
         'candidates': [],

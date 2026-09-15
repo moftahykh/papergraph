@@ -15,6 +15,7 @@ import 'package:paper_graph/models/graph_job_status.dart';
 import 'package:paper_graph/models/graph_models.dart';
 import 'package:paper_graph/views/favorites/favorites_view.dart';
 import 'package:paper_graph/views/graph_view/connected_graph_view.dart';
+import 'test_hive.dart';
 
 GraphSnapshot createMockSnapshot({
   String id = 'graph-cache-1',
@@ -63,6 +64,7 @@ GraphSnapshot createMockSnapshot({
 }
 
 void main() {
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('GraphSnapshot Schema Versioning & Expiration Math', () {
@@ -116,14 +118,19 @@ void main() {
   });
 
   group('LibraryCubit Notes and Cache Pruning Tests', () {
+    final storage = TestHiveEnvironment();
     late LibraryCubit libraryCubit;
+
+    setUpAll(storage.start);
+    setUp(storage.reset);
+    tearDownAll(storage.stop);
 
     setUp(() {
       libraryCubit = LibraryCubit();
     });
 
-    tearDown(() {
-      libraryCubit.close();
+    tearDown(() async {
+      await libraryCubit.close();
     });
 
     test('saveNotes updates notes in state and retrieves correctly', () async {
@@ -152,6 +159,11 @@ void main() {
   });
 
   group('Contextual Notification & Offline Mode Guarantees', () {
+    final storage = TestHiveEnvironment();
+    setUpAll(storage.start);
+    setUp(storage.reset);
+    tearDownAll(storage.stop);
+
     test('LocalNotificationService handles per-graph notification toggle and dispatch', () async {
       const graphId = 'graph-job-notif-1';
 
@@ -189,8 +201,7 @@ void main() {
   });
 
   group('FavoritesView Offline Library Widget Tests', () {
-    testWidgets('renders dual tabs: Saved Papers & Notes and Cached Graphs', (tester) async {
-      final libraryCubit = LibraryCubit();
+    testWidgets('renders Papers and Graphs tabs', (tester) async {
       final samplePaper = CanonicalPaper(
         canonicalId: 'paper-offline-1',
         title: 'Deep Residual Learning for Image Recognition',
@@ -202,9 +213,13 @@ void main() {
       );
       final sampleGraph = createMockSnapshot(id: 'cached-graph-1');
 
-      await libraryCubit.savePaper(samplePaper);
-      await libraryCubit.cacheGraph(sampleGraph);
-      await libraryCubit.saveNotes(samplePaper.canonicalId, 'Landmark ResNet paper.');
+      final libraryCubit = LibraryCubit.seeded(
+        savedPapers: [samplePaper],
+        cachedGraphs: [sampleGraph],
+        paperNotes: const {
+          'paper-offline-1': 'Landmark ResNet paper.',
+        },
+      );
 
       await tester.pumpWidget(
         MultiBlocProvider(
@@ -223,24 +238,24 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Verify Tab headers
-      expect(find.text('Saved Papers & Notes'), findsOneWidget);
-      expect(find.text('Cached Graphs'), findsOneWidget);
+      expect(find.text('Papers'), findsOneWidget);
+      expect(find.text('Graphs'), findsOneWidget);
 
       // Verify Tab 1 contents (Saved Papers & Notes)
       expect(find.text('Deep Residual Learning for Image Recognition'), findsOneWidget);
       expect(find.text('Landmark ResNet paper.'), findsOneWidget);
 
       // Switch to Tab 2 (Cached Graphs)
-      await tester.tap(find.text('Cached Graphs'));
+      await tester.tap(find.text('Graphs'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
       // Verify Tab 2 contents (Cached Literature Graphs)
-      expect(find.text('Offline Literature Graph Cache'), findsOneWidget);
+      expect(find.text('Available offline'), findsWidgets);
       expect(find.text('Attention Is All You Need'), findsOneWidget);
-      expect(find.text('Open Graph Offline'), findsOneWidget);
+      expect(find.text('Open graph'), findsOneWidget);
 
-      libraryCubit.close();
+      await libraryCubit.close();
     });
 
     testWidgets('ConnectedGraphView prevents network recenter in offline mode', (tester) async {
@@ -250,7 +265,7 @@ void main() {
         MultiBlocProvider(
           providers: [
             BlocProvider<GraphCubit>(create: (_) => GraphCubit()),
-            BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
+            BlocProvider<LibraryCubit>(create: (_) => LibraryCubit.seeded()),
             BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),
           ],
           child: MaterialApp(
@@ -263,12 +278,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Open bottom sheet
-      await tester.tap(find.byTooltip('Show Details'));
+      await tester.tap(find.byIcon(Icons.keyboard_arrow_up_rounded));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Switch to List View tab to select non-origin paper
-      await tester.tap(find.text('List View'));
+      // Switch to All papers tab to select non-origin paper
+      await tester.tap(find.text('All papers'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 
@@ -276,9 +291,16 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 
-      // Tap Re-center button while in offline cache mode
-      expect(find.text('Re-center'), findsOneWidget);
-      await tester.tap(find.text('Re-center'));
+      // The paper tab is scrollable and action buttons are below the fold.
+      await tester.drag(
+        find.byType(ListView).hitTestable(),
+        const Offset(0, -500),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Center graph button while in offline cache mode
+      expect(find.text('Center graph'), findsOneWidget);
+      await tester.tap(find.text('Center graph'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 

@@ -27,7 +27,11 @@ class SearchResultItem {
     return SearchResultItem(
       canonicalId: (json['canonical_id'] as String?) ?? '',
       title: (json['title'] as String?) ?? 'Untitled',
-      authors: (json['authors'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      authors:
+          (json['authors'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
       year: (json['year'] as num?)?.toInt(),
       venue: json['venue'] as String?,
       citationCount: (json['citation_count'] as num?)?.toInt() ?? 0,
@@ -37,15 +41,15 @@ class SearchResultItem {
   }
 
   Map<String, dynamic> toJson() => {
-        'canonical_id': canonicalId,
-        'title': title,
-        'authors': authors,
-        'year': year,
-        'venue': venue,
-        'citation_count': citationCount,
-        'doi': doi,
-        'score': score,
-      };
+    'canonical_id': canonicalId,
+    'title': title,
+    'authors': authors,
+    'year': year,
+    'venue': venue,
+    'citation_count': citationCount,
+    'doi': doi,
+    'score': score,
+  };
 }
 
 @immutable
@@ -68,25 +72,35 @@ class SearchResponse {
     return SearchResponse(
       query: (json['query'] as String?) ?? '',
       total: (json['total'] as num?)?.toInt() ?? 0,
-      items: (json['items'] as List<dynamic>?)
-              ?.map((item) => SearchResultItem.fromJson(Map<String, dynamic>.from(item as Map)))
+      items:
+          (json['items'] as List<dynamic>?)
+              ?.map(
+                (item) => SearchResultItem.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
               .toList() ??
           const [],
       disambiguationNeeded: json['disambiguation_needed'] == true,
-      candidates: (json['candidates'] as List<dynamic>?)
-              ?.map((item) => SearchResultItem.fromJson(Map<String, dynamic>.from(item as Map)))
+      candidates:
+          (json['candidates'] as List<dynamic>?)
+              ?.map(
+                (item) => SearchResultItem.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
               .toList() ??
           const [],
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'query': query,
-        'total': total,
-        'items': items.map((e) => e.toJson()).toList(),
-        'disambiguation_needed': disambiguationNeeded,
-        'candidates': candidates.map((e) => e.toJson()).toList(),
-      };
+    'query': query,
+    'total': total,
+    'items': items.map((e) => e.toJson()).toList(),
+    'disambiguation_needed': disambiguationNeeded,
+    'candidates': candidates.map((e) => e.toJson()).toList(),
+  };
 }
 
 @immutable
@@ -109,10 +123,17 @@ class PaperResolveResponse {
     return PaperResolveResponse(
       resolved: json['resolved'] == true,
       paper: json['paper'] != null
-          ? CanonicalPaper.fromJson(Map<String, dynamic>.from(json['paper'] as Map))
+          ? CanonicalPaper.fromJson(
+              Map<String, dynamic>.from(json['paper'] as Map),
+            )
           : null,
-      ambiguousCandidates: (json['ambiguous_candidates'] as List<dynamic>?)
-              ?.map((p) => CanonicalPaper.fromJson(Map<String, dynamic>.from(p as Map)))
+      ambiguousCandidates:
+          (json['ambiguous_candidates'] as List<dynamic>?)
+              ?.map(
+                (p) => CanonicalPaper.fromJson(
+                  Map<String, dynamic>.from(p as Map),
+                ),
+              )
               .toList() ??
           const [],
       confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
@@ -121,12 +142,12 @@ class PaperResolveResponse {
   }
 
   Map<String, dynamic> toJson() => {
-        'resolved': resolved,
-        'paper': paper?.toJson(),
-        'ambiguous_candidates': ambiguousCandidates.map((e) => e.toJson()).toList(),
-        'confidence': confidence,
-        'message': message,
-      };
+    'resolved': resolved,
+    'paper': paper?.toJson(),
+    'ambiguous_candidates': ambiguousCandidates.map((e) => e.toJson()).toList(),
+    'confidence': confidence,
+    'message': message,
+  };
 }
 
 @immutable
@@ -155,17 +176,21 @@ class PaperDetailsResponse {
       tldr: json['tldr'] as String?,
       openAccessUrl: json['open_access_url'] as String?,
       bibtex: json['bibtex'] as String?,
-      affiliations: (json['affiliations'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      affiliations:
+          (json['affiliations'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
       isSaved: json['is_saved'] == true,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'paper': paper.toJson(),
-        'tldr': tldr,
-        'open_access_url': openAccessUrl,
-        'bibtex': bibtex,
-        'affiliations': affiliations,
-        'is_saved': isSaved,
-      };
+    'paper': paper.toJson(),
+    'tldr': tldr,
+    'open_access_url': openAccessUrl,
+    'bibtex': bibtex,
+    'affiliations': affiliations,
+    'is_saved': isSaved,
+  };
 }

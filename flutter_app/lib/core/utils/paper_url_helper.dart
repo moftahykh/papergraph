@@ -39,15 +39,16 @@ class PaperUrlHelper {
     final effectiveDoi = (doi != null && doi.trim().isNotEmpty)
         ? doi.trim()
         : (canonicalId != null && canonicalId.trim().startsWith('10.'))
-            ? canonicalId.trim()
-            : null;
+        ? canonicalId.trim()
+        : null;
 
     if (effectiveDoi != null && effectiveDoi.isNotEmpty) {
       String cleanDoi = effectiveDoi;
       if (cleanDoi.toLowerCase().startsWith('doi:')) {
         cleanDoi = cleanDoi.substring(4).trim();
       }
-      if (cleanDoi.startsWith('https://doi.org/') || cleanDoi.startsWith('http://doi.org/')) {
+      if (cleanDoi.startsWith('https://doi.org/') ||
+          cleanDoi.startsWith('http://doi.org/')) {
         return cleanDoi;
       }
       return 'https://doi.org/$cleanDoi';

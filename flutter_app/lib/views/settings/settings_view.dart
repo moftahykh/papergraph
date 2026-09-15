@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -67,12 +66,12 @@ class _SettingsViewState extends State<SettingsView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(
-          'Clear Literature Cache',
-          style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold),
+        title: const Text(
+          'Remove offline graph data?',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         content: const Text(
-          'This will remove locally stored graphs and cached data. Your saved favorites and personal notes will not be affected.',
+          'Saved papers and personal notes will not be affected. Graphs can be created again when you are online.',
         ),
         actions: [
           TextButton(
@@ -81,10 +80,8 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.accentRose,
-            ),
-            child: const Text('Clear Cache'),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.accentRose),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -92,19 +89,16 @@ class _SettingsViewState extends State<SettingsView> {
 
     if (confirmed == true && mounted) {
       try {
-        final count = await HiveService.cleanExpiredGraphs();
-        // Also purge graph snapshots safely
-        final all = HiveService.getCachedGraphs();
-        for (final g in all) {
-          await HiveService.removeCachedGraph(g.graphId);
-        }
+        final count = await HiveService.clearCachedGraphsForActiveUser();
         if (mounted) {
           context.read<LibraryCubit>().loadLibrary();
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Local cache cleared ($count entries removed)'),
+            content: Text(
+              '$count offline graph${count == 1 ? '' : 's'} removed',
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -112,7 +106,7 @@ class _SettingsViewState extends State<SettingsView> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to clear local cache'),
+            content: Text('Could not remove offline graph data'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -124,9 +118,9 @@ class _SettingsViewState extends State<SettingsView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(
+        title: const Text(
           'Sign Out',
-          style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         content: const Text(
           'Are you sure you want to sign out of your academic session?',
@@ -138,9 +132,7 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.accentRose,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.accentRose),
             child: const Text('Sign Out'),
           ),
         ],
@@ -163,15 +155,18 @@ class _SettingsViewState extends State<SettingsView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = Provider.of<AuthProvider>(context);
     final libraryState = context.watch<LibraryCubit>().state;
-    final int cachedGraphsCount = libraryState is LibraryLoaded ? libraryState.cachedGraphs.length : 0;
+    final int cachedGraphsCount = libraryState is LibraryLoaded
+        ? libraryState.recentGraphs.length
+        : 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Settings & Profile',
-          style: GoogleFonts.playfairDisplay(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
+        title: const Text(
+          'Settings & Preferences',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            letterSpacing: -0.2,
           ),
         ),
       ),
@@ -190,7 +185,9 @@ class _SettingsViewState extends State<SettingsView> {
               SwitchListTile(
                 secondary: Icon(
                   isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
-                  color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
                   size: 22,
                 ),
                 title: const Text(
@@ -200,8 +197,10 @@ class _SettingsViewState extends State<SettingsView> {
                 subtitle: Text(
                   isDark ? 'Dark Lab theme active' : 'Paper & Ink theme active',
                   style: TextStyle(
-                    fontSize: 12.5,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    fontSize: 13.5,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                 ),
                 value: isDark,
@@ -219,7 +218,9 @@ class _SettingsViewState extends State<SettingsView> {
               SwitchListTile(
                 secondary: Icon(
                   Icons.fingerprint_rounded,
-                  color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
                   size: 22,
                 ),
                 title: const Text(
@@ -230,7 +231,9 @@ class _SettingsViewState extends State<SettingsView> {
                   'Require Face ID / Fingerprint on launch',
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                 ),
                 value: _biometricsEnabled,
@@ -248,34 +251,48 @@ class _SettingsViewState extends State<SettingsView> {
               ListTile(
                 leading: Icon(
                   Icons.hub_outlined,
-                  color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
                   size: 22,
                 ),
                 title: const Text(
-                  'Offline Literature Cache',
+                  'Offline graphs',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                 ),
                 subtitle: Text(
-                  '$cachedGraphsCount graph snapshot${cachedGraphsCount == 1 ? '' : 's'} stored locally',
+                  '$cachedGraphsCount graph${cachedGraphsCount == 1 ? '' : 's'} available without internet',
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                 ),
                 trailing: TextButton(
-                  onPressed: cachedGraphsCount > 0 ? _showClearCacheDialog : null,
+                  onPressed: cachedGraphsCount > 0
+                      ? _showClearCacheDialog
+                      : null,
                   style: TextButton.styleFrom(
                     foregroundColor: AppTheme.accentRose,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                   ),
-                  child: const Text('Clear', style: TextStyle(fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Manage',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
               _buildGroupDivider(context),
               ListTile(
                 leading: Icon(
                   Icons.security_outlined,
-                  color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
                   size: 22,
                 ),
                 title: const Text(
@@ -286,7 +303,9 @@ class _SettingsViewState extends State<SettingsView> {
                   'Storage, notifications & device access',
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
@@ -304,7 +323,9 @@ class _SettingsViewState extends State<SettingsView> {
               ListTile(
                 leading: Icon(
                   Icons.info_outline_rounded,
-                  color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
                   size: 22,
                 ),
                 title: const Text(
@@ -315,7 +336,9 @@ class _SettingsViewState extends State<SettingsView> {
                   '1.0.0 (Build 1)',
                   style: TextStyle(
                     fontSize: 13,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                 ),
               ),
@@ -323,7 +346,9 @@ class _SettingsViewState extends State<SettingsView> {
               ListTile(
                 leading: Icon(
                   Icons.description_outlined,
-                  color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
                   size: 22,
                 ),
                 title: const Text(
@@ -395,11 +420,15 @@ class _SettingsViewState extends State<SettingsView> {
                   height: 46,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isDark ? AppTheme.darkSurface : const Color(0xFFE8EEF5),
+                    color: isDark
+                        ? AppTheme.darkSurface
+                        : const Color(0xFFE8EEF5),
                   ),
                   child: Icon(
                     Icons.person_outline_rounded,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.primaryBlue,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.primaryBlue,
                     size: 24,
                   ),
                 ),
@@ -410,10 +439,12 @@ class _SettingsViewState extends State<SettingsView> {
                     children: [
                       Text(
                         'Guest Session',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.lightTextPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -421,7 +452,9 @@ class _SettingsViewState extends State<SettingsView> {
                         'Sign in to sync graphs across devices',
                         style: TextStyle(
                           fontSize: 12.5,
-                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary,
                         ),
                       ),
                     ],
@@ -441,7 +474,9 @@ class _SettingsViewState extends State<SettingsView> {
                       );
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                      backgroundColor: isDark
+                          ? AppTheme.primaryLightBlue
+                          : AppTheme.primaryBlue,
                       foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -450,7 +485,10 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                     child: const Text(
                       'Sign In',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ),
@@ -464,9 +502,13 @@ class _SettingsViewState extends State<SettingsView> {
                       );
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                      foregroundColor: isDark
+                          ? AppTheme.darkTextPrimary
+                          : AppTheme.lightTextPrimary,
                       side: BorderSide(
-                        color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                        color: isDark
+                            ? AppTheme.darkBorder
+                            : AppTheme.lightBorder,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -475,7 +517,10 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                     child: const Text(
                       'Register',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ),
@@ -488,7 +533,9 @@ class _SettingsViewState extends State<SettingsView> {
 
     final name = (user.name.isNotEmpty) ? user.name : 'Researcher';
     final email = user.email;
-    final institution = (user.institution.isNotEmpty) ? user.institution : 'Academic Researcher';
+    final institution = (user.institution.isNotEmpty)
+        ? user.institution
+        : 'Academic Researcher';
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -512,10 +559,10 @@ class _SettingsViewState extends State<SettingsView> {
             child: Center(
               child: Text(
                 name.isNotEmpty ? name[0].toUpperCase() : 'R',
-                style: GoogleFonts.playfairDisplay(
+                style: TextStyle(
                   color: isDark ? AppTheme.primaryLightBlue : Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -530,20 +577,17 @@ class _SettingsViewState extends State<SettingsView> {
                     Flexible(
                       child: Text(
                         name,
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.lightTextPrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Icon(
-                      Icons.verified_rounded,
-                      color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
-                      size: 16,
-                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -551,13 +595,18 @@ class _SettingsViewState extends State<SettingsView> {
                   email,
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 5),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppTheme.primaryLightBlue.withAlpha(25)
@@ -568,7 +617,9 @@ class _SettingsViewState extends State<SettingsView> {
                     institution,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                      color: isDark
+                          ? AppTheme.primaryLightBlue
+                          : AppTheme.primaryBlue,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -589,10 +640,12 @@ class _SettingsViewState extends State<SettingsView> {
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
-          fontSize: 11.5,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
-          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+          color: isDark
+              ? AppTheme.darkTextSecondary
+              : AppTheme.lightTextSecondary,
         ),
       ),
     );
@@ -614,9 +667,7 @@ class _SettingsViewState extends State<SettingsView> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          children: children,
-        ),
+        child: Column(children: children),
       ),
     );
   }

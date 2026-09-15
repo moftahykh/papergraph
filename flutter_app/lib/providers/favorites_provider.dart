@@ -30,7 +30,10 @@ class FavoritesProvider extends ChangeNotifier {
     return _favoritePapers.any((p) => p.id == paperId);
   }
 
-  Future<void> toggleFavorite(PaperModel paper, [PapersProvider? papersProvider]) async {
+  Future<void> toggleFavorite(
+    PaperModel paper, [
+    PapersProvider? papersProvider,
+  ]) async {
     final exists = isFavorite(paper.id);
 
     if (exists) {

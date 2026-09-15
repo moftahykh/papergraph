@@ -31,11 +31,12 @@ class BiometricService {
       }
 
       return await _auth.authenticate(
-        localizedReason: reason ??
+        localizedReason:
+            reason ??
             'Please authenticate with your fingerprint or face to access PaperGraph',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: false,
+          biometricOnly: true,
           useErrorDialogs: true,
         ),
       );

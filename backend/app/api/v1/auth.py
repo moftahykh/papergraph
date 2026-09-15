@@ -43,113 +43,70 @@ class VerifyOtpRequest(BaseModel):
 
 
 def _generate_otp_html(code: str) -> str:
-    # Generate individual digit cells for premium look
-    digits_html = ""
-    for digit in str(code):
-        digits_html += (
-            f'<td style="width:48px;height:56px;background:#f0f4ff;border:2px solid #c7d2fe;'
-            f'border-radius:12px;text-align:center;font-size:28px;font-weight:800;'
-            f'color:#3730a3;font-family:\'SF Mono\',\'Fira Code\',\'Consolas\',monospace;'
-            f'letter-spacing:0;">{digit}</td>'
-            '<td style="width:6px;"></td>'
-        )
+    # Space-separated digits for easy reading
+    spaced_code = "&ensp;".join(str(code))
 
-    return f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>PaperGraph Verification Code</title>
-    </head>
-    <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
-        <tr>
-          <td align="center">
-            <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.08),0 2px 8px rgba(0,0,0,0.04);">
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your PaperGraph verification code</title>
+</head>
+<body style="margin:0;padding:0;background-color:#fafafa;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fafafa;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
 
-              <!-- Gradient Header -->
-              <tr>
-                <td style="background:linear-gradient(135deg,#4f46e5 0%,#2563eb 50%,#0ea5e9 100%);padding:36px 32px 28px 32px;text-align:center;">
-                  <!-- Logo Icon -->
-                  <div style="width:56px;height:56px;margin:0 auto 16px auto;background:rgba(255,255,255,0.2);border-radius:16px;line-height:56px;font-size:28px;">
-                    🛡️
-                  </div>
-                  <h1 style="margin:0 0 4px 0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">
-                    ✦ PaperGraph
-                  </h1>
-                  <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.8);font-weight:500;">
-                    Secure Email Verification
-                  </p>
-                </td>
-              </tr>
+          <!-- Logo -->
+          <tr>
+            <td style="padding:0 0 32px 0;">
+              <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:17px;font-weight:700;color:#111827;letter-spacing:-0.3px;">PaperGraph</span>
+            </td>
+          </tr>
 
-              <!-- Main Content -->
-              <tr>
-                <td style="padding:32px 36px 16px 36px;text-align:center;">
-                  <h2 style="margin:0 0 10px 0;font-size:20px;font-weight:700;color:#0f172a;">
-                    Verify Your Email Address
-                  </h2>
-                  <p style="margin:0 0 28px 0;font-size:14px;line-height:1.6;color:#64748b;">
-                    Enter the verification code below in PaperGraph to complete your researcher account setup.
-                  </p>
+          <!-- Card -->
+          <tr>
+            <td style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#374151;">
+                    <p style="margin:0 0 20px 0;">
+                      Here is your verification code. Enter it in the app to continue.
+                    </p>
 
-                  <!-- OTP Code Digits -->
-                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
-                    <tr>
-                      {digits_html}
-                    </tr>
-                  </table>
+                    <!-- OTP Code -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                      <tr>
+                        <td style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px 0;text-align:center;font-family:'SF Mono','Fira Code','Cascadia Code',Consolas,'Liberation Mono',monospace;font-size:32px;font-weight:700;color:#111827;letter-spacing:6px;">
+                          {spaced_code}
+                        </td>
+                      </tr>
+                    </table>
 
-                  <!-- Timer Badge -->
-                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px auto;">
-                    <tr>
-                      <td style="background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;padding:8px 18px;">
-                        <span style="font-size:13px;color:#92400e;font-weight:600;">
-                          ⏱ Expires in 10 minutes
-                        </span>
-                      </td>
-                    </tr>
-                  </table>
+                    <p style="margin:0 0 0 0;font-size:13px;line-height:1.5;color:#6b7280;">
+                      This code expires in 10 minutes. If you did not request this, you can safely ignore this email.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-                  <!-- Divider -->
-                  <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 20px 0;">
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:12px;color:#9ca3af;line-height:1.5;">
+              PaperGraph &mdash; Research Literature Platform
+            </td>
+          </tr>
 
-                  <!-- Security Notice -->
-                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;width:100%;">
-                    <tr>
-                      <td style="text-align:left;padding:12px 16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
-                        <p style="margin:0 0 6px 0;font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;">
-                          🔒 Security Notice
-                        </p>
-                        <p style="margin:0;font-size:12.5px;line-height:1.5;color:#64748b;">
-                          If you didn't request this code, you can safely ignore this email. Never share your verification code with anyone.
-                        </p>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-
-              <!-- Footer -->
-              <tr>
-                <td style="padding:20px 36px 28px 36px;text-align:center;">
-                  <p style="margin:0 0 4px 0;font-size:13px;font-weight:600;color:#94a3b8;">
-                    PaperGraph Research Literature Platform
-                  </p>
-                  <p style="margin:0;font-size:11px;color:#cbd5e1;">
-                    Accelerating Academic Discovery
-                  </p>
-                </td>
-              </tr>
-
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-    """
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
 
 
 import asyncio

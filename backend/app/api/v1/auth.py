@@ -43,6 +43,17 @@ class VerifyOtpRequest(BaseModel):
 
 
 def _generate_otp_html(code: str) -> str:
+    # Generate individual digit cells for premium look
+    digits_html = ""
+    for digit in str(code):
+        digits_html += (
+            f'<td style="width:48px;height:56px;background:#f0f4ff;border:2px solid #c7d2fe;'
+            f'border-radius:12px;text-align:center;font-size:28px;font-weight:800;'
+            f'color:#3730a3;font-family:\'SF Mono\',\'Fira Code\',\'Consolas\',monospace;'
+            f'letter-spacing:0;">{digit}</td>'
+            '<td style="width:6px;"></td>'
+        )
+
     return f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -50,73 +61,92 @@ def _generate_otp_html(code: str) -> str:
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>PaperGraph Verification Code</title>
-      <style>
-        body {{
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          background-color: #f8fafc;
-          margin: 0;
-          padding: 24px;
-        }}
-        .container {{
-          max-width: 480px;
-          margin: 0 auto;
-          background: #ffffff;
-          border-radius: 16px;
-          padding: 36px 28px;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-          border: 1px solid #e2e8f0;
-          text-align: center;
-        }}
-        .logo {{
-          font-size: 24px;
-          font-weight: 800;
-          color: #2563eb;
-          margin-bottom: 20px;
-          display: inline-block;
-        }}
-        h2 {{
-          color: #0f172a;
-          font-size: 20px;
-          margin-bottom: 8px;
-        }}
-        p {{
-          color: #64748b;
-          font-size: 14px;
-          line-height: 1.5;
-          margin-bottom: 24px;
-        }}
-        .otp-box {{
-          background: #f1f5f9;
-          border: 2px dashed #93c5fd;
-          border-radius: 12px;
-          padding: 16px 24px;
-          font-size: 32px;
-          font-weight: 800;
-          letter-spacing: 8px;
-          color: #1d4ed8;
-          display: inline-block;
-          margin: 8px 0 24px 0;
-        }}
-        .footer {{
-          font-size: 12px;
-          color: #94a3b8;
-          margin-top: 24px;
-          border-top: 1px solid #f1f5f9;
-          padding-top: 16px;
-        }}
-      </style>
     </head>
-    <body>
-      <div class="container">
-        <div class="logo">✦ PaperGraph</div>
-        <h2>Verify Your Email</h2>
-        <p>Use the verification code below to complete your researcher account registration. This code is valid for 10 minutes.</p>
-        <div class="otp-box">{code}</div>
-        <p>If you didn't request this code, you can safely ignore this email.</p>
-        <div class="footer">
-          PaperGraph Research Literature Platform
-        </div>
-      </div>
+    <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.08),0 2px 8px rgba(0,0,0,0.04);">
+
+              <!-- Gradient Header -->
+              <tr>
+                <td style="background:linear-gradient(135deg,#4f46e5 0%,#2563eb 50%,#0ea5e9 100%);padding:36px 32px 28px 32px;text-align:center;">
+                  <!-- Logo Icon -->
+                  <div style="width:56px;height:56px;margin:0 auto 16px auto;background:rgba(255,255,255,0.2);border-radius:16px;line-height:56px;font-size:28px;">
+                    🛡️
+                  </div>
+                  <h1 style="margin:0 0 4px 0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">
+                    ✦ PaperGraph
+                  </h1>
+                  <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.8);font-weight:500;">
+                    Secure Email Verification
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Main Content -->
+              <tr>
+                <td style="padding:32px 36px 16px 36px;text-align:center;">
+                  <h2 style="margin:0 0 10px 0;font-size:20px;font-weight:700;color:#0f172a;">
+                    Verify Your Email Address
+                  </h2>
+                  <p style="margin:0 0 28px 0;font-size:14px;line-height:1.6;color:#64748b;">
+                    Enter the verification code below in PaperGraph to complete your researcher account setup.
+                  </p>
+
+                  <!-- OTP Code Digits -->
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
+                    <tr>
+                      {digits_html}
+                    </tr>
+                  </table>
+
+                  <!-- Timer Badge -->
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px auto;">
+                    <tr>
+                      <td style="background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;padding:8px 18px;">
+                        <span style="font-size:13px;color:#92400e;font-weight:600;">
+                          ⏱ Expires in 10 minutes
+                        </span>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Divider -->
+                  <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 20px 0;">
+
+                  <!-- Security Notice -->
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;width:100%;">
+                    <tr>
+                      <td style="text-align:left;padding:12px 16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+                        <p style="margin:0 0 6px 0;font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;">
+                          🔒 Security Notice
+                        </p>
+                        <p style="margin:0;font-size:12.5px;line-height:1.5;color:#64748b;">
+                          If you didn't request this code, you can safely ignore this email. Never share your verification code with anyone.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="padding:20px 36px 28px 36px;text-align:center;">
+                  <p style="margin:0 0 4px 0;font-size:13px;font-weight:600;color:#94a3b8;">
+                    PaperGraph Research Literature Platform
+                  </p>
+                  <p style="margin:0;font-size:11px;color:#cbd5e1;">
+                    Accelerating Academic Discovery
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
     """

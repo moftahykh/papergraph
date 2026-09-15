@@ -181,12 +181,27 @@ def _send_smtp_email(to_email: str, code: str) -> bool:
         html_part = MIMEText(_generate_otp_html(code), "html")
         msg.attach(html_part)
 
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=8) as server:
-            server.starttls()
-            server.login(smtp_user, clean_pass)
-            server.send_message(msg)
-        logger.info(f"OTP successfully delivered via Gmail SMTP to {to_email}")
-        return True
+        # Attempt 1: Port 587 (TLS) with IPv4 forced via source_address
+        try:
+            with smtplib.SMTP(smtp_host, 587, source_address=("0.0.0.0", 0), timeout=8) as server:
+                server.starttls()
+                server.login(smtp_user, clean_pass)
+                server.send_message(msg)
+            logger.info(f"OTP successfully delivered via Gmail SMTP (port 587) to {to_email}")
+            return True
+        except Exception as e587:
+            logger.warning(f"Port 587 SMTP attempt failed ({e587}), trying Port 465 SSL...")
+
+        # Attempt 2: Port 465 (SSL) with IPv4 forced
+        try:
+            with smtplib.SMTP_SSL(smtp_host, 465, source_address=("0.0.0.0", 0), timeout=8) as server:
+                server.login(smtp_user, clean_pass)
+                server.send_message(msg)
+            logger.info(f"OTP successfully delivered via Gmail SMTP (port 465) to {to_email}")
+            return True
+        except Exception as e465:
+            logger.warning(f"Port 465 SMTP attempt failed: {e465}")
+            return False
     except Exception as e:
         logger.warning(f"Failed to send email via SMTP to {to_email}: {e}")
         return False

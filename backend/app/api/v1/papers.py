@@ -62,22 +62,33 @@ async def get_paper_details(
         )
         canonical = match_res
 
-    # 2. If not found in memory, query upstream providers — each isolated in
-    #    its own try/except so one provider's failure never skips the other.
-    if not canonical:
+    # 2. If paper is not found in memory OR has no abstract, query upstream providers
+    #    (S2 and OpenAlex) to enrich with full abstract and deep metadata.
+    if not canonical or not canonical.abstract:
         raw = None
         try:
             raw = await s2_provider.resolve(clean_id)
         except Exception:
             raw = None
-        if not raw and openalex_provider:
+        if (not raw or not getattr(raw, "abstract", None)) and openalex_provider:
             try:
-                raw = await openalex_provider.resolve(clean_id)
+                raw_oa = await openalex_provider.resolve(clean_id)
+                if raw_oa and getattr(raw_oa, "abstract", None):
+                    raw = raw_oa
             except Exception:
-                raw = None
+                pass
 
         if raw:
-            canonical = resolver.ingest(raw.to_canonical())
+            new_canonical = raw.to_canonical()
+            if canonical:
+                if new_canonical.abstract:
+                    canonical.abstract = new_canonical.abstract
+                if new_canonical.authors and len(new_canonical.authors) > len(canonical.authors):
+                    canonical.authors = new_canonical.authors
+                if new_canonical.venue and not canonical.venue:
+                    canonical.venue = new_canonical.venue
+            else:
+                canonical = resolver.ingest(new_canonical)
 
     if not canonical:
         raise NotFoundError(f"Paper with identifier '{clean_id}' not found.")

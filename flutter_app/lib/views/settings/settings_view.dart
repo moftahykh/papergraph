@@ -395,7 +395,7 @@ class _SettingsViewState extends State<SettingsView> {
                   height: 46,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE8EEF5),
+                    color: isDark ? AppTheme.darkSurface : const Color(0xFFE8EEF5),
                   ),
                   child: Icon(
                     Icons.person_outline_rounded,
@@ -442,7 +442,7 @@ class _SettingsViewState extends State<SettingsView> {
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
-                      foregroundColor: isDark ? const Color(0xFF062631) : Colors.white,
+                      foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -507,7 +507,7 @@ class _SettingsViewState extends State<SettingsView> {
             height: 50,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? const Color(0xFF22304F) : AppTheme.primaryBlue,
+              color: isDark ? const Color(0xFF252730) : AppTheme.primaryBlue,
             ),
             child: Center(
               child: Text(

@@ -98,7 +98,10 @@ class _RegisterViewState extends State<RegisterView> {
 
     // 1. Verify if email already exists before dispatching OTP
     try {
-      final exists = await authProvider.isEmailRegistered(email);
+      final exists = await authProvider.isEmailRegistered(email).timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => false,
+      );
       if (exists) {
         if (!mounted) return;
         setState(() => _isLoading = false);
@@ -112,11 +115,16 @@ class _RegisterViewState extends State<RegisterView> {
         return;
       }
     } catch (_) {
-      // If check encounters an issue, continue flow
+      // If check encounters an issue or times out, continue flow safely
     }
 
     try {
-      await _apiClient.sendOtp(email);
+      await _apiClient.sendOtp(email).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw const ApiException(
+          'Connection timed out while sending verification code. Please check your internet connection or server status.',
+        ),
+      );
       if (!mounted) return;
 
       setState(() => _isLoading = false);

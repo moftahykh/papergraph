@@ -68,7 +68,9 @@ class _LoginViewState extends State<LoginView> {
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white),
               SizedBox(width: 10),
-              Text('Biometric Authentication Successful!'),
+              Expanded(
+                child: Text('Biometric Authentication Successful!'),
+              ),
             ],
           ),
           backgroundColor: AppTheme.accentEmerald,
@@ -304,7 +306,7 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                     label: const Text(
-                      'Sign In with Biometrics (بصمة الإصبع)',
+                      'Sign In with Biometrics',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,

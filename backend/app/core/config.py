@@ -77,5 +77,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM_EMAIL: Optional[str] = None
 
+    # Resend HTTPS API (Port 443 - Bypasses cloud host SMTP port restrictions)
+    RESEND_API_KEY: Optional[str] = None
+
 
 settings = Settings()

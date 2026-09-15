@@ -1,3 +1,4 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../cubits/notification/notification_cubit.dart';
@@ -16,6 +17,82 @@ import 'permission_service.dart';
 class LocalNotificationService {
   static const String _promptShownKey = 'contextual_notif_prompt_shown';
   static const String _graphNotifPrefix = 'notif_enabled_graph_';
+
+  static const String channelId = 'paper_graph_channel';
+  static const String channelName = 'PaperGraph Notifications';
+  static const String channelDescription = 'Literature synthesis and alerts for PaperGraph';
+
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+  static bool _isInitialized = false;
+
+  /// Initializes the local notifications plugin for system tray notifications.
+  static Future<void> init({FlutterLocalNotificationsPlugin? plugin}) async {
+    if (_isInitialized) return;
+    try {
+      final activePlugin = plugin ?? _notificationsPlugin;
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const darwinSettings = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: darwinSettings,
+        macOS: darwinSettings,
+      );
+
+      await activePlugin.initialize(
+        settings: initSettings,
+        onDidReceiveNotificationResponse: (response) {
+          // Response handling when user taps on OS system tray notification
+        },
+      );
+      _isInitialized = true;
+    } catch (_) {
+      // Safe fallback when running in mock, test, or headless environments
+    }
+  }
+
+  /// Displays an OS-level notification in the status bar/notification center.
+  static Future<void> showSystemNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'PaperGraph Alert',
+      );
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      const notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
+
+      await _notificationsPlugin.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: notificationDetails,
+        payload: payload,
+      );
+    } catch (_) {
+      // Ignore failures gracefully in test runner or restricted environments
+    }
+  }
 
   /// Checks if notification permission is currently granted.
   static Future<bool> hasPermission() async {
@@ -69,7 +146,55 @@ class LocalNotificationService {
       isPartial: isPartial,
     );
 
+    // 2. Dispatch OS system tray notification if enabled or permission granted
+    final wasEnabled = isGraphNotificationEnabled(graphId);
+    bool permitted = false;
+    try {
+      permitted = await hasPermission();
+    } catch (_) {}
+
+    if (wasEnabled || permitted) {
+      final title = isPartial ? 'Graph Ready (Partial)' : 'Literature Graph Ready';
+      final body = isPartial
+          ? 'Synthesized $nodeCount papers with partial source coverage.'
+          : 'Synthesized $nodeCount papers and citation relationships.';
+      await showSystemNotification(
+        id: graphId.hashCode.abs() % 100000,
+        title: title,
+        body: body,
+        payload: graphId,
+      );
+    }
+
     // Clean up per-graph notification toggle
+    if (Hive.isBoxOpen(HiveService.settingsBoxName)) {
+      await HiveService.settingsBox.delete('$_graphNotifPrefix$graphId');
+    }
+  }
+
+  /// Dispatches failure notification if graph synthesis fails.
+  static Future<void> onGraphFailed({
+    required String graphId,
+    required String error,
+    required NotificationCubit notificationCubit,
+  }) async {
+    notificationCubit.notifyGraphFailed(graphId, error);
+
+    final wasEnabled = isGraphNotificationEnabled(graphId);
+    bool permitted = false;
+    try {
+      permitted = await hasPermission();
+    } catch (_) {}
+
+    if (wasEnabled || permitted) {
+      await showSystemNotification(
+        id: graphId.hashCode.abs() % 100000,
+        title: 'Graph Generation Failed',
+        body: error,
+        payload: graphId,
+      );
+    }
+
     if (Hive.isBoxOpen(HiveService.settingsBoxName)) {
       await HiveService.settingsBox.delete('$_graphNotifPrefix$graphId');
     }

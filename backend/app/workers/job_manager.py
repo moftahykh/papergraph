@@ -44,6 +44,8 @@ class GraphJobManager:
     ):
         self.jobs: Dict[str, GraphJob] = {}
         self.idempotency_map: Dict[str, str] = {}
+        self.max_stored_jobs = 200
+        self.job_ttl_seconds = 14400  # 4 hours
         self._lock = asyncio.Lock()
 
         # Engine dependencies
@@ -57,6 +59,31 @@ class GraphJobManager:
         )
         self.ranking_engine = ranking_engine or SafeRankingEngine()
         self.graph_synthesizer = graph_synthesizer or GraphSynthesizer()
+
+    def _evict_stale_jobs(self) -> None:
+        """
+        Evicts expired jobs (> 4 hours old) and enforces MAX_STORED_JOBS bounds
+        to prevent memory leakage.
+        """
+        now = datetime.now(timezone.utc)
+        stale_job_ids = [
+            jid for jid, job in self.jobs.items()
+            if (now - job.updated_at).total_seconds() > self.job_ttl_seconds
+        ]
+        for jid in stale_job_ids:
+            self.jobs.pop(jid, None)
+
+        if len(self.jobs) > self.max_stored_jobs:
+            sorted_jobs = sorted(self.jobs.values(), key=lambda j: j.updated_at)
+            overflow = len(self.jobs) - self.max_stored_jobs
+            for job in sorted_jobs[:overflow]:
+                self.jobs.pop(job.job_id, None)
+
+        # Synchronize idempotency_map to evict dangling keys
+        active_ids = set(self.jobs.keys())
+        dangling_keys = [k for k, jid in self.idempotency_map.items() if jid not in active_ids]
+        for k in dangling_keys:
+            self.idempotency_map.pop(k, None)
 
     @staticmethod
     def compute_idempotency_key(request: CreateGraphRequest) -> str:
@@ -72,6 +99,8 @@ class GraphJobManager:
         key = self.compute_idempotency_key(request)
 
         async with self._lock:
+            self._evict_stale_jobs()
+
             if key in self.idempotency_map:
                 existing_id = self.idempotency_map[key]
                 existing_job = self.jobs.get(existing_id)

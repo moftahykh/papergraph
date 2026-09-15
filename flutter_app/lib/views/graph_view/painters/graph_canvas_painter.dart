@@ -8,7 +8,6 @@ class GraphCanvasPainter extends CustomPainter {
   final List<GraphEdge> citationEdges;
   final List<GraphEdge> similarityEdges;
   final String? selectedNodeId;
-  final double pulseValue; // 0.0 to 1.0 for origin node glow
   final bool isDark;
   final Map<String, Offset>? draggedPositions;
 
@@ -22,7 +21,6 @@ class GraphCanvasPainter extends CustomPainter {
     required this.citationEdges,
     required this.similarityEdges,
     this.selectedNodeId,
-    this.pulseValue = 0.0,
     this.isDark = true,
     this.draggedPositions,
   })  : minYear = calcMinYear(nodes),
@@ -293,26 +291,20 @@ class GraphCanvasPainter extends CustomPainter {
 
       final nodeColor = getNodeColor(node.year);
 
-      // 1. Origin Node Golden Pulsing Glow Halo
+      // 1. Origin Node Clean Double Ring
       if (node.isOrigin) {
-        final glowRadius = radius + 6.0 + (pulseValue * 5.0);
-        final glowPaint = Paint()
-          ..color = const Color(0xFFF59E0B).withAlpha((70 * (1.0 - pulseValue * 0.4)).toInt())
-          ..style = PaintingStyle.fill;
-        canvas.drawCircle(pos, glowRadius, glowPaint);
-
         final originRingPaint = Paint()
           ..color = const Color(0xFFF59E0B)
-          ..strokeWidth = 2.5
+          ..strokeWidth = 2.4
           ..style = PaintingStyle.stroke;
-        canvas.drawCircle(pos, radius + 3.0, originRingPaint);
+        canvas.drawCircle(pos, radius + 4.0, originRingPaint);
       }
 
       // 2. Selection Ring
       if (isSelected) {
         final selRingPaint = Paint()
           ..color = isDark ? Colors.white : AppTheme.primaryBlue
-          ..strokeWidth = 3.2
+          ..strokeWidth = 3.0
           ..style = PaintingStyle.stroke;
         canvas.drawCircle(pos, radius + 4.5, selRingPaint);
       }
@@ -338,8 +330,8 @@ class GraphCanvasPainter extends CustomPainter {
         ..style = PaintingStyle.stroke;
       canvas.drawCircle(pos, radius, borderPaint);
 
-      // 6. Year Indicator Inside Node if radius >= 18.0
-      if (radius >= 18.0 && node.year != null) {
+      // 6. Year Indicator Inside Node for all nodes with radius >= 13.0
+      if (radius >= 13.0 && node.year != null) {
         final yearTextPainter = TextPainter(
           text: TextSpan(
             text: '${node.year}',
@@ -368,18 +360,13 @@ class GraphCanvasPainter extends CustomPainter {
     Map<String, double> radiusMap,
     Set<String> connectedNodeIds,
   ) {
-    // Identify top 3 cited nodes
-    final sortedByCites = List<GraphNode>.from(nodes)
-      ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
-    final topCitedIds = sortedByCites.take(3).map((n) => n.canonicalId).toSet();
-
     for (final node in nodes) {
       final isSelected = node.canonicalId == selectedNodeId;
-      final isConnected = selectedNodeId != null && connectedNodeIds.contains(node.canonicalId);
-      final isTopCited = selectedNodeId == null && topCitedIds.contains(node.canonicalId);
 
-      // Smart de-clutter: ONLY show label if Origin, Selected, Connected to Selected, or Top Cited
-      final shouldShow = node.isOrigin || isSelected || isConnected || isTopCited;
+      // Strict Anti-AI-Slop & Scientific Clutter Reduction:
+      // Only show floating label for the actively selected node, or origin node when nothing is selected.
+      // Never render dozens of simultaneous labels on mobile.
+      final shouldShow = isSelected || (selectedNodeId == null && node.isOrigin);
       if (!shouldShow) continue;
 
       final pos = posMap[node.canonicalId]!;
@@ -392,7 +379,7 @@ class GraphCanvasPainter extends CustomPainter {
       final textSpan = TextSpan(
         text: truncated,
         style: TextStyle(
-          color: isDark ? Colors.white : const Color(0xFF0F172A),
+          color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
           fontSize: isSelected ? 12.0 : 10.5,
           fontWeight: (isSelected || node.isOrigin) ? FontWeight.bold : FontWeight.w500,
         ),
@@ -423,13 +410,13 @@ class GraphCanvasPainter extends CustomPainter {
       final pillColor = isDark
           ? (isSelected
               ? const Color(0xFF2563EB)
-              : (node.isOrigin ? const Color(0xFF92400E) : const Color(0xEE0F172A)))
+              : (node.isOrigin ? const Color(0xFF92400E) : AppTheme.darkCard.withValues(alpha: 0.92)))
           : (isSelected
               ? const Color(0xFFDBEAFE)
               : (node.isOrigin ? const Color(0xFFFEF3C7) : const Color(0xF2FFFFFF)));
 
       final borderPillColor = isDark
-          ? (isSelected ? Colors.white : const Color(0xFF334155))
+          ? (isSelected ? Colors.white : AppTheme.darkBorder)
           : (isSelected ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1));
 
       final pillPaint = Paint()
@@ -451,7 +438,6 @@ class GraphCanvasPainter extends CustomPainter {
   bool shouldRepaint(covariant GraphCanvasPainter oldDelegate) {
     return oldDelegate.nodes != nodes ||
         oldDelegate.selectedNodeId != selectedNodeId ||
-        oldDelegate.pulseValue != pulseValue ||
         oldDelegate.isDark != isDark ||
         oldDelegate.draggedPositions != draggedPositions ||
         oldDelegate.citationEdges != citationEdges ||

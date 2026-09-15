@@ -6,6 +6,8 @@ import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../cubits/library/library_cubit.dart';
 import '../../cubits/library/library_state.dart';
+import '../../cubits/notification/notification_cubit.dart';
+import '../../cubits/notification/notification_state.dart';
 import '../../cubits/search/search_cubit.dart';
 import '../../cubits/search/search_state.dart';
 import '../../cubits/theme/theme_cubit.dart';
@@ -15,6 +17,7 @@ import '../../models/graph_models.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/widgets/auth_gate_sheet.dart';
 import '../graph_view/connected_graph_view.dart';
+import '../widgets/notifications_sheet.dart';
 
 /// Search-first home (the Connected Papers model).
 ///
@@ -103,6 +106,21 @@ class _HomeViewState extends State<HomeView> {
           ],
         ),
         actions: [
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, notifState) {
+              final unreadCount = notifState.notifications.where((n) => !n.isRead).length;
+              return IconButton(
+                tooltip: 'Notifications',
+                icon: Badge(
+                  isLabelVisible: unreadCount > 0,
+                  label: Text('$unreadCount'),
+                  backgroundColor: AppTheme.accentEmerald,
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                onPressed: () => NotificationsSheet.show(context),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Toggle theme',
             icon: Icon(
@@ -171,8 +189,8 @@ class _HomeViewState extends State<HomeView> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: hasSearchLeft
-            ? (isDark ? const Color(0xFF132A3B) : const Color(0xFFF0F9FF))
-            : (isDark ? const Color(0xFF2E1B26) : const Color(0xFFFFF1F2)),
+            ? (isDark ? AppTheme.primaryLightBlue.withAlpha(22) : const Color(0xFFF0F9FF))
+            : (isDark ? AppTheme.accentRose.withAlpha(22) : const Color(0xFFFFF1F2)),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: hasSearchLeft
@@ -233,9 +251,11 @@ class _HomeViewState extends State<HomeView> {
       style: const TextStyle(fontSize: 14.5),
       onChanged: (value) {
         setState(() {}); // refresh the clear-button visibility
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        if (!authProvider.isAuthenticated && HiveService.getGuestSearchCount() >= 1) {
-          AuthGateBottomSheet.show(context);
+
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        final hasSearchLeft = auth.isAuthenticated || HiveService.getGuestSearchCount() < 1;
+        if (!hasSearchLeft) {
+          // Do not spam backend queries when guest limit is exhausted
           return;
         }
 

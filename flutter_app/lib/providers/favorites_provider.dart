@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/services/hive_service.dart';
 import '../models/paper_model.dart';
+import 'auth_provider.dart';
 import 'papers_provider.dart';
 
 class FavoritesProvider extends ChangeNotifier {
@@ -8,6 +9,13 @@ class FavoritesProvider extends ChangeNotifier {
 
   FavoritesProvider() {
     loadFavorites();
+    AuthProvider.addAuthListener(loadFavorites);
+  }
+
+  @override
+  void dispose() {
+    AuthProvider.removeAuthListener(loadFavorites);
+    super.dispose();
   }
 
   List<PaperModel> get favoritePapers => _favoritePapers;

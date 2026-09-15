@@ -92,3 +92,4 @@ local.properties
 ephemeral/
 google-services.json
 tree.txt
+.agents/

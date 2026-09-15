@@ -14,21 +14,27 @@ class AppTheme {
   // ---- Brand accents ----
   /// Light-theme primary — Paper & Ink deep indigo.
   static const Color primaryBlue = Color(0xFF3730A3);
-  /// Dark-theme primary — Dark Lab soft cyan.
-  static const Color primaryLightBlue = Color(0xFF4AC6E3);
-  static const Color accentCyan = Color(0xFF4AC6E3);
-  /// Semantic colors, muted to sit well on both themes.
-  static const Color accentEmerald = Color(0xFF2E7D5B);
-  static const Color accentAmber = Color(0xFFB45309);
-  static const Color accentRose = Color(0xFFC2404D);
+  /// Dark-theme primary — Luminous Electric Cyan that radiates on charcoal.
+  static const Color primaryLightBlue = Color(0xFF38BDF8);
+  static const Color accentCyan = Color(0xFF38BDF8);
+  /// Semantic colors, tailored to sit vibrantly on charcoal and light themes.
+  static const Color accentEmerald = Color(0xFF10B981);
+  static const Color accentAmber = Color(0xFFF59E0B);
+  static const Color accentRose = Color(0xFFF43F5E);
 
-  // ---- Dark Lab palette ----
-  static const Color darkBg = Color(0xFF0B1220);
-  static const Color darkSurface = Color(0xFF121C31);
-  static const Color darkCard = Color(0xFF152238);
-  static const Color darkBorder = Color(0xFF22304F);
-  static const Color darkTextPrimary = Color(0xFFE6EDF7);
-  static const Color darkTextSecondary = Color(0xFF93A3BE);
+  // ---- Charcoal Grey Palette (رمادي فحمي راقي مع تباين متوازن) ----
+  /// Background: Deep matte charcoal grey
+  static const Color darkBg = Color(0xFF121316);
+  /// Surface / Toolbars: Neutral elevated charcoal
+  static const Color darkSurface = Color(0xFF1B1C21);
+  /// Cards / Sheets: High-contrast charcoal card container
+  static const Color darkCard = Color(0xFF22242B);
+  /// Borders: Subtle refined charcoal border
+  static const Color darkBorder = Color(0xFF32353E);
+  /// Text Primary: Crisp soft off-white for effortless readability
+  static const Color darkTextPrimary = Color(0xFFF3F4F6);
+  /// Text Secondary: Neutral muted silver-grey
+  static const Color darkTextSecondary = Color(0xFF9CA3AF);
 
   // ---- Paper & Ink palette ----
   static const Color lightBg = Color(0xFFFAFAF7);
@@ -38,7 +44,7 @@ class AppTheme {
   static const Color lightTextPrimary = Color(0xFF1B2432);
   static const Color lightTextSecondary = Color(0xFF667085);
 
-  // Dark Lab
+  // Charcoal Dark Theme
   static ThemeData get darkTheme {
     final baseTextTheme = ThemeData.dark().textTheme;
     return ThemeData(
@@ -51,8 +57,8 @@ class AppTheme {
         secondary: accentCyan,
         surface: darkSurface,
         error: accentRose,
-        onPrimary: Color(0xFF062631),
-        onSecondary: Color(0xFF062631),
+        onPrimary: Color(0xFF121316),
+        onSecondary: Color(0xFF121316),
         onSurface: darkTextPrimary,
       ),
       cardTheme: CardThemeData(

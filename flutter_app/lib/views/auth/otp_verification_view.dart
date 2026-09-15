@@ -370,7 +370,7 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
             counterText: '',
             contentPadding: EdgeInsets.zero,
             filled: true,
-            fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+            fillColor: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(

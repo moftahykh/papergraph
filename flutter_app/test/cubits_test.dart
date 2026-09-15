@@ -320,9 +320,9 @@ void main() {
       await cubit.buildGraphFromDoi('10.1000/cancel');
       cubit.cancel();
 
-      // Ensure timer does not fire further updates
+      // Ensure timer does not fire further updates and state is reset
       await Future.delayed(const Duration(milliseconds: 900));
-      expect(cubit.state, isA<GraphCreating>());
+      expect(cubit.state, isA<GraphInitial>());
     });
   });
 

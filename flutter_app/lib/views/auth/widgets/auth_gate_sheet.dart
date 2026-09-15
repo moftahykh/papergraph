@@ -21,7 +21,7 @@ class AuthGateBottomSheet extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
@@ -38,9 +38,10 @@ class AuthGateBottomSheet extends StatelessWidget {
         top: 14,
         bottom: MediaQuery.of(context).padding.bottom + 24,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           // Drag handle
           Container(
             width: 44,
@@ -108,7 +109,7 @@ class AuthGateBottomSheet extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF131B2E) : const Color(0xFFF8FAFC),
+              color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
@@ -201,7 +202,8 @@ class AuthGateBottomSheet extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildFeatureRow({

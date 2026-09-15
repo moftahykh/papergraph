@@ -21,6 +21,31 @@ import '../models/user_model.dart';
 /// - Profile extras (institution, researchField) are stored locally in Hive
 ///   alongside the cached user; Firebase Auth only owns identity.
 class AuthProvider extends ChangeNotifier {
+  static final List<VoidCallback> _authListeners = [];
+
+  /// Registers a global listener triggered whenever authentication state changes
+  /// (e.g. login, logout, user switch) to synchronize offline caches & providers.
+  static void addAuthListener(VoidCallback listener) {
+    if (!_authListeners.contains(listener)) {
+      _authListeners.add(listener);
+    }
+  }
+
+  /// Removes a registered auth state listener.
+  static void removeAuthListener(VoidCallback listener) {
+    _authListeners.remove(listener);
+  }
+
+  static void _notifyAuthChanged() {
+    for (final listener in List<VoidCallback>.from(_authListeners)) {
+      try {
+        listener();
+      } catch (e) {
+        debugPrint('AuthProvider listener error: $e');
+      }
+    }
+  }
+
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
@@ -74,6 +99,8 @@ class AuthProvider extends ChangeNotifier {
       joinedDate: user.metadata.creationTime ?? DateTime.now(),
     );
     await HiveService.saveUser(_currentUser!.toMap());
+    await HiveService.migrateLegacyDataForUser(user.uid);
+    _notifyAuthChanged();
     notifyListeners();
   }
 
@@ -158,6 +185,8 @@ class AuthProvider extends ChangeNotifier {
         joinedDate: cred.user!.metadata.creationTime ?? DateTime.now(),
       );
       await HiveService.saveUser(_currentUser!.toMap());
+      await HiveService.migrateLegacyDataForUser(cred.user!.uid);
+      _notifyAuthChanged();
       _setLoading(false);
       notifyListeners();
       return true;
@@ -189,6 +218,14 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
+      final isBioSupported = await BiometricService.isBiometricAvailable();
+      if (!isBioSupported) {
+        _errorMessage =
+            'Biometric authentication is not supported or not set up on this device. Please use your email and password.';
+        _setLoading(false);
+        return false;
+      }
+
       final success = await BiometricService.authenticate(
         reason:
             'Authenticate with Fingerprint/Face to access your research profile and vault',
@@ -199,6 +236,7 @@ class AuthProvider extends ChangeNotifier {
           await _adoptFirebaseUser(fbUser);
         } else {
           _currentUser = UserModel.fromMap(saved!);
+          _notifyAuthChanged();
           notifyListeners();
         }
         _setLoading(false);
@@ -224,6 +262,7 @@ class AuthProvider extends ChangeNotifier {
     }
     _currentUser = null;
     await HiveService.clearUser();
+    _notifyAuthChanged();
     notifyListeners();
   }
 

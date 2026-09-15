@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/network/api_client.dart';
+import '../../core/services/hive_service.dart';
 import '../../models/graph_job_status.dart';
 import '../../models/graph_models.dart';
 import 'graph_state.dart';
@@ -25,7 +26,7 @@ class GraphCubit extends Cubit<GraphState> {
   static const Duration _maxPollingDuration = Duration(minutes: 4);
 
   static const double _backoffFactor = 1.4;
-  static const int _maxConsecutivePollErrors = 4;
+  static const int _maxConsecutivePollErrors = 8;
   int _consecutivePollErrors = 0;
 
   GraphCubit({PaperGraphApiClient? apiClient})
@@ -35,19 +36,39 @@ class GraphCubit extends Cubit<GraphState> {
   /// Builds a new literature graph from a seed DOI or identifier.
   Future<void> buildGraphFromDoi(
     String identifier, {
-    int maxNodes = 40,
+    int maxNodes = 18,
     bool includePrior = true,
     bool includeDerivative = true,
+    bool checkCacheFirst = true,
   }) async {
     cancel();
-    _lastOriginId = identifier;
-    emit(GraphCreating(identifier));
+    final cleanId = identifier.trim();
+    _lastOriginId = cleanId;
+
+    // 0-second instant loading from local Hive cache
+    if (checkCacheFirst) {
+      final cached = HiveService.getCachedGraph(cleanId, allowExpired: true);
+      if (cached != null) {
+        emit(
+          GraphLoaded(
+            snapshot: cached,
+            isPartial: cached.status == GraphJobStatus.partial,
+            warnings: cached.warnings,
+            dataCompleteness: cached.dataCompleteness,
+            fromOfflineCache: true,
+          ),
+        );
+        return;
+      }
+    }
+
+    emit(GraphCreating(cleanId));
 
     _activeCancelToken = CancelToken();
 
     try {
       final req = CreateGraphRequest(
-        originId: identifier,
+        originId: cleanId,
         maxNodes: maxNodes,
         includePriorWorks: includePrior,
         includeDerivativeWorks: includeDerivative,
@@ -105,6 +126,9 @@ class GraphCubit extends Cubit<GraphState> {
       if (statusRes.status == GraphJobStatus.completed ||
           statusRes.status == GraphJobStatus.partial) {
         if (statusRes.snapshot != null) {
+          try {
+            await HiveService.saveCachedGraph(statusRes.snapshot!);
+          } catch (_) {}
           emit(
             GraphLoaded(
               snapshot: statusRes.snapshot!,
@@ -171,7 +195,7 @@ class GraphCubit extends Cubit<GraphState> {
     }
   }
 
-  /// Cancels any active network request or polling timer.
+  /// Cancels any active network request or polling timer and resets state.
   void cancel() {
     _consecutivePollErrors = 0;
     _pollingTimer?.cancel();
@@ -180,6 +204,7 @@ class GraphCubit extends Cubit<GraphState> {
     _pollInterval = _initialPollInterval;
     _activeCancelToken?.cancel('Cancelled by user.');
     _activeCancelToken = null;
+    emit(const GraphInitial());
   }
 
   /// Retries generating the graph for the last requested origin paper.

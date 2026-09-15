@@ -162,3 +162,80 @@ def test_flutter_client_contains_zero_provider_secrets_and_urls():
                         assert not match, (
                             f"Security Violation: Found hardcoded secret pattern '{pattern}' in {file_path}"
                         )
+
+
+@pytest.mark.asyncio
+async def test_rate_limiter_memory_pruning():
+    """Rate limiter evicts expired IP timestamps to prevent memory leakage."""
+    import time
+    limiter = rate_limiter
+    limiter.reset()
+    now = time.time()
+
+    # Artificially inject expired entries
+    limiter._history["192.168.1.1"] = [now - 120, now - 70]
+    limiter._history["192.168.1.2"] = [now - 10]
+
+    # Trigger prune
+    limiter._prune_expired_entries(cutoff=now - limiter.window_seconds)
+
+    assert "192.168.1.1" not in limiter._history
+    assert "192.168.1.2" in limiter._history
+
+
+def test_job_manager_memory_bounds():
+    """GraphJobManager evicts stale jobs and bounds stored job count to prevent OOM."""
+    from datetime import datetime, timezone, timedelta
+    from app.workers.job_manager import GraphJobManager
+    from app.models.graph import GraphJob
+    from app.models.enums import GraphJobStatus
+
+    mgr = GraphJobManager()
+    mgr.max_stored_jobs = 3
+    mgr.job_ttl_seconds = 3600
+
+    now = datetime.now(timezone.utc)
+    old_time = now - timedelta(hours=5)
+
+    # Add expired job
+    j_old = GraphJob(
+        job_id="graph_old",
+        origin_query="query_old",
+        status=GraphJobStatus.COMPLETED,
+        current_stage=GraphJobStatus.COMPLETED,
+        progress=1.0,
+        poll_url="/api/v1/graphs/graph_old",
+        created_at=old_time,
+        updated_at=old_time,
+    )
+    mgr.jobs["graph_old"] = j_old
+    mgr.idempotency_map["key_old"] = "graph_old"
+
+    # Add active jobs
+    for i in range(4):
+        jid = f"graph_active_{i}"
+        j = GraphJob(
+            job_id=jid,
+            origin_query=f"query_{i}",
+            status=GraphJobStatus.COMPLETED,
+            current_stage=GraphJobStatus.COMPLETED,
+            progress=1.0,
+            poll_url=f"/api/v1/graphs/{jid}",
+            created_at=now,
+            updated_at=now + timedelta(seconds=i),
+        )
+        mgr.jobs[jid] = j
+        mgr.idempotency_map[f"key_{i}"] = jid
+
+    # Execute eviction
+    mgr._evict_stale_jobs()
+
+    # Expired job should be evicted
+    assert "graph_old" not in mgr.jobs
+    assert "key_old" not in mgr.idempotency_map
+
+    # Jobs count must be bounded to max_stored_jobs (3)
+    assert len(mgr.jobs) <= 3
+    # Idempotency map must match active jobs
+    assert set(mgr.idempotency_map.values()) == set(mgr.jobs.keys())
+

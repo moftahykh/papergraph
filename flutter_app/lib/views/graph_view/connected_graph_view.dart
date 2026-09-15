@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lottie/lottie.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import '../../core/services/local_notification_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -10,73 +9,88 @@ import '../../cubits/library/library_cubit.dart';
 import '../../cubits/notification/notification_cubit.dart';
 import '../../cubits/notification/notification_state.dart';
 import '../../cubits/paper_details/paper_details_cubit.dart';
-import '../../models/graph_job_status.dart';
 import '../../models/graph_models.dart';
 import '../../models/paper_model.dart';
 import '../paper_details/paper_details_view.dart';
 import 'painters/graph_canvas_painter.dart';
 import 'widgets/graph_bottom_sheet.dart';
+import 'widgets/graph_floating_controls.dart';
+import 'widgets/graph_loading_overlay.dart';
+import 'widgets/graph_state_views.dart';
 import 'widgets/graph_year_legend.dart';
 
-extension GraphJobStatusDisplay on GraphJobStatus {
-  String get displayTitle {
-    switch (this) {
-      case GraphJobStatus.queued:
-        return 'Queueing graph task...';
-      case GraphJobStatus.resolvingOrigin:
-        return 'Resolving seed paper identity...';
-      case GraphJobStatus.generatingCandidates:
-        return 'Generating candidate literature pool...';
-      case GraphJobStatus.preRanking:
-        return 'Applying PreScore quotas...';
-      case GraphJobStatus.enrichingMetadata:
-        return 'Enriching canonical paper metadata...';
-      case GraphJobStatus.enrichingReferences:
-        return 'Harvesting foundational references...';
-      case GraphJobStatus.computingWbc:
-        return 'Computing Bibliographic Coupling (WBC) matrix...';
-      case GraphJobStatus.enrichingCitations:
-        return 'Harvesting derivative citations...';
-      case GraphJobStatus.computingNcc:
-        return 'Computing Co-Citation (NCC)...';
-      case GraphJobStatus.computingFinalScores:
-        return 'Computing safe hybrid ranking scores...';
-      case GraphJobStatus.extractingPriorWorks:
-        return 'Extracting foundational prior works...';
-      case GraphJobStatus.extractingDerivativeWorks:
-        return 'Extracting subsequent derivative works...';
-      case GraphJobStatus.buildingLayout:
-        return 'Synthesizing deterministic 2D graph layout...';
-      case GraphJobStatus.completed:
-        return 'Graph generation complete';
-      case GraphJobStatus.partial:
-        return 'Graph generated with partial coverage';
-      case GraphJobStatus.failed:
-        return 'Graph generation failed';
-    }
-  }
-}
-
-class ConnectedGraphView extends StatefulWidget {
+class ConnectedGraphView extends StatelessWidget {
   final PaperModel? centerPaper;
   final String? seedDoi;
   final GraphSnapshot? initialSnapshot;
+  final GraphCubit? cubit;
 
   const ConnectedGraphView({
     super.key,
     this.centerPaper,
     this.seedDoi,
     this.initialSnapshot,
+    this.cubit,
   });
 
   @override
-  State<ConnectedGraphView> createState() => _ConnectedGraphViewState();
+  Widget build(BuildContext context) {
+    if (cubit != null) {
+      return BlocProvider<GraphCubit>.value(
+        value: cubit!,
+        child: _ConnectedGraphContentView(
+          centerPaper: centerPaper,
+          seedDoi: seedDoi,
+          initialSnapshot: initialSnapshot,
+        ),
+      );
+    }
+
+    bool hasParentCubit = false;
+    try {
+      BlocProvider.of<GraphCubit>(context, listen: false);
+      hasParentCubit = true;
+    } catch (_) {
+      hasParentCubit = false;
+    }
+
+    if (hasParentCubit) {
+      return _ConnectedGraphContentView(
+        centerPaper: centerPaper,
+        seedDoi: seedDoi,
+        initialSnapshot: initialSnapshot,
+      );
+    }
+
+    return BlocProvider<GraphCubit>(
+      create: (_) => GraphCubit(),
+      child: _ConnectedGraphContentView(
+        centerPaper: centerPaper,
+        seedDoi: seedDoi,
+        initialSnapshot: initialSnapshot,
+      ),
+    );
+  }
 }
 
-class _ConnectedGraphViewState extends State<ConnectedGraphView>
-    with SingleTickerProviderStateMixin {
+class _ConnectedGraphContentView extends StatefulWidget {
+  final PaperModel? centerPaper;
+  final String? seedDoi;
+  final GraphSnapshot? initialSnapshot;
+
+  const _ConnectedGraphContentView({
+    this.centerPaper,
+    this.seedDoi,
+    this.initialSnapshot,
+  });
+
+  @override
+  State<_ConnectedGraphContentView> createState() =>
+      _ConnectedGraphContentViewState();
+}
+
+class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView> {
   late TransformationController _transformController;
-  late AnimationController _pulseController;
 
   GraphNode? _selectedNode;
   bool _isBottomSheetOpen = false;
@@ -90,10 +104,6 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
   void initState() {
     super.initState();
     _transformController = TransformationController();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    )..repeat(reverse: true);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeGraph();
@@ -118,10 +128,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
       final seed = widget.centerPaper!.doi.isNotEmpty
           ? widget.centerPaper!.doi
           : widget.centerPaper!.id;
-      // If current state is initial or not for this paper, dispatch graph generation
-      if (graphCubit.state is GraphInitial) {
-        graphCubit.buildGraphFromDoi(seed);
-      }
+      graphCubit.buildGraphFromDoi(seed);
     }
   }
 
@@ -136,7 +143,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
     final dy = screenSize.height * 0.38;   // slightly above center: leaves room for the bottom sheet
     _transformController.value = Matrix4.identity()
       ..setTranslationRaw(dx, dy, 0.0)
-      ..scale(initialScale, initialScale);
+      ..scaleByDouble(initialScale, initialScale, 1.0, 1.0);
   }
 
   void _resetZoom() {
@@ -147,7 +154,6 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _transformController.dispose();
     super.dispose();
   }
@@ -189,7 +195,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
     });
   }
 
-  void _onPanStart(DragStartDetails details, List<GraphNode> nodes, int maxCitations) {
+  void _onLongPressStart(LongPressStartDetails details, List<GraphNode> nodes, int maxCitations) {
     final hit = _hitTestNode(details.localPosition, nodes, maxCitations);
     if (hit != null) {
       setState(() {
@@ -199,7 +205,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
     }
   }
 
-  void _onPanUpdate(DragUpdateDetails details) {
+  void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
     if (_draggingNodeId != null) {
       final Matrix4 inverse = Matrix4.inverted(_transformController.value);
       final Vector3 canvasPoint = inverse.transform3(
@@ -211,12 +217,22 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
     }
   }
 
-  void _onPanEnd(DragEndDetails details) {
+  void _onLongPressEnd(LongPressEndDetails details) {
     if (_draggingNodeId != null) {
       setState(() {
         _draggingNodeId = null;
       });
     }
+  }
+
+  void _zoomIn() {
+    final matrix = _transformController.value.clone()..scaleByDouble(1.25, 1.25, 1.0, 1.0);
+    _transformController.value = matrix;
+  }
+
+  void _zoomOut() {
+    final matrix = _transformController.value.clone()..scaleByDouble(0.8, 0.8, 1.0, 1.0);
+    _transformController.value = matrix;
   }
 
   void _saveGraphToLibrary(GraphSnapshot snapshot) {
@@ -237,7 +253,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
       authors: node.authors,
       year: node.year ?? 2020,
       journal: node.venue ?? 'Academic Literature',
-      abstractText: 'Synthesized node from PaperGraph discovery engine.',
+      abstractText: '',
       citationsCount: node.citationCount,
       influentialCitations: 0,
       connectedPaperIds: const [],
@@ -260,7 +276,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
+      backgroundColor: isDark ? AppTheme.darkBg : const Color(0xFFF1F5F9),
       body: BlocConsumer<GraphCubit, GraphState>(
         listener: (context, state) {
           if (state is GraphLoaded) {
@@ -288,11 +304,16 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
         },
         builder: (context, state) {
           if (state is GraphCreating || state is GraphPolling) {
-            return _buildProgressiveLoadingView(state, isDark);
+            return GraphProgressiveLoadingView(state: state, isDark: isDark);
           }
 
           if (state is GraphError) {
-            return _buildErrorView(state, isDark);
+            return GraphErrorView(
+              message: state.message,
+              isDark: isDark,
+              onRetry: () => context.read<GraphCubit>().retry(),
+              onGoBack: () => Navigator.of(context).maybePop(),
+            );
           }
 
           if (state is GraphLoaded) {
@@ -300,248 +321,11 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
           }
 
           // Fallback initial or empty state
-          return _buildEmptyStateView(isDark);
+          return GraphEmptyStateView(
+            isDark: isDark,
+            onExplore: () => Navigator.of(context).maybePop(),
+          );
         },
-      ),
-    );
-  }
-
-  // 1. PROGRESSIVE LOADING STATE (Tracking all 16 lifecycle stages)
-  Widget _buildProgressiveLoadingView(GraphState state, bool isDark) {
-    GraphJobStatus currentStage = GraphJobStatus.queued;
-    double progress = 0.05;
-
-    if (state is GraphPolling) {
-      currentStage = state.currentStage;
-      progress = state.progress.clamp(0.05, 0.98);
-    }
-
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 28),
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(isDark ? 140 : 30),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Connected Research Lottie Animation (Adaptive Light / Dark)
-            SizedBox(
-              width: 110,
-              height: 110,
-              child: Lottie.asset(
-                isDark
-                    ? 'assets/lottie/splash_animation.json'
-                    : 'assets/lottie/splash_animation_light.json',
-                width: 110,
-                height: 110,
-                fit: BoxFit.contain,
-                repeat: true,
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            Text(
-              'Synthesizing Literature Graph',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Current Stage Description
-            Text(
-              currentStage.displayTitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Linear Progress Bar with percentage
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              '${(progress * 100).toInt()}% completed',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Cancel Button
-            OutlinedButton.icon(
-              onPressed: () => context.read<GraphCubit>().cancel(),
-              icon: const Icon(Icons.cancel_outlined, size: 16),
-              label: const Text('Cancel Job', style: TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFEF4444),
-                side: const BorderSide(color: Color(0xFFEF4444)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-
-            // Contextual notification permission toggle
-            if (state is GraphPolling) ...[
-              const SizedBox(height: 12),
-              _buildContextualNotificationOptIn(state.graphId, isDark),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContextualNotificationOptIn(String graphId, bool isDark) {
-    final isEnabled = LocalNotificationService.isGraphNotificationEnabled(graphId);
-
-    if (isEnabled) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withAlpha(25),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF10B981).withAlpha(80)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.notifications_active_rounded, size: 13, color: Color(0xFF10B981)),
-            SizedBox(width: 6),
-            Text(
-              'Notification enabled when ready',
-              style: TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return TextButton.icon(
-      onPressed: () async {
-        final granted = await LocalNotificationService.requestContextualPermission();
-        if (!mounted) return;
-        if (granted) {
-          await LocalNotificationService.setGraphNotificationEnabled(graphId, true);
-          if (!mounted) return;
-          setState(() {});
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("We'll notify you as soon as this graph finishes!"),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Notifications disabled. In-app notice will still show when complete.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      },
-      icon: const Icon(Icons.notifications_none_rounded, size: 14),
-      label: const Text('Notify me when done', style: TextStyle(fontSize: 11)),
-      style: TextButton.styleFrom(
-        foregroundColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
-      ),
-    );
-  }
-
-  // 2. ERROR STATE WITH RETRY ACTION
-  Widget _buildErrorView(GraphError state, bool isDark) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFEF4444).withAlpha(100)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline_rounded, size: 48, color: Color(0xFFEF4444)),
-            const SizedBox(height: 16),
-            Text(
-              'Unable to Generate Graph',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              state.message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Go Back'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: () => context.read<GraphCubit>().retry(),
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Retry'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -559,38 +343,35 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
 
     return Stack(
       children: [
-        // Interactive 2D Hardware-Accelerated Canvas
+        // Interactive 2D Hardware-Accelerated Canvas with unhindered native pinch-to-zoom
         GestureDetector(
           onTapUp: (details) => _onTapCanvas(details, snapshot.nodes, maxCitations),
-          onPanStart: (details) => _onPanStart(details, snapshot.nodes, maxCitations),
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
           onDoubleTap: _resetZoom,
+          onLongPressStart: (details) => _onLongPressStart(details, snapshot.nodes, maxCitations),
+          onLongPressMoveUpdate: _onLongPressMoveUpdate,
+          onLongPressEnd: _onLongPressEnd,
           child: InteractiveViewer(
             transformationController: _transformController,
-            boundaryMargin: const EdgeInsets.all(1200),
-            minScale: 0.25,
-            maxScale: 3.5,
+            boundaryMargin: const EdgeInsets.all(1500),
+            minScale: 0.20,
+            maxScale: 4.0,
             panEnabled: _draggingNodeId == null,
+            scaleEnabled: _draggingNodeId == null,
             child: SizedBox(
               width: _canvasSize,
               height: _canvasSize,
-              child: AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, _) {
-                  return CustomPaint(
-                    size: const Size(_canvasSize, _canvasSize),
-                    painter: GraphCanvasPainter(
-                      nodes: snapshot.nodes,
-                      citationEdges: snapshot.citationEdges,
-                      similarityEdges: snapshot.similarityEdges,
-                      selectedNodeId: _selectedNode?.canonicalId,
-                      pulseValue: _pulseController.value,
-                      isDark: isDark,
-                      draggedPositions: _draggedPositions,
-                    ),
-                  );
-                },
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  size: const Size(_canvasSize, _canvasSize),
+                  painter: GraphCanvasPainter(
+                    nodes: snapshot.nodes,
+                    citationEdges: snapshot.citationEdges,
+                    similarityEdges: snapshot.similarityEdges,
+                    selectedNodeId: _selectedNode?.canonicalId,
+                    isDark: isDark,
+                    draggedPositions: _draggedPositions,
+                  ),
+                ),
               ),
             ),
           ),
@@ -627,10 +408,10 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xDD0F172A) : const Color(0xDDFFFFFF),
+                            color: isDark ? AppTheme.darkCard.withValues(alpha: 0.92) : const Color(0xDDFFFFFF),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                              color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
                             ),
                           ),
                           child: Column(
@@ -639,12 +420,12 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
                             children: [
                               Text(
                                 snapshot.origin.title,
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -654,7 +435,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                  color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
                                 ),
                               ),
                             ],
@@ -666,7 +447,7 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
                       // Save to Library Action
                       CircleAvatar(
                         radius: 20,
-                        backgroundColor: isDark ? const Color(0xDD0F172A) : const Color(0xDDFFFFFF),
+                        backgroundColor: isDark ? AppTheme.darkCard.withValues(alpha: 0.92) : const Color(0xDDFFFFFF),
                         child: IconButton(
                           icon: const Icon(Icons.bookmark_add_outlined, size: 20),
                           color: AppTheme.primaryLightBlue,
@@ -782,38 +563,23 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
         Positioned(
           right: 16,
           bottom: _isBottomSheetOpen ? 390 : 80,
-          child: Column(
-            children: [
-              _buildFloatingControlButton(
-                icon: Icons.center_focus_strong_rounded,
-                tooltip: 'Reset Zoom & Center',
-                isDark: isDark,
-                onPressed: _resetZoom,
-              ),
-              const SizedBox(height: 8),
-              _buildFloatingControlButton(
-                icon: Icons.list_alt_rounded,
-                tooltip: 'Open Paper List',
-                isDark: isDark,
-                onPressed: () {
-                  setState(() {
-                    _isBottomSheetOpen = true;
-                    _bottomSheetTab = 3;
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildFloatingControlButton(
-                icon: _isBottomSheetOpen ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
-                tooltip: _isBottomSheetOpen ? 'Hide Details' : 'Show Details',
-                isDark: isDark,
-                onPressed: () {
-                  setState(() {
-                    _isBottomSheetOpen = !_isBottomSheetOpen;
-                  });
-                },
-              ),
-            ],
+          child: GraphFloatingControls(
+            isDark: isDark,
+            isBottomSheetOpen: _isBottomSheetOpen,
+            onZoomIn: _zoomIn,
+            onZoomOut: _zoomOut,
+            onResetZoom: _resetZoom,
+            onOpenPaperList: () {
+              setState(() {
+                _isBottomSheetOpen = true;
+                _bottomSheetTab = 3;
+              });
+            },
+            onToggleBottomSheet: () {
+              setState(() {
+                _isBottomSheetOpen = !_isBottomSheetOpen;
+              });
+            },
           ),
         ),
 
@@ -877,81 +643,6 @@ class _ConnectedGraphViewState extends State<ConnectedGraphView>
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildFloatingControlButton({
-    required IconData icon,
-    required String tooltip,
-    required bool isDark,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xDD0F172A) : const Color(0xDDFFFFFF),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(isDark ? 80 : 25),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(icon, size: 20),
-        color: isDark ? Colors.white : AppTheme.primaryBlue,
-        tooltip: tooltip,
-        onPressed: onPressed,
-      ),
-    );
-  }
-
-  // 4. EMPTY STATE VIEW
-  Widget _buildEmptyStateView(bool isDark) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.hub_outlined,
-            size: 64,
-            color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No Graph Loaded',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Select a seed paper or enter a DOI to synthesize a new literature graph.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.search_rounded, size: 16),
-            label: const Text('Explore Literature'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -27,23 +27,19 @@ class BiometricService {
     try {
       final bool isAvailable = await isBiometricAvailable();
       if (!isAvailable) {
-        // Fallback for emulator / non-biometric devices in debug demonstration
-        return true;
+        return false;
       }
 
       return await _auth.authenticate(
-        localizedReason: reason ?? 'Please authenticate with your fingerprint or face to access PaperGraph',
+        localizedReason: reason ??
+            'Please authenticate with your fingerprint or face to access PaperGraph',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: false,
           useErrorDialogs: true,
         ),
       );
-    } on PlatformException catch (e) {
-      // In development or when canceled, allow clean testing
-      if (e.code == 'NotAvailable' || e.code == 'PasscodeNotSet') {
-        return true;
-      }
+    } on PlatformException catch (_) {
       return false;
     } catch (_) {
       return false;

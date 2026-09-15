@@ -86,9 +86,9 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
               height: 74,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2F6),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFEEF2F6),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                  color: isDark ? AppTheme.darkBorder : const Color(0xFFCBD5E1),
                   width: 1.5,
                 ),
               ),

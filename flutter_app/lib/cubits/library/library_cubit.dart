@@ -2,11 +2,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/canonical_paper.dart';
 import '../../models/graph_models.dart';
+import '../../providers/auth_provider.dart';
 import 'library_state.dart';
 
 class LibraryCubit extends Cubit<LibraryState> {
   LibraryCubit() : super(const LibraryInitial()) {
     loadLibrary();
+    AuthProvider.addAuthListener(loadLibrary);
+  }
+
+  @override
+  Future<void> close() {
+    AuthProvider.removeAuthListener(loadLibrary);
+    return super.close();
   }
 
   /// Loads saved papers, cached graphs, and notes from local persistent storage.

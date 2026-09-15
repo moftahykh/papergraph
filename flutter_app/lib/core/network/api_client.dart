@@ -1,7 +1,5 @@
-import 'dart:async';
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+
 import '../../models/api_schemas.dart';
 import '../../models/graph_models.dart';
 
@@ -24,18 +22,23 @@ class PaperGraphApiClient {
     Dio? dio,
     String? baseUrl,
   })  : baseUrl = baseUrl ?? _resolveDefaultBaseUrl(),
-        _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: baseUrl ?? _resolveDefaultBaseUrl(),
-                connectTimeout: const Duration(seconds: 15),
-                receiveTimeout: const Duration(seconds: 15),
-                headers: {
-                  'Accept': 'application/json',
-                  'Content-Type': 'application/json',
-                },
-              ),
-            );
+        _dio = dio ?? _createDefaultDio(baseUrl ?? _resolveDefaultBaseUrl());
+
+  static Dio _createDefaultDio(String base) {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: base,
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    dio.interceptors.add(_RetryInterceptor(dio: dio));
+    return dio;
+  }
 
   /// Override the backend URL at build/run time:
   ///   flutter run --dart-define=PAPERGRAPH_API_URL=https://api.example.com/api/v1
@@ -47,16 +50,8 @@ class PaperGraphApiClient {
     if (_envBaseUrl.isNotEmpty) {
       return _envBaseUrl;
     }
-    if (kIsWeb) {
-      return 'http://localhost:8000/api/v1';
-    }
-    try {
-      if (Platform.isAndroid) {
-        // Android emulator loopback alias
-        return 'http://10.0.2.2:8000/api/v1';
-      }
-    } catch (_) {}
-    return 'http://localhost:8000/api/v1';
+    // Default to production cloud backend on Render
+    return 'https://papergraph-backend.onrender.com/api/v1';
   }
 
   /// Performs academic literature search.
@@ -198,21 +193,78 @@ class PaperGraphApiClient {
     }
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
-      return const ApiException('Connection timed out. Check backend connectivity.');
+      return const ApiException(
+        'The server took too long to respond. Please try again.',
+      );
+    }
+    if (error.type == DioExceptionType.connectionError ||
+        (error.message != null &&
+            (error.message!.contains('Failed host lookup') ||
+                error.message!.contains('SocketException')))) {
+      return const ApiException(
+        'Unable to connect to the server. Please check your internet connection and try again.',
+      );
     }
     final response = error.response;
     if (response != null && response.data is Map) {
       final data = response.data as Map;
-      final msg = data['message'] ?? data['detail'] ?? 'An error occurred';
+      final msg = data['message'] ?? data['detail'] ?? 'An unexpected server error occurred.';
       return ApiException(
         msg.toString(),
         statusCode: response.statusCode,
         errorDetails: data['details'],
       );
     }
-    return ApiException(
-      error.message ?? 'Network error connecting to PaperGraph backend',
-      statusCode: response?.statusCode,
+    return const ApiException(
+      'Unable to connect to the server. Please check your internet connection and try again.',
     );
+  }
+}
+
+/// Interceptor to automatically retry transient network and DNS errors before failing.
+class _RetryInterceptor extends Interceptor {
+  final Dio dio;
+  static const int _maxRetries = 3;
+
+  _RetryInterceptor({required this.dio});
+
+  @override
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+    final bool isTransientError =
+        err.type == DioExceptionType.connectionError ||
+        err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.unknown ||
+        (err.message != null &&
+            (err.message!.contains('Failed host lookup') ||
+                err.message!.contains('SocketException')));
+
+    if (!isTransientError) {
+      return super.onError(err, handler);
+    }
+
+    DioException lastError = err;
+    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
+      await Future.delayed(Duration(milliseconds: 1500 * attempt));
+      try {
+        final response = await dio.fetch(err.requestOptions);
+        return handler.resolve(response);
+      } on DioException catch (retryErr) {
+        lastError = retryErr;
+        final bool stillTransient =
+            retryErr.type == DioExceptionType.connectionError ||
+            retryErr.type == DioExceptionType.connectionTimeout ||
+            retryErr.type == DioExceptionType.unknown ||
+            (retryErr.message != null &&
+                (retryErr.message!.contains('Failed host lookup') ||
+                    retryErr.message!.contains('SocketException')));
+        if (!stillTransient) {
+          return super.onError(retryErr, handler);
+        }
+      } catch (_) {
+        return super.onError(lastError, handler);
+      }
+    }
+
+    return super.onError(lastError, handler);
   }
 }

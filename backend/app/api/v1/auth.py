@@ -11,10 +11,26 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# In-memory OTP store: { email: { "code": str, "expires_at": float } }
+# In-memory OTP store: { email: { "code": str, "expires_at": float, "attempts": int } }
 # OTPs expire in 10 minutes (600 seconds)
 _otp_store: Dict[str, Dict[str, Any]] = {}
 OTP_EXPIRY_SECONDS = 600
+MAX_OTP_ATTEMPTS = 5
+MAX_STORED_OTPS = 2000
+
+
+def _prune_expired_otps() -> None:
+    """Removes expired OTP records to prevent in-memory accumulation."""
+    now = time.time()
+    expired_keys = [k for k, v in _otp_store.items() if now > v.get("expires_at", 0)]
+    for k in expired_keys:
+        _otp_store.pop(k, None)
+
+    # If still oversized (e.g., active burst), evict oldest
+    if len(_otp_store) > MAX_STORED_OTPS:
+        sorted_keys = sorted(_otp_store.keys(), key=lambda k: _otp_store[k].get("expires_at", 0))
+        for k in sorted_keys[: len(_otp_store) - MAX_STORED_OTPS]:
+            _otp_store.pop(k, None)
 
 
 class SendOtpRequest(BaseModel):
@@ -113,6 +129,37 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
+async def _send_resend_email(to_email: str, code: str) -> bool:
+    api_key = settings.RESEND_API_KEY or os.getenv("RESEND_API_KEY")
+    if not api_key:
+        return False
+    try:
+        from_email = settings.EMAILS_FROM_EMAIL or os.getenv("EMAILS_FROM_EMAIL") or "PaperGraph <onboarding@resend.dev>"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {api_key.strip()}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": from_email,
+                    "to": [to_email],
+                    "subject": f"PaperGraph Verification Code: {code}",
+                    "html": _generate_otp_html(code),
+                },
+            )
+            if resp.is_success:
+                logger.info(f"OTP successfully delivered via Resend HTTPS API to {to_email}")
+                return True
+            else:
+                logger.warning(f"Resend API returned non-success: {resp.status_code} - {resp.text}")
+                return False
+    except Exception as e:
+        logger.warning(f"Failed to deliver email via Resend API: {e}")
+        return False
+
+
 def _send_smtp_email(to_email: str, code: str) -> bool:
     smtp_user = settings.SMTP_USER or os.getenv("SMTP_USER")
     smtp_pass = settings.SMTP_PASSWORD or os.getenv("SMTP_PASSWORD")
@@ -134,16 +181,14 @@ def _send_smtp_email(to_email: str, code: str) -> bool:
         html_part = MIMEText(_generate_otp_html(code), "html")
         msg.attach(html_part)
 
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=8) as server:
             server.starttls()
             server.login(smtp_user, clean_pass)
             server.send_message(msg)
         logger.info(f"OTP successfully delivered via Gmail SMTP to {to_email}")
-        print(f"[SUCCESS] OTP code {code} successfully sent via Gmail to {to_email}!", flush=True)
         return True
     except Exception as e:
-        logger.error(f"Failed to send email via SMTP to {to_email}: {e}")
-        print(f"[ERROR] Failed to send email via SMTP to {to_email}: {e}", flush=True)
+        logger.warning(f"Failed to send email via SMTP to {to_email}: {e}")
         return False
 
 
@@ -153,8 +198,14 @@ async def _dispatch_email_task(email: str, code: str):
 
 
 @router.post("/send-otp")
-async def send_otp(req: SendOtpRequest, background_tasks: BackgroundTasks):
+async def send_otp(req: SendOtpRequest):
+    _prune_expired_otps()
     email = req.email.strip().lower()
+
+    smtp_user = settings.SMTP_USER or os.getenv("SMTP_USER")
+    smtp_pass = settings.SMTP_PASSWORD or os.getenv("SMTP_PASSWORD")
+    resend_key = settings.RESEND_API_KEY or os.getenv("RESEND_API_KEY")
+
     # Generate a cryptographically secure 6-digit numeric OTP
     code = f"{secrets.randbelow(900000) + 100000}"
     expires_at = time.time() + OTP_EXPIRY_SECONDS
@@ -162,25 +213,76 @@ async def send_otp(req: SendOtpRequest, background_tasks: BackgroundTasks):
     _otp_store[email] = {
         "code": code,
         "expires_at": expires_at,
+        "attempts": 0,
     }
 
-    # Print clearly in terminal for instant dev inspection & testing
-    print(f"\n=======================================================", flush=True)
-    print(f"[PAPERGRAPH OTP] Code for {email}: {code}", flush=True)
-    print(f"=======================================================\n", flush=True)
+    # Prominently log unmasked OTP to stdout (Immediately accessible in Render Dashboard -> Logs):
+    print(
+        f"\n"
+        f"====================================================\n"
+        f"[PAPERGRAPH AUTH] OTP GENERATED FOR: {email}\n"
+        f"VERIFICATION CODE: {code}\n"
+        f"====================================================\n",
+        flush=True,
+    )
 
-    # Dispatch email in background so the client receives an immediate response
-    background_tasks.add_task(_dispatch_email_task, email, code)
+    # Safe masked log for internal loggers
+    masked_code = f"{code[:2]}****"
+    logger.info(f"[PAPERGRAPH OTP] Generated verification code for {email}: {masked_code}")
+
+    # For mock/test domains, avoid sending real emails
+    if email.endswith("@example.com") or email.endswith("@test.com"):
+        return {
+            "success": True,
+            "message": "Verification code generated for test account.",
+            "expires_in_seconds": OTP_EXPIRY_SECONDS,
+        }
+
+    email_delivered = False
+
+    # 1. Attempt delivery via Resend HTTPS API (Port 443 - NEVER blocked by Render)
+    if resend_key:
+        email_delivered = await _send_resend_email(email, code)
+
+    # 2. Attempt delivery via SMTP if not delivered and credentials are provided
+    if not email_delivered and smtp_user and smtp_pass:
+        loop = asyncio.get_event_loop()
+        try:
+            email_delivered = await asyncio.wait_for(
+                loop.run_in_executor(None, _send_smtp_email, email, code),
+                timeout=7.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"SMTP timeout sending code to {email}. Outbound port 587 is likely blocked by Render free tier.")
+        except Exception as e:
+            logger.warning(f"SMTP error sending code to {email}: {e}")
+
+    if email_delivered:
+        return {
+            "success": True,
+            "message": "Verification code sent to your email inbox.",
+            "expires_in_seconds": OTP_EXPIRY_SECONDS,
+        }
+
+    # If neither delivery method succeeded (e.g. Render port 587 block without Resend):
+    # Log clear diagnostic instructions to Render Logs and allow the user to complete verification
+    logger.warning(
+        f"[PAPERGRAPH AUTH] Outbound email could not be delivered to {email}. "
+        f"Note: Render Free Tier blocks outbound SMTP port 587. "
+        f"The valid verification code is logged above in server stdout for immediate use."
+    )
 
     return {
         "success": True,
-        "message": "Verification code generated and sent to your email.",
+        "message": "Verification code generated! (If email is delayed by cloud port limits, view the code in Render Logs).",
+        "delivery_status": "console_fallback",
         "expires_in_seconds": OTP_EXPIRY_SECONDS,
     }
 
 
 @router.post("/verify-otp")
 async def verify_otp(req: VerifyOtpRequest):
+    _prune_expired_otps()
     email = req.email.strip().lower()
     code = req.code.strip()
 
@@ -199,9 +301,18 @@ async def verify_otp(req: VerifyOtpRequest):
         )
 
     if record["code"] != code:
+        record["attempts"] = record.get("attempts", 0) + 1
+        if record["attempts"] >= MAX_OTP_ATTEMPTS:
+            _otp_store.pop(email, None)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many incorrect attempts. This verification code has been invalidated. Please request a new one.",
+            )
+
+        remaining = MAX_OTP_ATTEMPTS - record["attempts"]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect verification code. Please check your email and try again.",
+            detail=f"Incorrect verification code. {remaining} attempt(s) remaining.",
         )
 
     # Validated: Remove OTP so it cannot be re-used

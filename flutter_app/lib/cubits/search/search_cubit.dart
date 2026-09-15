@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/network/api_client.dart';
+import '../../providers/auth_provider.dart';
 import 'search_state.dart';
 
 class SearchCubit extends Cubit<SearchState> {
@@ -15,7 +16,9 @@ class SearchCubit extends Cubit<SearchState> {
 
   SearchCubit({PaperGraphApiClient? apiClient})
       : _apiClient = apiClient ?? PaperGraphApiClient(),
-        super(const SearchInitial());
+        super(const SearchInitial()) {
+    AuthProvider.addAuthListener(clear);
+  }
 
   /// Debounced search entry point used by the UI.
   /// Pass [immediate] = true (e.g. on submit) to skip the debounce delay.
@@ -99,6 +102,7 @@ class SearchCubit extends Cubit<SearchState> {
 
   @override
   Future<void> close() {
+    AuthProvider.removeAuthListener(clear);
     _debounceTimer?.cancel();
     _cancelInFlight();
     return super.close();

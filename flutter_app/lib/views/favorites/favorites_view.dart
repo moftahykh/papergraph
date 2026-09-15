@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
-import '../../cubits/graph/graph_cubit.dart';
 import '../../cubits/library/library_cubit.dart';
 import '../../cubits/library/library_state.dart';
 import '../../models/canonical_paper.dart';
@@ -11,6 +10,7 @@ import '../../models/paper_model.dart';
 import '../graph_view/connected_graph_view.dart';
 import '../paper_details/citation_bottom_sheet.dart';
 import '../paper_details/paper_details_view.dart';
+import '../../core/utils/paper_url_helper.dart';
 
 class FavoritesView extends StatelessWidget {
   const FavoritesView({super.key});
@@ -145,18 +145,22 @@ class FavoritesView extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withAlpha(25),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      paper.topics.isNotEmpty ? paper.topics.first : 'Paper',
-                      style: const TextStyle(
-                        color: AppTheme.primaryLightBlue,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withAlpha(25),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        paper.topics.isNotEmpty ? paper.topics.first : 'Paper',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTheme.primaryLightBlue,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -241,39 +245,74 @@ class FavoritesView extends StatelessWidget {
               ],
               const SizedBox(height: 12),
 
-              // Action buttons
-              Row(
+              // Action buttons (Responsive Wrap layout - guarantees zero RenderFlex overflow)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ConnectedGraphView(centerPaper: paperModel),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ConnectedGraphView(centerPaper: paperModel),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.hub_rounded, size: 14),
+                        label: const Text('Connected Graph', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.accentCyan,
+                          side: const BorderSide(color: AppTheme.accentCyan),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.hub_rounded, size: 15),
-                    label: const Text('Connected Graph', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.accentCyan,
-                      side: const BorderSide(color: AppTheme.accentCyan),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
+                      ),
+                      if (note.isEmpty)
+                        TextButton.icon(
+                          onPressed: () => _showEditNotesDialog(context, paper.canonicalId, ''),
+                          icon: const Icon(Icons.add_comment_outlined, size: 14),
+                          label: const Text('Add Note', style: TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  if (note.isEmpty)
-                    TextButton.icon(
-                      onPressed: () => _showEditNotesDialog(context, paper.canonicalId, ''),
-                      icon: const Icon(Icons.add_comment_outlined, size: 15),
-                      label: const Text('Add Note', style: TextStyle(fontSize: 12)),
-                    ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.format_quote_rounded, size: 20),
-                    tooltip: 'Cite Paper',
-                    onPressed: () => CitationBottomSheet.show(context, paperModel),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.open_in_new_rounded, size: 19),
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                        tooltip: 'Open Paper in Browser',
+                        onPressed: () {
+                          final url = PaperUrlHelper.resolvePaperUrl(
+                            doi: paper.doi,
+                            canonicalId: paper.canonicalId,
+                            title: paper.title,
+                          );
+                          PaperUrlHelper.launchPaper(context, url: url, title: paper.title);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.format_quote_rounded, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                        tooltip: 'Cite Paper',
+                        onPressed: () => CitationBottomSheet.show(context, paperModel),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -389,8 +428,6 @@ class FavoritesView extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          // Open graph in offline mode without making any external provider calls
-          context.read<GraphCubit>().openCachedGraph(snapshot);
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -440,14 +477,18 @@ class FavoritesView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Schema v${snapshot.schemaVersion} • ${snapshot.algorithmVersion}',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                  Expanded(
+                    child: Text(
+                      'Schema v${snapshot.schemaVersion} • ${snapshot.algorithmVersion}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 4),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -468,57 +509,71 @@ class FavoritesView extends StatelessWidget {
               ),
               const SizedBox(height: 6),
 
-              // Metadata counts
-              Row(
+              // Metadata counts (Responsive Wrap prevents overflow on narrow screens or scaled fonts)
+              Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Icon(Icons.description_outlined, size: 14, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${snapshot.nodes.length} papers',
-                    style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.description_outlined, size: 14, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${snapshot.nodes.length} papers',
+                        style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Icon(Icons.arrow_right_alt, size: 14, color: AppTheme.primaryLightBlue),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${snapshot.citationEdges.length} citations',
-                    style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.arrow_right_alt, size: 14, color: AppTheme.primaryLightBlue),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${snapshot.citationEdges.length} citations',
+                        style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Icon(Icons.share_outlined, size: 14, color: AppTheme.accentCyan),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${snapshot.similarityEdges.length} similarities',
-                    style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.share_outlined, size: 14, color: AppTheme.accentCyan),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${snapshot.similarityEdges.length} similarities',
+                        style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                      ),
+                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 12),
 
-              // Open Offline Graph CTA
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      context.read<GraphCubit>().openCachedGraph(snapshot);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ConnectedGraphView(initialSnapshot: snapshot),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.hub_rounded, size: 15),
-                    label: const Text('Open Graph Offline', style: TextStyle(fontSize: 12)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryBlue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
+              // Open Offline Graph CTA (Align ensures zero horizontal overflow on narrow screens)
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ConnectedGraphView(initialSnapshot: snapshot),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.hub_rounded, size: 14),
+                  label: const Text('Open Graph Offline', style: TextStyle(fontSize: 11.5)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -580,30 +635,31 @@ class FavoritesView extends StatelessWidget {
     required bool isDark,
   }) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppTheme.primaryBlue.withAlpha(20),
               ),
-              child: Icon(icon, size: 64, color: AppTheme.primaryLightBlue),
+              child: Icon(icon, size: 48, color: AppTheme.primaryLightBlue),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Text(
               title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               description,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
               ),
             ),

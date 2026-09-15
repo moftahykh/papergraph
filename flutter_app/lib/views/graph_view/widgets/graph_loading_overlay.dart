@@ -1,0 +1,232 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lottie/lottie.dart';
+import '../../../core/services/local_notification_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../cubits/graph/graph_cubit.dart';
+import '../../../cubits/graph/graph_state.dart';
+import '../../../models/graph_job_status.dart';
+
+extension GraphJobStatusDisplay on GraphJobStatus {
+  String get displayTitle {
+    switch (this) {
+      case GraphJobStatus.queued:
+        return 'Queueing graph task...';
+      case GraphJobStatus.resolvingOrigin:
+        return 'Resolving seed paper identity...';
+      case GraphJobStatus.generatingCandidates:
+        return 'Generating candidate literature pool...';
+      case GraphJobStatus.preRanking:
+        return 'Applying PreScore quotas...';
+      case GraphJobStatus.enrichingMetadata:
+        return 'Enriching canonical paper metadata...';
+      case GraphJobStatus.enrichingReferences:
+        return 'Harvesting foundational references...';
+      case GraphJobStatus.computingWbc:
+        return 'Computing Bibliographic Coupling (WBC) matrix...';
+      case GraphJobStatus.enrichingCitations:
+        return 'Harvesting derivative citations...';
+      case GraphJobStatus.computingNcc:
+        return 'Computing Co-Citation (NCC)...';
+      case GraphJobStatus.computingFinalScores:
+        return 'Computing safe hybrid ranking scores...';
+      case GraphJobStatus.extractingPriorWorks:
+        return 'Extracting foundational prior works...';
+      case GraphJobStatus.extractingDerivativeWorks:
+        return 'Extracting subsequent derivative works...';
+      case GraphJobStatus.buildingLayout:
+        return 'Synthesizing deterministic 2D graph layout...';
+      case GraphJobStatus.completed:
+        return 'Graph generation complete';
+      case GraphJobStatus.partial:
+        return 'Graph generated with partial coverage';
+      case GraphJobStatus.failed:
+        return 'Graph generation failed';
+    }
+  }
+}
+
+class GraphProgressiveLoadingView extends StatefulWidget {
+  final GraphState state;
+  final bool isDark;
+
+  const GraphProgressiveLoadingView({
+    super.key,
+    required this.state,
+    required this.isDark,
+  });
+
+  @override
+  State<GraphProgressiveLoadingView> createState() => _GraphProgressiveLoadingViewState();
+}
+
+class _GraphProgressiveLoadingViewState extends State<GraphProgressiveLoadingView> {
+  @override
+  Widget build(BuildContext context) {
+    GraphJobStatus currentStage = GraphJobStatus.queued;
+    double progress = 0.05;
+
+    final state = widget.state;
+    final isDark = widget.isDark;
+
+    if (state is GraphPolling) {
+      currentStage = state.currentStage;
+      progress = state.progress.clamp(0.05, 0.98);
+    }
+
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 28),
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkCard : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDark ? 140 : 30),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 110,
+              height: 110,
+              child: Lottie.asset(
+                isDark
+                    ? 'assets/lottie/splash_animation.json'
+                    : 'assets/lottie/splash_animation_light.json',
+                width: 110,
+                height: 110,
+                fit: BoxFit.contain,
+                repeat: true,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Synthesizing Literature Graph',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              currentStage.displayTitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isDark ? AppTheme.accentCyan : const Color(0xFF0284C7),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+                backgroundColor: isDark ? AppTheme.darkSurface : const Color(0xFFE2E8F0),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isDark ? AppTheme.accentCyan : AppTheme.primaryBlue,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${(progress * 100).toInt()}% completed',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: () {
+                context.read<GraphCubit>().cancel();
+                Navigator.of(context).maybePop();
+              },
+              icon: const Icon(Icons.cancel_outlined, size: 16),
+              label: const Text('Cancel Job', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+                side: const BorderSide(color: Color(0xFFEF4444)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            if (state is GraphPolling) ...[
+              const SizedBox(height: 12),
+              _buildNotificationOptIn(state.graphId, isDark),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationOptIn(String graphId, bool isDark) {
+    final isEnabled = LocalNotificationService.isGraphNotificationEnabled(graphId);
+
+    if (isEnabled) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withAlpha(25),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF10B981).withAlpha(80)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.notifications_active_rounded, size: 13, color: Color(0xFF10B981)),
+            SizedBox(width: 6),
+            Text(
+              'Notification enabled when ready',
+              style: TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return TextButton.icon(
+      onPressed: () async {
+        final granted = await LocalNotificationService.requestContextualPermission();
+        if (!mounted) return;
+        if (granted) {
+          await LocalNotificationService.setGraphNotificationEnabled(graphId, true);
+          if (!mounted) return;
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("We'll notify you as soon as this graph finishes!"),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notifications disabled. In-app notice will still show when complete.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      icon: const Icon(Icons.notifications_none_rounded, size: 14),
+      label: const Text('Notify me when done', style: TextStyle(fontSize: 11)),
+      style: TextButton.styleFrom(
+        foregroundColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+      ),
+    );
+  }
+}

@@ -48,7 +48,9 @@ dependencies:
   # Firebase Auth (real email/password authentication)
   firebase_core: ^3.8.0
   firebase_auth: ^5.3.3
+  flutter_local_notifications: ^22.3.1
   lottie: ^3.5.1
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/paper_url_helper.dart';
 import '../../../models/graph_models.dart';
 import '../../../models/metric_result.dart';
 
@@ -64,8 +65,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+    final bgColor = isDark ? AppTheme.darkCard : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0);
 
     return Container(
       height: _sheetHeight,
@@ -104,7 +105,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                      color: isDark ? const Color(0xFF4B4F59) : const Color(0xFFCBD5E1),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -189,7 +190,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 4),
@@ -198,7 +199,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
               ),
             ),
           ],
@@ -206,8 +207,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       );
     }
 
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final textColor = isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A);
+    final subtextColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B);
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -303,34 +304,39 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+            color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
             ),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMetricColumn(
-                'WBC Metric',
-                node.scores?['wbc']?.value,
-                node.scores?['wbc']?.availability ?? MetricAvailability.unavailable,
-                isDark,
+              Expanded(
+                child: _buildMetricColumn(
+                  'WBC Metric',
+                  node.scores?['wbc']?.value,
+                  node.scores?['wbc']?.availability ?? MetricAvailability.unavailable,
+                  isDark,
+                ),
               ),
-              Container(width: 1, height: 32, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-              _buildMetricColumn(
-                'NCC Metric',
-                node.scores?['ncc']?.value,
-                node.scores?['ncc']?.availability ?? MetricAvailability.unavailable,
-                isDark,
+              Container(width: 1, height: 32, color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
+              Expanded(
+                child: _buildMetricColumn(
+                  'NCC Metric',
+                  node.scores?['ncc']?.value,
+                  node.scores?['ncc']?.availability ?? MetricAvailability.unavailable,
+                  isDark,
+                ),
               ),
-              Container(width: 1, height: 32, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-              _buildMetricColumn(
-                'Final Score',
-                node.finalScore,
-                node.finalScore != null ? MetricAvailability.available : MetricAvailability.unavailable,
-                isDark,
+              Container(width: 1, height: 32, color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
+              Expanded(
+                child: _buildMetricColumn(
+                  'Final Score',
+                  node.finalScore,
+                  node.finalScore != null ? MetricAvailability.available : MetricAvailability.unavailable,
+                  isDark,
+                ),
               ),
             ],
           ),
@@ -338,23 +344,43 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
 
         const SizedBox(height: 14),
 
-        // Action Buttons
-        Row(
+        // Action Buttons (Responsive Wrap layout - guarantees zero RenderFlex overflow)
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => widget.onOpenFullDetails?.call(node),
-                icon: const Icon(Icons.menu_book_rounded, size: 16),
-                label: const Text('Full Details & BibTeX', style: TextStyle(fontSize: 12)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue,
+            Tooltip(
+              message: 'Read Original Paper / PDF in Browser',
+              child: IconButton.filled(
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: AppTheme.accentEmerald,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.all(10),
                 ),
+                onPressed: () {
+                  final url = PaperUrlHelper.resolvePaperUrl(
+                    canonicalId: node.canonicalId,
+                    title: node.title,
+                  );
+                  PaperUrlHelper.launchPaper(context, url: url, title: node.title);
+                },
               ),
             ),
-            const SizedBox(width: 10),
+            ElevatedButton.icon(
+              onPressed: () => widget.onOpenFullDetails?.call(node),
+              icon: const Icon(Icons.menu_book_rounded, size: 16),
+              label: const Text('Full Details & BibTeX', style: TextStyle(fontSize: 12)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
             if (!node.isOrigin)
               OutlinedButton.icon(
                 onPressed: () => widget.onRecenterGraph?.call(node.canonicalId),
@@ -363,7 +389,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primaryLightBlue,
                   side: const BorderSide(color: AppTheme.primaryBlue),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
@@ -492,7 +519,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                       contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       filled: true,
-                      fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      fillColor: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
                     ),
                   ),
                 ),
@@ -503,10 +530,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 underline: const SizedBox(),
                 style: TextStyle(
                   fontSize: 11,
-                  color: isDark ? Colors.white : AppTheme.primaryBlue,
+                  color: isDark ? AppTheme.darkTextPrimary : AppTheme.primaryBlue,
                   fontWeight: FontWeight.bold,
                 ),
-                dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                dropdownColor: isDark ? AppTheme.darkCard : Colors.white,
                 items: const [
                   DropdownMenuItem(value: 'citations', child: Text('Citations')),
                   DropdownMenuItem(value: 'year', child: Text('Year')),
@@ -548,11 +575,11 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   ) {
     final isSelected = node.canonicalId == widget.selectedNode?.canonicalId;
     final cardBg = isSelected
-        ? (isDark ? const Color(0xFF1E3A8A).withAlpha(80) : const Color(0xFFDBEAFE))
-        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC));
+        ? (isDark ? AppTheme.primaryLightBlue.withAlpha(50) : const Color(0xFFDBEAFE))
+        : (isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC));
     final borderColor = isSelected
-        ? AppTheme.primaryBlue
-        : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
+        ? AppTheme.accentCyan
+        : (isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0));
 
     return GestureDetector(
       onTap: () {
@@ -571,7 +598,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
           children: [
             CircleAvatar(
               radius: 13,
-              backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              backgroundColor: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
               child: Text(
                 '$rank',
                 style: TextStyle(
@@ -630,6 +657,21 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 ],
               ),
             ],
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              tooltip: 'Open Paper in Browser',
+              color: isDark ? const Color(0xFF38BDF8) : AppTheme.primaryBlue,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              onPressed: () {
+                final url = PaperUrlHelper.resolvePaperUrl(
+                  canonicalId: node.canonicalId,
+                  title: node.title,
+                );
+                PaperUrlHelper.launchPaper(context, url: url, title: node.title);
+              },
+            ),
           ],
         ),
       ),

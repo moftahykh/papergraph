@@ -21,12 +21,12 @@ def compute_node_radius(citation_count: int, is_origin: bool = False) -> float:
 def apply_force_directed_pass(
     nodes: List[GraphNode],
     papers_by_id: Dict[str, CanonicalPaper],
-    bounds: float = 600.0,
-    iterations: int = 90,
-    ideal_distance: float = 120.0,
+    bounds: float = 850.0,
+    iterations: int = 100,
+    ideal_distance: float = 240.0,
     similarity_threshold: float = 0.15,
-    gravity: float = 0.06,
-    start_temperature: float = 45.0,
+    gravity: float = 0.04,
+    start_temperature: float = 55.0,
 ) -> None:
     """
     Refines the deterministic archetype placement with a lightweight
@@ -177,7 +177,7 @@ def apply_force_directed_pass(
 def generate_graph_layout(
     origin: CanonicalPaper,
     selected_candidates: List[RankedCandidate],
-    canvas_radius: float = 450.0,
+    canvas_radius: float = 650.0,
 ) -> List[GraphNode]:
     """
     Generates deterministic 2D coordinates (x, y) and visual attributes for all graph nodes.

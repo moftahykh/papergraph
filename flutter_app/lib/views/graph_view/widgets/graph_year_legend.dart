@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 
 class GraphYearLegend extends StatelessWidget {
   final int minYear;
@@ -15,13 +16,13 @@ class GraphYearLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = isDark
-        ? const Color(0xDD0F172A)
+        ? AppTheme.darkCard.withAlpha(235)
         : const Color(0xEEFFFFFF);
     final borderColor = isDark
-        ? const Color(0xFF334155)
+        ? AppTheme.darkBorder
         : const Color(0xFFE2E8F0);
     final textColor = isDark
-        ? const Color(0xFF94A3B8)
+        ? AppTheme.darkTextSecondary
         : const Color(0xFF64748B);
 
     return Container(

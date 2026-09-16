@@ -11,6 +11,7 @@ import '../../models/paper_model.dart';
 import '../graph_view/connected_graph_view.dart';
 import '../paper_details/citation_bottom_sheet.dart';
 import '../paper_details/paper_details_view.dart';
+import '../widgets/paper_graph_mark.dart';
 
 class FavoritesView extends StatelessWidget {
   const FavoritesView({super.key});
@@ -24,12 +25,13 @@ class FavoritesView extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           toolbarHeight: 72,
-          title: const Text(
+          title: Text(
             'Library',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.6,
+            style: AppTheme.brandTitleStyle(
+              fontSize: 32,
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : AppTheme.lightTextPrimary,
             ),
           ),
           bottom: PreferredSize(
@@ -311,7 +313,7 @@ class FavoritesView extends StatelessWidget {
                               ConnectedGraphView(centerPaper: paperModel),
                         ),
                       ),
-                      icon: const Icon(Icons.hub_outlined, size: 17),
+                      icon: const Icon(Icons.account_tree_outlined, size: 18),
                       label: const Text('Explore graph'),
                     ),
                   ),
@@ -348,7 +350,7 @@ class FavoritesView extends StatelessWidget {
   ) {
     if (graphs.isEmpty) {
       return _buildEmptyState(
-        icon: Icons.hub_outlined,
+        customIcon: PaperGraphMark(size: 40, isDark: isDark),
         title: 'No graphs yet',
         description:
             'Save a graph to keep it in your library for quick access anytime.',
@@ -459,7 +461,7 @@ class FavoritesView extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: openGraph,
-                  icon: const Icon(Icons.hub_rounded, size: 17),
+                  icon: const Icon(Icons.account_tree_outlined, size: 18),
                   label: const Text('Open graph'),
                 ),
               ),
@@ -546,7 +548,8 @@ class FavoritesView extends StatelessWidget {
   }
 
   Widget _buildEmptyState({
-    required IconData icon,
+    IconData? icon,
+    Widget? customIcon,
     required String title,
     required String description,
     required bool isDark,
@@ -567,15 +570,21 @@ class FavoritesView extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isDark
                     ? AppTheme.darkSurface
-                    : AppTheme.primaryBlue.withAlpha(12),
+                    : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                ),
               ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: isDark
-                    ? AppTheme.actionPurpleDark
-                    : AppTheme.primaryBlue,
+              child: Center(
+                child: customIcon ??
+                    Icon(
+                      icon,
+                      size: 32,
+                      color: isDark
+                          ? Colors.white
+                          : const Color(0xFF18181B),
+                    ),
               ),
             ),
             const SizedBox(height: 20),

@@ -290,10 +290,8 @@ void main() {
       final newerColor = painter.getNodeColor(2020);
 
       expect(olderColor, isNot(equals(newerColor)));
-      // Older should be near Mint Teal (green channel prominent)
-      expect(olderColor.g, greaterThan(0.6));
-      // Newer should be near Electric Blue (blue channel prominent)
-      expect(newerColor.b, greaterThan(0.8));
+      // Transition from older muted slate to newer crisp foreground
+      expect(olderColor.computeLuminance(), isNot(equals(newerColor.computeLuminance())));
     });
   });
 

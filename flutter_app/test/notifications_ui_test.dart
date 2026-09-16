@@ -92,7 +92,7 @@ void main() {
       tester,
     ) async {
       notifCubit.notify(
-        title: 'Literature Graph Ready',
+        title: 'Graph ready',
         message: 'Synthesized 10 papers.',
         type: NotificationType.success,
       );
@@ -104,7 +104,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Literature Graph Ready'), findsOneWidget);
+      expect(find.text('Graph ready'), findsOneWidget);
       expect(find.text('Synthesized 10 papers.'), findsOneWidget);
 
       // Tap Clear All
@@ -137,7 +137,11 @@ void main() {
       );
       expect(
         cubit.state.notifications.first.title,
-        equals('Graph Generation Failed'),
+        equals('Couldn’t create graph'),
+      );
+      expect(
+        cubit.state.notifications.first.message,
+        equals('Check your internet connection, then try again.'),
       );
       cubit.close();
     });

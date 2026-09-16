@@ -73,20 +73,50 @@ class _MainNavigationViewState extends State<MainNavigationView> {
                   setState(() => _currentIndex = index);
                 }
               },
-              destinations: const [
+              destinations: [
                 NavigationDestination(
-                  icon: Icon(Icons.explore_outlined),
-                  selectedIcon: Icon(Icons.explore_rounded),
+                  icon: Icon(
+                    Icons.explore_outlined,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                  selectedIcon: Icon(
+                    Icons.explore_rounded,
+                    color: isDark
+                        ? AppTheme.darkTextPrimary
+                        : AppTheme.lightTextPrimary,
+                  ),
                   label: 'Explore',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.bookmarks_outlined),
-                  selectedIcon: Icon(Icons.bookmarks_rounded),
+                  icon: Icon(
+                    Icons.bookmarks_outlined,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                  selectedIcon: Icon(
+                    Icons.bookmarks_rounded,
+                    color: isDark
+                        ? AppTheme.darkTextPrimary
+                        : AppTheme.lightTextPrimary,
+                  ),
                   label: 'Library',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings_rounded),
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                  selectedIcon: Icon(
+                    Icons.settings_rounded,
+                    color: isDark
+                        ? AppTheme.darkTextPrimary
+                        : AppTheme.lightTextPrimary,
+                  ),
                   label: 'Settings',
                 ),
               ],

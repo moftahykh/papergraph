@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PaperGraph — Pure Minimalist Splash</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #0f1013;
+      --text: #f4f4f5;
+      --text-muted: #71717a;
+      --border: rgba(255, 255, 255, 0.08);
+      --graph-line: rgba(255, 255, 255, 0.18);
+      --graph-node: #ffffff;
+      --graph-dim: rgba(255, 255, 255, 0.35);
+      --bar: #ffffff;
+      --bar-track: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="light"] {
+      --bg: #ececec;
+      --surface: #fbfbfb;
+      --text: #18181b;
+      --text-muted: #71717a;
+      --border: rgba(0, 0, 0, 0.08);
+      --graph-line: rgba(0, 0, 0, 0.16);
+      --graph-node: #18181b;
+      --graph-dim: rgba(0, 0, 0, 0.3);
+      --bar: #18181b;
+      --bar-track: rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      transition: background-color 0.5s ease;
+    }
+
+    /* Minimal Floating Switcher */
+    .controls {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+      z-index: 10;
+    }
+
+    .btn-toggle {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-toggle.active {
+      color: var(--text);
+      border-color: var(--text);
+    }
+
+    /* Device Container */
+    .viewport {
+      width: 100%;
+      max-width: 380px;
+      height: 760px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 80px 32px 54px;
+      overflow: hidden;
+      transition: background-color 0.5s ease, border-color 0.5s ease;
+    }
+
+    /* Central Visual Area */
+    .graph-stage {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 40px;
+    }
+
+    canvas {
+      width: 260px;
+      height: 260px;
+    }
+
+    /* Typography Lockup */
+    .brand {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .brand.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .brand-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 3.2rem;
+      font-weight: 400;
+      line-height: 1;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .brand-title span {
+      font-style: italic;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    /* Subdued Status Line */
+    .footer {
+      width: 100%;
+      max-width: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+
+    .footer.revealed {
+      opacity: 1;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 1px;
+      background: var(--bar-track);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      background: var(--bar);
+      transition: width 0.1s linear;
+    }
+
+    .status-text {
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <div class="controls">
+    <button class="btn-toggle active" id="btn-dark" onclick="switchTheme('dark')">Dark</button>
+    <button class="btn-toggle" id="btn-light" onclick="switchTheme('light')">Light</button>
+    <button class="btn-toggle" onclick="restart()">Replay</button>
+  </div>
+
+  <div class="viewport">
+    
+    <!-- Central Connected Mark -->
+    <div class="graph-stage">
+      <canvas id="graph" width="520" height="520"></canvas>
+    </div>
+
+    <!-- Editorial Identity -->
+    <div class="brand" id="brandBlock">
+      <h1 class="brand-title">Paper<span>Graph</span></h1>
+      <p class="brand-sub">Literature Intelligence</p>
+    </div>
+
+    <!-- Monoline Status -->
+    <div class="footer" id="footerBlock">
+      <div class="progress-track">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <span class="status-text" id="statusLabel">Calibrating</span>
+    </div>
+
+  </div>
+
+  <script>
+    const canvas = document.getElementById('graph');
+    const ctx = canvas.getContext('2d');
+    const brandBlock = document.getElementById('brandBlock');
+    const footerBlock = document.getElementById('footerBlock');
+    const progressBar = document.getElementById('progressBar');
+    const statusLabel = document.getElementById('statusLabel');
+
+    let currentTheme = 'dark';
+    let animId = null;
+    let startTimestamp = null;
+
+    // Retina Center
+    const CX = 260;
+    const CY = 260;
+
+    // A precise, geometrically stable academic graph layout
+    const nodes = [
+      { id: 0, x: CX,       y: CY,       r: 6.5, isRoot: true },
+      { id: 1, x: CX - 65,  y: CY - 60,  r: 4.0 },
+      { id: 2, x: CX + 75,  y: CY - 50,  r: 4.5 },
+      { id: 3, x: CX + 65,  y: CY + 65,  r: 3.8 },
+      { id: 4, x: CX - 70,  y: CY + 60,  r: 4.2 },
+      { id: 5, x: CX - 130, y: CY - 30,  r: 3.0 },
+      { id: 6, x: CX + 120, y: CY - 100, r: 3.0 },
+      { id: 7, x: CX + 135, y: CY + 45,  r: 3.0 },
+      { id: 8, x: CX - 20,  y: CY + 125, r: 3.2 }
+    ];
+
+    const edges = [
+      { from: 0, to: 1, start: 0.3, dur: 0.5 },
+      { from: 0, to: 2, start: 0.4, dur: 0.5 },
+      { from: 0, to: 3, start: 0.5, dur: 0.5 },
+      { from: 0, to: 4, start: 0.6, dur: 0.5 },
+      { from: 1, to: 5, start: 0.8, dur: 0.5 },
+      { from: 2, to: 6, start: 0.9, dur: 0.5 },
+      { from: 3, to: 7, start: 1.0, dur: 0.5 },
+      { from: 4, to: 8, start: 1.1, dur: 0.5 },
+      { from: 1, to: 2, start: 1.3, dur: 0.6 },
+      { from: 3, to: 4, start: 1.4, dur: 0.6 }
+    ];
+
+    function ease(t) {
+      return 1 - Math.pow(1 - t, 4);
+    }
+
+    function draw(timestamp) {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const elapsed = (timestamp - startTimestamp) / 1000;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const isDark = currentTheme === 'dark';
+      const rootColor = isDark ? '#ffffff' : '#18181b';
+      const nodeColor = isDark ? '#d4d4d8' : '#3f3f46';
+      const edgeColor = isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.15)';
+      const ringColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
+      // 1. Concentric reference guide that quietly dissolves into view
+      const ringAlpha = Math.min(1, elapsed * 0.8);
+      ctx.beginPath();
+      ctx.arc(CX, CY, 95, 0, Math.PI * 2);
+      ctx.strokeStyle = ringColor;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 2. Vector connections drawn outward
+      edges.forEach(edge => {
+        if (elapsed < edge.start) return;
+        const p = Math.min(1, (elapsed - edge.start) / edge.dur);
+        const t = ease(p);
+
+        const n1 = nodes[edge.from];
+        const n2 = nodes[edge.to];
+
+        ctx.beginPath();
+        ctx.strokeStyle = edgeColor;
+        ctx.lineWidth = 1;
+        ctx.moveTo(n1.x, n1.y);
+        ctx.lineTo(n1.x + (n2.x - n1.x) * t, n1.y + (n2.y - n1.y) * t);
+        ctx.stroke();
+      });
+
+      // 3. Precise, crisp nodes appearing without blur/glow
+      nodes.forEach((node, i) => {
+        const appearTime = node.isRoot ? 0.05 : 0.4 + (i * 0.1);
+        if (elapsed < appearTime) return;
+
+        const p = Math.min(1, (elapsed - appearTime) / 0.4);
+        const scale = ease(p);
+
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.r * scale, 0, Math.PI * 2);
+        ctx.fillStyle = node.isRoot ? rootColor : nodeColor;
+        ctx.fill();
+
+        // Architectural ring on the root node
+        if (node.isRoot) {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, 14 * scale, 0, Math.PI * 2);
+          ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      });
+
+      // 4. Progress and Status Updates
+      const pct = Math.min(100, Math.round((elapsed / 2.2) * 100));
+      progressBar.style.width = pct + '%';
+
+      if (elapsed < 0.6) {
+        statusLabel.innerText = 'Initializing';
+      } else if (elapsed < 1.4) {
+        statusLabel.innerText = 'Mapping Citations';
+      } else if (elapsed < 2.2) {
+        statusLabel.innerText = 'Synthesizing';
+      } else {
+        statusLabel.innerText = 'Ready';
+      }
+
+      animId = requestAnimationFrame(draw);
+    }
+
+    function restart() {
+      if (animId) cancelAnimationFrame(animId);
+      startTimestamp = null;
+
+      brandBlock.classList.remove('revealed');
+      footerBlock.classList.remove('revealed');
+      progressBar.style.width = '0%';
+
+      setTimeout(() => brandBlock.classList.add('revealed'), 400);
+      setTimeout(() => footerBlock.classList.add('revealed'), 700);
+
+      animId = requestAnimationFrame(draw);
+    }
+
+    function switchTheme(theme) {
+      currentTheme = theme;
+      document.body.setAttribute('data-theme', theme);
+      document.getElementById('btn-dark').classList.toggle('active', theme === 'dark');
+      document.getElementById('btn-light').classList.toggle('active', theme === 'light');
+    }
+
+    window.addEventListener('DOMContentLoaded', restart);
+  </script>
+</body>
+</html>

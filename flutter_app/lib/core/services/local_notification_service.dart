@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -27,13 +28,16 @@ class LocalNotificationService {
       FlutterLocalNotificationsPlugin();
   static bool _isInitialized = false;
 
+  static bool get _isAppInForeground =>
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+
   /// Initializes the local notifications plugin for system tray notifications.
   static Future<void> init({FlutterLocalNotificationsPlugin? plugin}) async {
     if (_isInitialized) return;
     try {
       final activePlugin = plugin ?? _notificationsPlugin;
       const androidSettings = AndroidInitializationSettings(
-        '@mipmap/ic_launcher',
+        '@drawable/ic_stat_papergraph',
       );
       const darwinSettings = DarwinInitializationSettings(
         requestAlertPermission: false,
@@ -70,9 +74,10 @@ class LocalNotificationService {
         channelId,
         channelName,
         channelDescription: channelDescription,
-        importance: Importance.max,
+        icon: '@drawable/ic_stat_papergraph',
+        importance: Importance.high,
         priority: Priority.high,
-        ticker: 'PaperGraph Alert',
+        ticker: 'PaperGraph update',
       );
       const darwinDetails = DarwinNotificationDetails(
         presentAlert: true,
@@ -165,13 +170,13 @@ class LocalNotificationService {
       permitted = await hasPermission();
     } catch (_) {}
 
-    if (wasEnabled && permitted) {
+    if (wasEnabled && permitted && !_isAppInForeground) {
       final title = isPartial
-          ? 'Graph Ready (Partial)'
-          : 'Literature Graph Ready';
+          ? 'Graph ready with limited results'
+          : 'Graph ready';
       final body = isPartial
-          ? 'Synthesized $nodeCount papers with partial source coverage.'
-          : 'Synthesized $nodeCount papers and citation relationships.';
+          ? '$nodeCount papers are ready. Some sources did not respond.'
+          : '$nodeCount connected papers are ready to explore.';
       await showSystemNotification(
         id: graphId.hashCode.abs() % 100000,
         title: title,
@@ -200,11 +205,11 @@ class LocalNotificationService {
       permitted = await hasPermission();
     } catch (_) {}
 
-    if (wasEnabled && permitted) {
+    if (wasEnabled && permitted && !_isAppInForeground) {
       await showSystemNotification(
         id: graphId.hashCode.abs() % 100000,
-        title: 'Graph Generation Failed',
-        body: error,
+        title: 'Couldn’t create graph',
+        body: NotificationCubit.friendlyGraphError(error),
         payload: graphId,
       );
     }

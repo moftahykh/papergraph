@@ -42,21 +42,32 @@ class NotificationCubit extends Cubit<NotificationState> {
     bool isPartial = false,
   }) {
     notify(
-      title: isPartial ? 'Graph Ready (Partial)' : 'Literature Graph Ready',
+      title: isPartial ? 'Graph ready with limited results' : 'Graph ready',
       message: isPartial
-          ? 'Synthesized $nodeCount papers with partial source coverage.'
-          : 'Synthesized $nodeCount papers and citation relationships.',
+          ? '$nodeCount papers are ready. Some sources did not respond.'
+          : '$nodeCount connected papers are ready to explore.',
       type: isPartial ? NotificationType.warning : NotificationType.success,
       relatedGraphId: graphId,
       showToast: true,
     );
   }
 
+  static String friendlyGraphError(String error) {
+    final normalized = error.toLowerCase();
+    if (normalized.contains('network') ||
+        normalized.contains('connect') ||
+        normalized.contains('timeout') ||
+        normalized.contains('server')) {
+      return 'Check your internet connection, then try again.';
+    }
+    return 'Something went wrong. Open PaperGraph and try again.';
+  }
+
   /// Specialized helper for graph generation errors.
   void notifyGraphFailed(String graphId, String error) {
     notify(
-      title: 'Graph Generation Failed',
-      message: error,
+      title: 'Couldn’t create graph',
+      message: friendlyGraphError(error),
       type: NotificationType.error,
       relatedGraphId: graphId,
       showToast: true,

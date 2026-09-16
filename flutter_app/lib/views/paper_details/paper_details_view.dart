@@ -159,9 +159,14 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text(
+            title: Text(
               'Paper',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              style: AppTheme.brandTitleStyle(
+                fontSize: 27,
+                color: isDark
+                    ? AppTheme.darkTextPrimary
+                    : AppTheme.lightTextPrimary,
+              ),
             ),
             actions: [
               IconButton(
@@ -317,9 +322,11 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                                 ),
                                 child: Text(
                                   'DOI: $effectiveDoi',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12.5,
-                                    color: AppTheme.primaryLightBlue,
+                                    color: isDark
+                                        ? AppTheme.primaryLightBlue
+                                        : AppTheme.primaryBlue,
                                     decoration: TextDecoration.underline,
                                   ),
                                 ),
@@ -341,15 +348,28 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.hub_rounded, size: 19),
-                          label: const Text('Explore graph'),
+                          icon: const Icon(
+                            Icons.account_tree_outlined,
+                            size: 19,
+                          ),
+                          label: const Text(
+                            'Explore graph',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
                           style: FilledButton.styleFrom(
                             minimumSize: const Size.fromHeight(52),
                             backgroundColor: isDark
-                                ? AppTheme.actionPurpleDark
-                                : AppTheme.primaryBlue,
+                                ? Colors.white
+                                : const Color(0xFF18181B),
+                            foregroundColor: isDark
+                                ? const Color(0xFF09090B)
+                                : Colors.white,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         ),
@@ -486,7 +506,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                       const SizedBox(height: 10),
                       _buildExpandableSection(
                         title: 'Connected papers (${connectedPapers.length})',
-                        icon: Icons.hub_outlined,
+                        icon: Icons.account_tree_outlined,
                         isDark: isDark,
                         children: connectedPapers.isEmpty
                             ? [
@@ -564,7 +584,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
 
   Widget _buildExpandableSection({
     required String title,
-    required IconData icon,
+    IconData? icon,
+    Widget? customLeading,
     required bool isDark,
     required List<Widget> children,
   }) {
@@ -581,7 +602,14 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          leading: Icon(icon, size: 20, color: AppTheme.primaryLightBlue),
+          leading: customLeading ??
+              Icon(
+                icon,
+                size: 20,
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.lightTextSecondary,
+              ),
           title: Text(
             title,
             style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
@@ -600,7 +628,13 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppTheme.primaryLightBlue),
+        Icon(
+          icon,
+          size: 20,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.primaryLightBlue
+              : AppTheme.primaryBlue,
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

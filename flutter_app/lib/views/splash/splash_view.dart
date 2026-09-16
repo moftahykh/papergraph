@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/hive_service.dart';
@@ -9,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../auth/login_view.dart';
 import '../main_nav_view.dart';
 import '../onboarding/onboarding_view.dart';
+import '../widgets/paper_graph_mark.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -20,32 +20,40 @@ class SplashView extends StatefulWidget {
 class _SplashViewState extends State<SplashView>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
+  late Animation<double> _brandFade;
+  late Animation<double> _footerFade;
 
   @override
   void initState() {
     super.initState();
     // Silently ping backend health to initiate cloud container wake-up early
     PaperGraphApiClient().checkHealth();
+
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 4500),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _brandFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.1, 0.7, curve: Curves.easeIn),
+        curve: const Interval(0.08, 0.35, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _footerFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.15, 0.45, curve: Curves.easeOutCubic),
       ),
     );
 
     _controller.forward();
-
     _navigateToNext();
   }
 
   Future<void> _navigateToNext() async {
-    await Future.delayed(const Duration(milliseconds: 1400));
+    await Future.delayed(const Duration(milliseconds: 4500));
     if (!mounted) return;
 
     final onboardingCompleted = HiveService.isOnboardingCompleted();
@@ -55,7 +63,7 @@ class _SplashViewState extends State<SplashView>
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 800),
+          transitionDuration: const Duration(milliseconds: 600),
           pageBuilder: (context, animation, secondaryAnimation) =>
               const OnboardingView(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) =>
@@ -69,7 +77,7 @@ class _SplashViewState extends State<SplashView>
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 800),
+          transitionDuration: const Duration(milliseconds: 600),
           pageBuilder: (context, animation, secondaryAnimation) =>
               const LoginView(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) =>
@@ -82,7 +90,7 @@ class _SplashViewState extends State<SplashView>
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 800),
+        transitionDuration: const Duration(milliseconds: 600),
         pageBuilder: (context, animation, secondaryAnimation) =>
             MainNavigationView(
               requireInitialUnlock: HiveService.isBiometricsEnabled(),
@@ -99,119 +107,139 @@ class _SplashViewState extends State<SplashView>
     super.dispose();
   }
 
+  String _getStatusText(double progress) {
+    if (progress < 0.25) {
+      return 'INITIALIZING';
+    } else if (progress < 0.60) {
+      return 'MAPPING CITATIONS';
+    } else if (progress < 0.88) {
+      return 'SYNTHESIZING';
+    } else {
+      return 'READY';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppTheme.darkBg : AppTheme.lightBg;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textMuted = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final barTrack = isDark ? const Color(0x14FFFFFF) : const Color(0x14000000);
+    final barFill = isDark ? Colors.white : const Color(0xFF18181B);
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: isDark ? AppTheme.darkBg : AppTheme.lightBg,
+      backgroundColor: bg,
+      body: SafeArea(
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Connected Research Graph Lottie Animation (Adaptive Light / Dark)
-                SizedBox(
-                  width: 240,
-                  height: 240,
-                  child: Lottie.asset(
-                    isDark
-                        ? 'assets/lottie/splash_animation.json'
-                        : 'assets/lottie/splash_animation_light.json',
-                    width: 240,
-                    height: 240,
-                    fit: BoxFit.contain,
-                    repeat: true,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/images/logo.png',
-                        width: 180,
-                        height: 180,
-                        fit: BoxFit.contain,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 32),
+            final progress = _controller.value;
+            // Unfold smoothly across the first 2.5s (0.55 of duration)
+            final graphProgress = (progress / 0.55).clamp(0.0, 1.0);
+            // Continuous living pulse that breathes for the rest of the splash
+            final pulseProgress = progress > 0.40 ? (progress - 0.40) * 3.5 : 0.0;
 
-                // Title with Fade
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Column(
-                    children: [
-                      if (isDark)
-                        ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [
-                              AppTheme.primaryLightBlue,
-                              AppTheme.accentCyan,
-                              AppTheme.accentEmerald,
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(height: 10),
+
+                    // Central Connected Mark & Typography Lockup
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Prominent Geometric Vector Mark with Living Pulse
+                        PaperGraphMark(
+                          size: 280,
+                          isDark: isDark,
+                          progress: graphProgress,
+                          pulse: pulseProgress,
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Brand Title in Instrument Serif Italic
+                        FadeTransition(
+                          opacity: _brandFade,
+                          child: Column(
+                            children: [
+                              Text(
+                                'PaperGraph',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.instrumentSerif(
+                                  fontSize: 46,
+                                  fontStyle: FontStyle.italic,
+                                  fontWeight: FontWeight.w400,
+                                  color: textPrimary,
+                                  letterSpacing: -0.5,
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'LITERATURE INTELLIGENCE',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w400,
+                                  color: textMuted,
+                                  letterSpacing: 2.2,
+                                ),
+                              ),
                             ],
-                          ).createShader(bounds),
-                          child: Text(
-                            'PaperGraph',
-                            style: GoogleFonts.playfairDisplay(
-                              textStyle: const TextStyle(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.5,
-                                color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Monoline Hairline Status Line
+                    FadeTransition(
+                      opacity: _footerFade,
+                      child: SizedBox(
+                        width: 180,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 1px hairline track
+                            Container(
+                              height: 1.5,
+                              width: 180,
+                              decoration: BoxDecoration(
+                                color: barTrack,
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor: progress.clamp(0.0, 1.0),
+                                child: Container(
+                                  height: 1.5,
+                                  decoration: BoxDecoration(
+                                    color: barFill,
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        )
-                      else
-                        Text(
-                          'PaperGraph',
-                          style: GoogleFonts.playfairDisplay(
-                            textStyle: const TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
-                              color: AppTheme.primaryBlue,
+                            const SizedBox(height: 14),
+                            Text(
+                              _getStatusText(progress),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 1.5,
+                                color: textMuted,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Visual Connected Research & Literature Explorer',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.playfairDisplay(
-                          textStyle: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? AppTheme.darkTextSecondary
-                                : AppTheme.lightTextSecondary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 48),
-
-                // Loading Indicator
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isDark ? AppTheme.accentCyan : AppTheme.primaryBlue,
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         ),

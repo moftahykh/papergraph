@@ -23,14 +23,14 @@ class GraphViewModeSwitcher extends StatelessWidget {
   Widget build(BuildContext context) {
     final bgColor = isDark
         ? AppTheme.darkCard.withValues(alpha: 0.90)
-        : Colors.white.withValues(alpha: 0.95);
-    final borderColor = isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0);
+        : AppTheme.lightSurface.withValues(alpha: 0.95);
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
     final activeBgColor = isDark
-        ? AppTheme.actionPurple.withAlpha(50)
-        : const Color(0xFFEEF2FF);
+        ? AppTheme.darkBorder
+        : const Color(0xFFF1F5F9);
     final activeTextColor = isDark
-        ? AppTheme.actionPurpleDark
-        : AppTheme.actionPurple;
+        ? AppTheme.darkTextPrimary
+        : AppTheme.lightTextPrimary;
     final inactiveTextColor = isDark
         ? AppTheme.darkTextSecondary
         : const Color(0xFF64748B);
@@ -48,7 +48,7 @@ class GraphViewModeSwitcher extends StatelessWidget {
           _buildOption(
             mode: GraphViewMode.graph,
             label: 'Graph',
-            icon: Icons.hub_outlined,
+            icon: Icons.account_tree_outlined,
             activeBgColor: activeBgColor,
             activeTextColor: activeTextColor,
             inactiveTextColor: inactiveTextColor,
@@ -69,7 +69,8 @@ class GraphViewModeSwitcher extends StatelessWidget {
   Widget _buildOption({
     required GraphViewMode mode,
     required String label,
-    required IconData icon,
+    IconData? icon,
+    Widget? customIcon,
     required Color activeBgColor,
     required Color activeTextColor,
     required Color inactiveTextColor,
@@ -95,11 +96,12 @@ class GraphViewModeSwitcher extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 14,
-                color: isSelected ? activeTextColor : inactiveTextColor,
-              ),
+              customIcon ??
+                  Icon(
+                    icon,
+                    size: 14,
+                    color: isSelected ? activeTextColor : inactiveTextColor,
+                  ),
               if (!isCompact) ...[
                 const SizedBox(width: 4),
                 Text(

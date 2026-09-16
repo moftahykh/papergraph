@@ -655,11 +655,11 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                       minHeight: 44,
                     ),
                     color: isSaved
-                        ? AppTheme.accentEmerald
+                        ? (isDark ? Colors.white : const Color(0xFF18181B))
                         : (isDark
-                              ? AppTheme.primaryLightBlue
-                              : AppTheme.primaryBlue),
-                    disabledColor: AppTheme.accentEmerald,
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary),
+                    disabledColor: isDark ? Colors.white : const Color(0xFF18181B),
                     tooltip: isSaved ? 'Saved to library' : 'Save graph',
                     onPressed: isSaved
                         ? null
@@ -676,19 +676,21 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF38BDF8).withAlpha(35),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF38BDF8)),
+                color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(6),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.cloud_off_rounded,
-                    size: 14,
-                    color: Color(0xFF38BDF8),
+                    size: 13,
+                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                   ),
-                  SizedBox(width: 6),
+                  const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       'Available offline',
@@ -696,8 +698,8 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF38BDF8),
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                       ),
                     ),
                   ),
@@ -711,17 +713,19 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withAlpha(35),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFF59E0B)),
+                color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(6),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.warning_amber_rounded,
-                    size: 16,
-                    color: Color(0xFFF59E0B),
+                    size: 14,
+                    color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A),
                   ),
                   const SizedBox(width: 8),
                   Flexible(
@@ -731,10 +735,10 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                           : 'Partial graph: External providers throttled.',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFF59E0B),
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A),
                       ),
                     ),
                   ),
@@ -748,19 +752,21 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withAlpha(35),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFF59E0B)),
+                color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(6),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.history_toggle_off_rounded,
-                    size: 14,
-                    color: Color(0xFFF59E0B),
+                    size: 13,
+                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                   ),
-                  SizedBox(width: 6),
+                  const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       'Refresh recommended. Connect to update this graph.',
@@ -768,8 +774,8 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFF59E0B),
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                       ),
                     ),
                   ),

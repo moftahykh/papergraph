@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -20,6 +21,7 @@ import '../../providers/auth_provider.dart';
 import '../auth/widgets/auth_gate_sheet.dart';
 import '../graph_view/connected_graph_view.dart';
 import '../widgets/notifications_sheet.dart';
+import '../widgets/paper_graph_mark.dart';
 
 /// Search-first home (the Connected Papers model).
 ///
@@ -121,18 +123,19 @@ class _HomeViewState extends State<HomeView> {
       appBar: AppBar(
         title: Row(
           children: [
-            Image.asset(
-              isDark
-                  ? 'assets/images/logo_dark.png'
-                  : 'assets/images/logo_light.png',
-              width: 24,
-              height: 24,
-              fit: BoxFit.contain,
+            PaperGraphMark(
+              size: 24,
+              isDark: isDark,
             ),
-            const SizedBox(width: 8),
-            const Text(
+            const SizedBox(width: 10),
+            Text(
               'PaperGraph',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 19),
+              style: GoogleFonts.instrumentSerif(
+                fontSize: 24,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w400,
+                letterSpacing: -0.3,
+              ),
             ),
           ],
         ),
@@ -172,15 +175,12 @@ class _HomeViewState extends State<HomeView> {
               const SizedBox(height: 24),
               Text(
                 'Explore connected literature.',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.4,
-                  height: 1.25,
+                style: AppTheme.brandTitleStyle(
+                  fontSize: 32,
                   color: isDark
                       ? AppTheme.darkTextPrimary
                       : AppTheme.lightTextPrimary,
-                ),
+                ).copyWith(height: 1.15),
               ),
               const SizedBox(height: 6),
               Text(
@@ -498,10 +498,21 @@ class _HomeViewState extends State<HomeView> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: accent.withAlpha(20),
+                color: isDark ? AppTheme.darkBorder : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                ),
               ),
-              child: Icon(Icons.hub_outlined, size: 17, color: accent),
+              child: Center(
+                child: Icon(
+                  Icons.article_outlined,
+                  size: 19,
+                  color: isDark
+                      ? AppTheme.darkTextPrimary
+                      : AppTheme.lightTextPrimary,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

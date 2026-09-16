@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lottie/lottie.dart';
+import '../../widgets/paper_graph_mark.dart';
 import '../../../core/services/local_notification_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../cubits/graph/graph_cubit.dart';
@@ -62,7 +62,25 @@ class GraphProgressiveLoadingView extends StatefulWidget {
 }
 
 class _GraphProgressiveLoadingViewState
-    extends State<GraphProgressiveLoadingView> {
+    extends State<GraphProgressiveLoadingView>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     GraphJobStatus currentStage = GraphJobStatus.queued;
@@ -101,20 +119,17 @@ class _GraphProgressiveLoadingViewState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: Lottie.asset(
-                    isDark
-                        ? 'assets/lottie/splash_animation.json'
-                        : 'assets/lottie/splash_animation_light.json',
-                    width: 110,
-                    height: 110,
-                    fit: BoxFit.contain,
-                    repeat: true,
-                  ),
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    return PaperGraphMark(
+                      size: 130,
+                      isDark: isDark,
+                      pulse: _pulseController.value,
+                    );
+                  },
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 Text(
                   'Synthesizing Literature Graph',
                   textAlign: TextAlign.center,

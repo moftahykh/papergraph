@@ -227,16 +227,16 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     Color badgeColor;
     switch (explanation.category) {
       case ConnectionCategory.origin:
-        badgeColor = isDark ? AppTheme.originGreenDark : AppTheme.originGreen;
+        badgeColor = isDark ? Colors.white : const Color(0xFF18181B);
         break;
       case ConnectionCategory.citation:
-        badgeColor = isDark ? AppTheme.citationBlueDark : AppTheme.citationBlue;
+        badgeColor = isDark ? const Color(0xFFD4D4D8) : const Color(0xFF3F3F46);
         break;
       case ConnectionCategory.similarity:
-        badgeColor = isDark ? AppTheme.similarityCyanDark : AppTheme.similarityCyan;
+        badgeColor = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A);
         break;
       default:
-        badgeColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B);
+        badgeColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF71717A);
     }
 
     return ListView(
@@ -263,9 +263,12 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
-                color: badgeColor.withAlpha(25),
+                color: isDark ? Colors.white.withAlpha(12) : Colors.black.withAlpha(8),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: badgeColor.withAlpha(80), width: 0.8),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                  width: 0.8,
+                ),
               ),
               child: Text(
                 node.isOrigin ? 'STARTING PAPER' : explanation.badgeLabel,
@@ -342,8 +345,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               child: IconButton.filled(
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
                 style: IconButton.styleFrom(
-                  backgroundColor: isDark ? AppTheme.originGreenDark : AppTheme.originGreen,
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDark ? AppTheme.darkBorder : const Color(0xFFE4E4E7),
+                  foregroundColor: isDark ? Colors.white : const Color(0xFF18181B),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.all(8),
                 ),
@@ -361,10 +364,11 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             ElevatedButton.icon(
               onPressed: () => widget.onOpenFullDetails?.call(node),
               icon: const Icon(Icons.menu_book_rounded, size: 15),
-              label: const Text('Paper details', style: TextStyle(fontSize: 11.5)),
+              label: const Text('Paper details', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDark ? AppTheme.actionPurple : AppTheme.primaryBlue,
-                foregroundColor: Colors.white,
+                backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+                foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+                elevation: 0,
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -576,16 +580,25 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: accent.withAlpha(isDark ? 18 : 12),
+        color: isDark
+            ? Colors.white.withAlpha(8)
+            : Colors.black.withAlpha(6),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: accent.withAlpha(55)),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.link_rounded, size: 17, color: accent),
+              Icon(
+                Icons.link_rounded,
+                size: 17,
+                color: isDark ? Colors.white : const Color(0xFF18181B),
+              ),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(

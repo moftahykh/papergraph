@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/paper_graph_mark.dart';
 
 class GraphErrorView extends StatelessWidget {
   final String message;
@@ -107,12 +108,21 @@ class GraphEmptyStateView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.hub_outlined,
-            size: 64,
-            color: isDark ? AppTheme.darkBorder : const Color(0xFFCBD5E1),
+          Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+              ),
+            ),
+            child: Center(
+              child: PaperGraphMark(size: 56, isDark: isDark),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             'No Graph Loaded',
             style: TextStyle(
@@ -140,8 +150,9 @@ class GraphEmptyStateView extends StatelessWidget {
             icon: const Icon(Icons.search_rounded, size: 16),
             label: const Text('Explore Literature'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
+              backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+              foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),

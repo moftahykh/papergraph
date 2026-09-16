@@ -96,7 +96,7 @@ void main() {
           MaterialApp(
             home: MultiBlocProvider(
               providers: [
-                BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
+                BlocProvider<LibraryCubit>(create: (_) => LibraryCubit.seeded()),
                 BlocProvider<NotificationCubit>(
                   create: (_) => NotificationCubit(),
                 ),
@@ -105,7 +105,8 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Verify zoom controls exist
         expect(find.byIcon(Icons.add_rounded), findsOneWidget);

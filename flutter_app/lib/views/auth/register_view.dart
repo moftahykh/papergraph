@@ -194,16 +194,26 @@ class _RegisterViewState extends State<RegisterView> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
+        SnackBar(
+          content: const Row(
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white),
               SizedBox(width: 10),
-              Text('Welcome to PaperGraph! Researcher Profile Created.'),
+              Expanded(
+                child: Text(
+                  'Welcome to PaperGraph. Your profile is ready.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           backgroundColor: AppTheme.accentEmerald,
-          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 3),
         ),
       );
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../widgets/paper_graph_mark.dart';
 import '../main_nav_view.dart';
 import 'forgot_password_view.dart';
 import 'register_view.dart';
@@ -112,21 +114,20 @@ class _LoginViewState extends State<LoginView> {
                 children: [
                   // Connected Research Graph Logo Header
                   Center(
-                    child: Image.asset(
-                      isDark ? 'assets/images/logo_dark.png' : 'assets/images/logo_light.png',
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.contain,
+                    child: PaperGraphMark(
+                      size: 72,
+                      isDark: isDark,
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  const Text(
+                  Text(
                     'Welcome to PaperGraph',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
+                    style: GoogleFonts.instrumentSerif(
+                      fontSize: 32,
+                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w400,
                       letterSpacing: -0.5,
                     ),
                   ),

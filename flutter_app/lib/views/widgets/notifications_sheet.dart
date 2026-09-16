@@ -324,11 +324,11 @@ class NotificationsSheet extends StatelessWidget {
                                       Row(
                                         children: [
                                           Icon(
-                                            Icons.hub_outlined,
-                                            size: 12,
+                                            Icons.account_tree_outlined,
+                                            size: 14,
                                             color: color,
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 5),
                                           Text(
                                             'Tap to view graph',
                                             style: TextStyle(

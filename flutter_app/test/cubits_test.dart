@@ -500,11 +500,11 @@ void main() {
     test('notifyGraphReady generates specialized completion notice', () {
       cubit.notifyGraphReady('graph-456', 38, isPartial: false);
       expect(cubit.state.notifications.first.type, NotificationType.success);
-      expect(cubit.state.notifications.first.title, 'Literature Graph Ready');
+      expect(cubit.state.notifications.first.title, 'Graph ready');
 
       cubit.notifyGraphReady('graph-partial', 22, isPartial: true);
       expect(cubit.state.notifications.first.type, NotificationType.warning);
-      expect(cubit.state.notifications.first.title, 'Graph Ready (Partial)');
+      expect(cubit.state.notifications.first.title, 'Graph ready with limited results');
     });
 
     test(

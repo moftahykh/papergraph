@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lottie/lottie.dart';
+import 'package:paper_graph/views/widgets/paper_graph_mark.dart';
 import 'package:paper_graph/core/theme/app_theme.dart';
 import 'package:paper_graph/cubits/graph/graph_cubit.dart';
 import 'package:paper_graph/cubits/graph/graph_state.dart';
@@ -138,7 +138,7 @@ void main() {
         await tester.pump();
 
         // Verify progress indicators
-        expect(find.byType(Lottie), findsOneWidget);
+        expect(find.byType(PaperGraphMark), findsOneWidget);
         expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
         // Verify stage description text

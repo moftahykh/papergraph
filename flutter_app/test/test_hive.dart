@@ -35,8 +35,10 @@ class TestHiveEnvironment {
 
   Future<void> stop() async {
     await Hive.close();
-    if (directory.existsSync()) {
-      directory.deleteSync(recursive: true);
-    }
+    try {
+      if (directory.existsSync()) {
+        directory.deleteSync(recursive: true);
+      }
+    } catch (_) {}
   }
 }

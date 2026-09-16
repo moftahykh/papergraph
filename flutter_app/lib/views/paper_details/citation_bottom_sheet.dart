@@ -54,12 +54,20 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
               size: 20,
             ),
             const SizedBox(width: 10),
-            Text('$_selectedFormat Citation copied to clipboard!'),
+            Expanded(
+              child: Text(
+                '$_selectedFormat citation copied.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         backgroundColor: AppTheme.accentEmerald,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }

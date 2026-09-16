@@ -78,37 +78,39 @@ class GraphCanvasPainter extends CustomPainter {
     return Offset(node.x, node.y);
   }
 
-  /// Color mapping by publication year (Mint Teal for older -> Cyan -> Electric Blue for newer)
+  /// Color mapping by publication year (Refined monochrome/slate tonal ramp)
   Color getNodeColor(int? year) {
-    if (year == null) return const Color(0xFF64748B);
-    if (maxYear == minYear) return const Color(0xFF2563EB);
+    if (year == null) return isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
+    if (maxYear == minYear) return isDark ? const Color(0xFFF4F4F5) : const Color(0xFF18181B);
 
     final t = ((year - minYear) / (maxYear - minYear)).clamp(0.0, 1.0);
-    if (t < 0.5) {
+    if (isDark) {
+      // Dark mode: Older (slate-600) -> Newer (zinc-100 crisp white)
       return Color.lerp(
-        const Color(0xFF10B981),
-        const Color(0xFF06B6D4),
-        t * 2,
+        const Color(0xFF52525B),
+        const Color(0xFFF4F4F5),
+        t,
       )!;
     } else {
+      // Light mode: Older (slate-400 silver) -> Newer (zinc-900 deep ink)
       return Color.lerp(
-        const Color(0xFF06B6D4),
-        const Color(0xFF2563EB),
-        (t - 0.5) * 2,
+        const Color(0xFF94A3B8),
+        const Color(0xFF18181B),
+        t,
       )!;
     }
   }
 
   /// Semantic node coloring:
-  /// - Purple for Selected node
-  /// - Emerald Green for Seed Origin
-  /// - Year gradient tone for standard literature nodes
+  /// - High-contrast focus for Selected node
+  /// - Deep ink / White landmark for Seed Origin
+  /// - Tonal slate gradient for literature nodes
   Color resolveNodeColor(GraphNode node, bool isSelected) {
     if (isSelected) {
-      return isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple;
+      return isDark ? const Color(0xFFFFFFFF) : const Color(0xFF18181B);
     }
     if (node.isOrigin) {
-      return isDark ? AppTheme.originGreenDark : AppTheme.originGreen;
+      return isDark ? const Color(0xFFFFFFFF) : const Color(0xFF18181B);
     }
     return getNodeColor(node.year);
   }
@@ -352,29 +354,23 @@ class GraphCanvasPainter extends CustomPainter {
 
       final baseColor = resolveNodeColor(node, isSelected);
 
-      // 1. Origin Node Distinct Emerald Outer Ring
+      // 1. Origin Node Architectural Outer Ring (mirrors the PaperGraph mark)
       if (node.isOrigin) {
         final originRingPaint = Paint()
-          ..color = (isDark ? AppTheme.originGreenDark : AppTheme.originGreen)
-              .withAlpha(isDimmed ? 80 : 230)
-          ..strokeWidth = 2.4
+          ..color = (isDark ? Colors.white : const Color(0xFF18181B))
+              .withAlpha(isDimmed ? 60 : 180)
+          ..strokeWidth = 2.0
           ..style = PaintingStyle.stroke;
-        canvas.drawCircle(pos, radius + 4.5, originRingPaint);
+        canvas.drawCircle(pos, radius + 6.0, originRingPaint);
       }
 
       // 2. Selection Ring
       if (isSelected) {
         final selOuterRingPaint = Paint()
-          ..color = (isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple)
-          ..strokeWidth = 3.0
+          ..color = (isDark ? Colors.white : const Color(0xFF18181B))
+          ..strokeWidth = 2.4
           ..style = PaintingStyle.stroke;
         canvas.drawCircle(pos, radius + 5.0, selOuterRingPaint);
-
-        final selInnerContrastPaint = Paint()
-          ..color = Colors.white
-          ..strokeWidth = 1.5
-          ..style = PaintingStyle.stroke;
-        canvas.drawCircle(pos, radius + 2.0, selInnerContrastPaint);
       }
 
       // 3. Node Base Subtle Shadow
@@ -553,15 +549,15 @@ class GraphCanvasPainter extends CustomPainter {
 
       final pillColor = isDark
           ? (isSelected
-                ? AppTheme.darkSurface
-                : (node.isOrigin ? const Color(0xFF064E3B) : AppTheme.darkCard))
+              ? AppTheme.darkCard
+              : (node.isOrigin ? AppTheme.darkSurface : AppTheme.darkBg))
           : (isSelected
-                ? const Color(0xFFEEF2FF)
-                : (node.isOrigin ? const Color(0xFFECFDF5) : Colors.white));
+              ? const Color(0xFFF4F4F5)
+              : (node.isOrigin ? const Color(0xFFF4F4F5) : Colors.white));
 
       final borderPillColor = isDark
-          ? (isSelected ? AppTheme.actionPurpleDark : AppTheme.darkBorder)
-          : (isSelected ? AppTheme.actionPurple : const Color(0xFFE2E8F0));
+          ? (isSelected ? Colors.white : AppTheme.darkBorder)
+          : (isSelected ? const Color(0xFF18181B) : const Color(0xFFE2E8F0));
 
       final pillPaint = Paint()
         ..color = pillColor

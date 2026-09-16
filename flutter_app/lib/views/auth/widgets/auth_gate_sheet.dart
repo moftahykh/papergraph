@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/paper_graph_mark.dart';
 import '../login_view.dart';
 import '../register_view.dart';
 
@@ -59,23 +60,14 @@ class AuthGateBottomSheet extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.accentCyan],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                  width: 1.2,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryLightBlue.withAlpha(80),
-                    blurRadius: 18,
-                    spreadRadius: 2,
-                  ),
-                ],
               ),
-              child: const Icon(
-                Icons.lock_open_rounded,
-                color: Colors.white,
-                size: 34,
+              child: Center(
+                child: PaperGraphMark(size: 44, isDark: isDark),
               ),
             ),
             const SizedBox(height: 20),
@@ -122,22 +114,25 @@ class AuthGateBottomSheet extends StatelessWidget {
               child: Column(
                 children: [
                   _buildFeatureRow(
-                    icon: Icons.hub_rounded,
-                    color: AppTheme.primaryLightBlue,
+                    customIcon: Icon(
+                      Icons.account_tree_outlined,
+                      size: 18,
+                      color: isDark
+                          ? AppTheme.darkTextPrimary
+                          : AppTheme.lightTextPrimary,
+                    ),
                     text: 'Unlimited connected paper graphs',
                     isDark: isDark,
                   ),
                   const SizedBox(height: 10),
                   _buildFeatureRow(
                     icon: Icons.format_quote_rounded,
-                    color: AppTheme.accentCyan,
                     text: 'Instant BibTeX & APA citation generation',
                     isDark: isDark,
                   ),
                   const SizedBox(height: 10),
                   _buildFeatureRow(
                     icon: Icons.fingerprint_rounded,
-                    color: AppTheme.accentEmerald,
                     text: 'Biometric quick access & offline caching',
                     isDark: isDark,
                   ),
@@ -159,12 +154,12 @@ class AuthGateBottomSheet extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+                  foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  elevation: 3,
+                  elevation: 0,
                 ),
                 child: const Text(
                   'Create Free Researcher Profile',
@@ -195,10 +190,10 @@ class AuthGateBottomSheet extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const LoginView()),
                     );
                   },
-                  child: const Text(
+                  child: Text(
                     'Sign In',
                     style: TextStyle(
-                      color: AppTheme.primaryLightBlue,
+                      color: isDark ? Colors.white : const Color(0xFF18181B),
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -213,14 +208,16 @@ class AuthGateBottomSheet extends StatelessWidget {
   }
 
   Widget _buildFeatureRow({
-    required IconData icon,
-    required Color color,
+    IconData? icon,
+    Widget? customIcon,
+    Color? color,
     required String text,
     required bool isDark,
   }) {
+    final iconColor = color ?? (isDark ? Colors.white : const Color(0xFF18181B));
     return Row(
       children: [
-        Icon(icon, size: 18, color: color),
+        customIcon ?? Icon(icon, size: 18, color: iconColor),
         const SizedBox(width: 12),
         Expanded(
           child: Text(

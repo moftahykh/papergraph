@@ -11,66 +11,84 @@ import 'package:google_fonts/google_fonts.dart';
 /// UI chrome stays intentionally quiet: in the graph canvas, color carries
 /// meaning (the year gradient), so the interface never competes with the data.
 class AppTheme {
-  // ---- Brand accents ----
-  /// Light-theme primary — Paper & Ink deep indigo.
-  static const Color primaryBlue = Color(0xFF3730A3);
+  // ---- Brand Accents (Minimal Obsidian & Ink) ----
+  /// Light-theme primary — Deep zinc ink.
+  static const Color primaryBlue = Color(0xFF18181B);
+  static const Color lightPrimary = Color(0xFF18181B);
 
-  /// Dark-theme primary — Luminous Electric Cyan that radiates on charcoal.
-  static const Color primaryLightBlue = Color(0xFF38BDF8);
-  static const Color accentCyan = Color(0xFF38BDF8);
+  /// Dark-theme primary — Crisp off-white.
+  static const Color primaryLightBlue = Color(0xFFF4F4F5);
+  static const Color darkPrimary = Color(0xFFFFFFFF);
+  static const Color accentCyan = Color(0xFFA1A1AA);
 
-  /// Semantic colors, tailored to sit vibrantly on charcoal and light themes.
+  /// Semantic colors, tailored to sit subtly on minimal monochrome canvas.
   static const Color accentEmerald = Color(0xFF10B981);
   static const Color accentAmber = Color(0xFFF59E0B);
   static const Color accentRose = Color(0xFFF43F5E);
 
-  // ---- Scientific Semantic Tokens ----
-  /// Action & Selection Purple — Reserved for user interaction, selected nodes, and active filters.
-  static const Color actionPurple = Color(0xFF6366F1);
-  static const Color actionPurpleDark = Color(0xFF818CF8);
+  // ---- Scientific Semantic Tokens (Monochrome / Zinc) ----
+  /// Action & Selection — Crisp high-contrast monochrome
+  static const Color actionPurple = Color(0xFF18181B);
+  static const Color actionPurpleDark = Color(0xFFF4F4F5);
 
-  /// Citation Blue — Solid directional citation relationships and citation metrics.
-  static const Color citationBlue = Color(0xFF2563EB);
-  static const Color citationBlueDark = Color(0xFF3B82F6);
+  /// Citation relationships and citation metrics — Crisp dark ink / zinc
+  static const Color citationBlue = Color(0xFF18181B);
+  static const Color citationBlueDark = Color(0xFFE4E4E7);
 
-  /// Similarity Cyan — Dashed semantic similarity edges and similarity metrics.
-  static const Color similarityCyan = Color(0xFF0891B2);
-  static const Color similarityCyanDark = Color(0xFF06B6D4);
+  /// Similarity edges and similarity metrics — Muted slate hairline
+  static const Color similarityCyan = Color(0xFF71717A);
+  static const Color similarityCyanDark = Color(0xFFA1A1AA);
 
-  /// Origin / Seed Green — Landmark origin paper indicator.
-  static const Color originGreen = Color(0xFF059669);
-  static const Color originGreenDark = Color(0xFF10B981);
+  /// Origin / Seed paper indicator — Landmark deep ink / pure white
+  static const Color originGreen = Color(0xFF18181B);
+  static const Color originGreenDark = Color(0xFFFFFFFF);
 
   /// Neutral Node — Secondary / inactive graph elements.
-  static const Color neutralNode = Color(0xFF64748B);
-  static const Color neutralNodeDark = Color(0xFF334155);
+  static const Color neutralNode = Color(0xFF71717A);
+  static const Color neutralNodeDark = Color(0xFF3F3F46);
 
-  // ---- Charcoal Grey Palette (Refined matte charcoal with balanced contrast) ----
-  /// Background: Deep matte charcoal grey
-  static const Color darkBg = Color(0xFF111215);
+  // ---- Obsidian Dark Palette (From brand HTML spec: #09090B) ----
+  /// Background: Deep obsidian
+  static const Color darkBg = Color(0xFF09090B);
 
-  /// Surface / Toolbars: Neutral elevated charcoal
-  static const Color darkSurface = Color(0xFF18191E);
+  /// Surface / Toolbars: Elevated dark surface
+  static const Color darkSurface = Color(0xFF0F1013);
 
-  /// Cards / Sheets: High-contrast charcoal card container
-  static const Color darkCard = Color(0xFF202229);
+  /// Cards / Sheets: Dark card container
+  static const Color darkCard = Color(0xFF141519);
 
-  /// Borders: Subtle refined charcoal border
-  static const Color darkBorder = Color(0xFF2D3039);
+  /// Borders: 8% white hairline border
+  static const Color darkBorder = Color(0x1FFFFFFF);
 
-  /// Text Primary: Crisp soft off-white for effortless readability
-  static const Color darkTextPrimary = Color(0xFFF3F4F6);
+  /// Text Primary: Crisp zinc off-white
+  static const Color darkTextPrimary = Color(0xFFF4F4F5);
 
-  /// Text Secondary: Neutral muted silver-grey
-  static const Color darkTextSecondary = Color(0xFF9CA3AF);
+  /// Text Secondary: Muted zinc-500
+  static const Color darkTextSecondary = Color(0xFF71717A);
 
-  // ---- Paper & Ink palette ----
-  static const Color lightBg = Color(0xFFF9FAFB);
-  static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE5E7EB);
-  static const Color lightTextPrimary = Color(0xFF111827);
-  static const Color lightTextSecondary = Color(0xFF4B5563);
+  // ---- Minimal Light Palette (From brand HTML spec: #ECECEC) ----
+  static const Color lightBg = Color(0xFFECECEC);
+  static const Color lightSurface = Color(0xFFFBFBFB);
+  static const Color lightCard = Color(0xFFFBFBFB);
+  static const Color lightBorder = Color(0x14000000);
+  static const Color lightTextPrimary = Color(0xFF18181B);
+  static const Color lightTextSecondary = Color(0xFF71717A);
+
+  /// Instrument Serif italic brand typography helper for "PaperGraph"
+  static TextStyle brandTitleStyle({
+    double fontSize = 24,
+    Color? color,
+    FontWeight fontWeight = FontWeight.w400,
+    double letterSpacing = -0.5,
+  }) {
+    return GoogleFonts.instrumentSerif(
+      fontSize: fontSize,
+      fontStyle: FontStyle.italic,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+    );
+  }
 
   // Charcoal Dark Theme
   static ThemeData get darkTheme {
@@ -85,8 +103,8 @@ class AppTheme {
         secondary: accentCyan,
         surface: darkSurface,
         error: accentRose,
-        onPrimary: Color(0xFF111215),
-        onSecondary: Color(0xFF111215),
+        onPrimary: Color(0xFF09090B),
+        onSecondary: Color(0xFF09090B),
         onSurface: darkTextPrimary,
       ),
       cardTheme: CardThemeData(
@@ -163,12 +181,16 @@ class AppTheme {
       primaryColor: primaryBlue,
       colorScheme: const ColorScheme.light(
         primary: primaryBlue,
-        secondary: accentEmerald,
+        secondary: Color(0xFF18181B),
         surface: lightSurface,
         error: accentRose,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: lightTextPrimary,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: Color(0xFF18181B),
+        linearTrackColor: Color(0x14000000),
       ),
       cardTheme: CardThemeData(
         color: lightCard,

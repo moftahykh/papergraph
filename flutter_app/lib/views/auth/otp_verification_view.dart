@@ -195,21 +195,16 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                   height: 76,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.primaryBlue, AppTheme.accentCyan],
+                    color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+                    border: Border.all(
+                      color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                      width: 1.2,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryLightBlue.withAlpha(90),
-                        blurRadius: 18,
-                        spreadRadius: 2,
-                      ),
-                    ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.mark_email_read_rounded,
-                    color: Colors.white,
-                    size: 38,
+                    color: isDark ? Colors.white : const Color(0xFF18181B),
+                    size: 34,
                   ),
                 ),
               ),
@@ -290,12 +285,12 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                 onPressed: _isLoading ? null : _submitVerification,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+                  foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  elevation: 3,
+                  elevation: 0,
                 ),
                 child: _isLoading
                     ? const SizedBox(

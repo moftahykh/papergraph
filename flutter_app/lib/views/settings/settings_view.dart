@@ -11,6 +11,7 @@ import '../../cubits/library/library_state.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_view.dart';
 import '../auth/register_view.dart';
+import '../widgets/paper_graph_mark.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -161,12 +162,13 @@ class _SettingsViewState extends State<SettingsView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Settings & Preferences',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-            letterSpacing: -0.2,
+        title: Text(
+          'Settings',
+          style: AppTheme.brandTitleStyle(
+            fontSize: 29,
+            color: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.lightTextPrimary,
           ),
         ),
       ),
@@ -249,12 +251,9 @@ class _SettingsViewState extends State<SettingsView> {
             context: context,
             children: [
               ListTile(
-                leading: Icon(
-                  Icons.hub_outlined,
-                  color: isDark
-                      ? AppTheme.primaryLightBlue
-                      : AppTheme.primaryBlue,
+                leading: PaperGraphMark(
                   size: 22,
+                  isDark: isDark,
                 ),
                 title: const Text(
                   'Offline graphs',

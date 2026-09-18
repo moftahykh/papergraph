@@ -22,22 +22,26 @@ async def run() -> int:
         printed = 0
         for graph in graphs:
             devices = await list_active_device_tokens(db, graph.user_id)
-            if not graph.updates or not devices:
-                continue
-            latest = max(graph.updates, key=lambda item: item.detected_at)
+            latest = (
+                max(graph.updates, key=lambda item: item.detected_at)
+                if graph.updates
+                else None
+            )
+            latest_title = repr(latest.title) if latest else "none"
             print(
                 f"LOCAL_GRAPH_ID={graph.local_graph_id} | "
                 f"title={graph.graph_title!r} | "
+                f"status={graph.status} | "
                 f"updates={len(graph.updates)} | "
-                f"latest_update={latest.title!r} | "
-                f"latest_device_seen={devices[0].last_seen_at.isoformat()}"
+                f"active_devices={len(devices)} | "
+                f"next_check_at={graph.next_check_at.isoformat()} | "
+                f"latest_update={latest_title}"
             )
             printed += 1
 
     if printed == 0:
         print(
-            "No eligible graphs found. A graph must be active, have a persisted "
-            "research update, and have an active device token."
+            "No monitored graphs found. Save a graph with monitoring enabled first."
         )
     return 0
 

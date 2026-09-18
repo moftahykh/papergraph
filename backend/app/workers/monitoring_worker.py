@@ -28,14 +28,20 @@ def build_scanner() -> MonitoringScanner:
     )
 
 
-async def run_once(max_graphs: int = 20) -> int:
+async def run_once(
+    max_graphs: int = 20,
+    local_graph_id: str | None = None,
+) -> int:
     """Scan due graphs once; intended for cron or a separate worker process."""
     scanner = build_scanner()
     processed = 0
 
     async with SessionLocal() as db:
         while processed < max_graphs:
-            graph = await claim_due_monitored_graph(db)
+            graph = await claim_due_monitored_graph(
+                db,
+                local_graph_id=local_graph_id,
+            )
             if graph is None:
                 break
 
@@ -84,12 +90,21 @@ def main() -> int:
         default=20,
         help="Maximum graphs to scan in one pass (default: 20).",
     )
+    parser.add_argument(
+        "--local-graph-id",
+        help="Only scan this local graph ID; it must already be due.",
+    )
     args = parser.parse_args()
 
     if not args.once:
         parser.error("Only --once is supported until a production scheduler is configured.")
 
-    asyncio.run(run_once(max_graphs=max(1, args.max_graphs)))
+    asyncio.run(
+        run_once(
+            max_graphs=max(1, args.max_graphs),
+            local_graph_id=args.local_graph_id,
+        )
+    )
     return 0
 
 

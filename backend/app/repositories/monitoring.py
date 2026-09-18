@@ -150,6 +150,7 @@ async def claim_due_monitored_graph(
     db: AsyncSession,
     now: datetime | None = None,
     claim_timeout: timedelta = timedelta(minutes=15),
+    local_graph_id: str | None = None,
 ) -> MonitoredGraph | None:
     """Claim one due graph without allowing two workers to scan it at once.
 
@@ -159,17 +160,21 @@ async def claim_due_monitored_graph(
     """
     now = now or utc_now()
     stale_before = now - claim_timeout
+    filters = [
+        MonitoredGraph.status == "active",
+        MonitoredGraph.next_check_at <= now,
+        or_(
+            MonitoredGraph.scan_claimed_at.is_(None),
+            MonitoredGraph.scan_claimed_at < stale_before,
+        ),
+    ]
+    if local_graph_id:
+        filters.append(MonitoredGraph.local_graph_id == local_graph_id)
+
     result = await db.execute(
         select(MonitoredGraph)
         .options(selectinload(MonitoredGraph.papers))
-        .where(
-            MonitoredGraph.status == "active",
-            MonitoredGraph.next_check_at <= now,
-            or_(
-                MonitoredGraph.scan_claimed_at.is_(None),
-                MonitoredGraph.scan_claimed_at < stale_before,
-            ),
-        )
+        .where(*filters)
         .order_by(MonitoredGraph.next_check_at.asc())
         .with_for_update(skip_locked=True)
         .limit(1)

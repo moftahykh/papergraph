@@ -28,7 +28,9 @@ void main() async {
   // Initialize Hive local database
   await HiveService.init();
 
-  await LocalNotificationService.init();
+  await LocalNotificationService.init(
+    onNotificationTap: FcmNotificationService.handleLocalNotificationTap,
+  );
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
 import sys
 import uuid
 from typing import Any
@@ -25,40 +24,6 @@ SAMPLE_PAPER = {
     "year": 2026,
 }
 
-# Patterns that indicate a placeholder rather than a real Firebase ID token.
-_PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"<.*>"),                       # angle-bracket placeholders
-    re.compile(r"Firebase\s+ID\s+Token", re.I),  # literal instructional text
-    re.compile(r"your[- ].*token", re.I),      # "your-token-here" style
-]
-
-
-def _validate_token(token: str) -> str | None:
-    """Return an error message if *token* is invalid, else None."""
-    if not token or not token.strip():
-        return "Token is empty."
-
-    # Reject non-ASCII input (e.g. Arabic placeholder text) before httpx
-    # tries to encode headers and raises a raw UnicodeEncodeError.
-    try:
-        token.encode("ascii")
-    except UnicodeEncodeError:
-        return (
-            "The token contains non-ASCII characters and is not a valid "
-            "Firebase ID token. Please supply a real token obtained from "
-            "FirebaseAuth.instance.currentUser.getIdToken()."
-        )
-
-    for pattern in _PLACEHOLDER_PATTERNS:
-        if pattern.search(token):
-            return (
-                f"The token appears to be placeholder text (matched "
-                f"'{pattern.pattern}'). Please supply a real Firebase ID "
-                f"token."
-            )
-
-    return None
-
 
 def request(
     client: httpx.Client,
@@ -68,19 +33,6 @@ def request(
     **kwargs: Any,
 ) -> httpx.Response:
     response = client.request(method, path, **kwargs)
-    if response.status_code == 401:
-        raise RuntimeError(
-            f"{method} {path} returned 401 Unauthorized. "
-            "The Firebase ID token is invalid or expired. Obtain a fresh "
-            "token from a signed-in Flutter session "
-            "(FirebaseAuth.instance.currentUser.getIdToken())."
-        )
-    if response.status_code == 503:
-        raise RuntimeError(
-            f"{method} {path} returned 503. The backend reports: "
-            f"{response.text[:300]}. "
-            "Ensure FIREBASE_PROJECT_ID is set in backend/.env."
-        )
     if response.status_code not in expected:
         raise RuntimeError(
             f"{method} {path} returned {response.status_code}: "
@@ -103,20 +55,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # ---- Token validation ------------------------------------------------
     if not args.token:
         print(
-            "ERROR: Missing Firebase ID token.\n"
-            "Set the PAPERGRAPH_FIREBASE_ID_TOKEN environment variable or\n"
-            "pass --token <token>.  Obtain a fresh token from a signed-in\n"
-            "Flutter session: FirebaseAuth.instance.currentUser.getIdToken().",
+            "Missing Firebase token. Set PAPERGRAPH_FIREBASE_ID_TOKEN or pass --token.",
             file=sys.stderr,
         )
-        return 2
-
-    token_error = _validate_token(args.token)
-    if token_error:
-        print(f"ERROR: {token_error}", file=sys.stderr)
         return 2
 
     api_root = args.base_url.rstrip("/") + "/api/v1"

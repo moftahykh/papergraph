@@ -23,16 +23,25 @@ class LocalNotificationService {
   static const String channelName = 'PaperGraph Notifications';
   static const String channelDescription =
       'Literature synthesis and alerts for PaperGraph';
+  static const String researchChannelId = 'paper_graph_research_channel';
+  static const String researchChannelName = 'Research updates';
+  static const String researchChannelDescription =
+      'Relevant papers found for saved PaperGraph graphs';
 
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
   static bool _isInitialized = false;
+  static void Function(String?)? _notificationTapHandler;
 
   static bool get _isAppInForeground =>
       WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
 
   /// Initializes the local notifications plugin for system tray notifications.
-  static Future<void> init({FlutterLocalNotificationsPlugin? plugin}) async {
+  static Future<void> init({
+    FlutterLocalNotificationsPlugin? plugin,
+    void Function(String?)? onNotificationTap,
+  }) async {
+    _notificationTapHandler = onNotificationTap ?? _notificationTapHandler;
     if (_isInitialized) return;
     try {
       final activePlugin = plugin ?? _notificationsPlugin;
@@ -53,9 +62,21 @@ class LocalNotificationService {
       await activePlugin.initialize(
         settings: initSettings,
         onDidReceiveNotificationResponse: (response) {
-          // Response handling when user taps on OS system tray notification
+          _notificationTapHandler?.call(response.payload);
         },
       );
+      await activePlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(
+            const AndroidNotificationChannel(
+              researchChannelId,
+              researchChannelName,
+              description: researchChannelDescription,
+              importance: Importance.high,
+            ),
+          );
       _isInitialized = true;
     } catch (_) {
       // Safe fallback when running in mock, test, or headless environments
@@ -100,6 +121,53 @@ class LocalNotificationService {
       );
     } catch (_) {
       // Ignore failures gracefully in test runner or restricted environments
+    }
+  }
+
+  /// Renders a branded research notification with the full PaperGraph mark
+  /// as a large icon. FCM's automatic renderer cannot provide this asset.
+  static Future<void> showResearchUpdateNotification({
+    required int id,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        researchChannelId,
+        researchChannelName,
+        channelDescription: researchChannelDescription,
+        icon: '@drawable/ic_stat_papergraph',
+        largeIcon: DrawableResourceAndroidBitmap('ic_papergraph_large'),
+        color: Color(0xFF71717A),
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: 'PaperGraph research update',
+        styleInformation: BigTextStyleInformation(
+          body,
+          contentTitle: title,
+        ),
+      );
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      final notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
+
+      await _notificationsPlugin.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: notificationDetails,
+        payload: payload,
+      );
+    } catch (_) {
+      // Ignore failures gracefully in background/test environments.
     }
   }
 

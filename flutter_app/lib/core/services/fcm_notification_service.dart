@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_core/firebase_core.dart';
@@ -14,6 +15,7 @@ import '../../firebase_options.dart';
 import '../../views/research_monitoring/graph_updates_view.dart';
 import '../network/api_client.dart';
 import 'hive_service.dart';
+import 'local_notification_service.dart';
 
 /// Data carried by a research-monitoring push message.
 @immutable
@@ -194,8 +196,10 @@ class FcmNotificationService {
     if (message.data['type'] == 'fcm_test') {
       final context = _navigatorKey?.currentContext;
       context?.read<NotificationCubit>().notify(
-        title: message.notification?.title ?? 'PaperGraph test notification',
-        message: message.notification?.body ?? 'FCM delivery is connected.',
+        title: message.data['title']?.toString() ??
+            'PaperGraph test notification',
+        message: message.data['body']?.toString() ??
+            'FCM delivery is connected.',
         type: NotificationType.success,
         showToast: true,
       );
@@ -215,9 +219,27 @@ class FcmNotificationService {
   }
 
   static void _handleTap(RemoteMessage message) {
-    final payload = ResearchPushPayload.fromMessage(message);
+    _handleTapData(message.data);
+  }
+
+  static void _handleTapData(Map<String, dynamic> data) {
+    final payload = ResearchPushPayload.fromData(data);
     if (!payload.isResearchUpdate) return;
     _openUpdatesWhenReady(payload);
+  }
+
+  /// Handles taps from the local notification renderer after a data-only FCM
+  /// message has been displayed in the background.
+  static void handleLocalNotificationTap(String? rawPayload) {
+    if (rawPayload == null || rawPayload.trim().isEmpty) return;
+    try {
+      final decoded = jsonDecode(rawPayload);
+      if (decoded is Map) {
+        _handleTapData(Map<String, dynamic>.from(decoded));
+      }
+    } catch (_) {
+      // Ignore non-research local notification payloads.
+    }
   }
 
   static void _openUpdatesWhenReady(ResearchPushPayload payload) {
@@ -260,6 +282,28 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
-  // Notification payloads are displayed by FCM while the app is backgrounded
-  // or terminated. Do not create a second local notification here.
+  await LocalNotificationService.init();
+
+  final data = message.data;
+  final type = data['type']?.toString();
+  if (type != 'research_updates' && type != 'fcm_test') return;
+
+  final title = data['title']?.toString() ??
+      (type == 'fcm_test'
+          ? 'PaperGraph test notification'
+          : 'New research update');
+  final body = data['body']?.toString() ??
+      (type == 'fcm_test'
+          ? 'FCM delivery is connected.'
+          : 'Open PaperGraph to review the latest updates.');
+  await LocalNotificationService.showResearchUpdateNotification(
+    id: (data['local_graph_id'] ?? data['test_id'] ?? type)
+            .toString()
+            .hashCode
+            .abs() %
+        100000,
+    title: title,
+    body: body,
+    payload: jsonEncode(data),
+  );
 }

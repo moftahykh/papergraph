@@ -48,15 +48,13 @@ def _message(graph: MonitoredGraph, update_count: int, token: str) -> dict[str, 
     return {
         "message": {
             "token": token,
-            "notification": {
+            "data": {
+                "type": "research_updates",
                 "title": f"New research for {graph_title}",
                 "body": (
                     f"{display_count} {count_label} found. "
                     "Tap to review the updates."
                 ),
-            },
-            "data": {
-                "type": "research_updates",
                 "local_graph_id": graph.local_graph_id,
                 "graph_id": graph.local_graph_id,
                 "graph_title": graph_title,
@@ -66,20 +64,18 @@ def _message(graph: MonitoredGraph, update_count: int, token: str) -> dict[str, 
                 ),
             },
             "android": {
-                "notification": {
-                    "channel_id": "paper_graph_channel",
-                    "tag": f"research_updates_{graph.local_graph_id}",
-                    "icon": "ic_stat_papergraph",
-                    "color": "#71717A",
-                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                }
+                "priority": "HIGH",
             },
             "apns": {
+                "headers": {
+                    "apns-push-type": "background",
+                    "apns-priority": "5",
+                },
                 "payload": {
                     "aps": {
-                        "sound": "default",
+                        "content-available": 1,
                     }
-                }
+                },
             },
         }
     }
@@ -204,21 +200,25 @@ async def send_test_notification_to_all_devices(
             payload = {
                 "message": {
                     "token": device.fcm_token,
-                    "notification": {
-                        "title": "PaperGraph test notification",
-                        "body": "FCM delivery is connected.",
-                    },
                     "data": {
                         "type": "fcm_test",
+                        "title": "PaperGraph test notification",
+                        "body": "FCM delivery is connected.",
                         "test_id": now,
                     },
                     "android": {
-                        "notification": {
-                            "channel_id": "paper_graph_channel",
-                        }
+                        "priority": "HIGH",
                     },
                     "apns": {
-                        "payload": {"aps": {"sound": "default"}},
+                        "headers": {
+                            "apns-push-type": "background",
+                            "apns-priority": "5",
+                        },
+                        "payload": {
+                            "aps": {
+                                "content-available": 1,
+                            }
+                        },
                     },
                 }
             }

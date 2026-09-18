@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/services/fcm_notification_service.dart';
 import '../core/theme/app_theme.dart';
 import 'favorites/favorites_view.dart';
 import 'home/home_view.dart';
@@ -26,6 +27,12 @@ class _MainNavigationViewState extends State<MainNavigationView> {
     FavoritesView(),
     SettingsView(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    FcmNotificationService.markAppShellReady();
+  }
 
   @override
   Widget build(BuildContext context) {

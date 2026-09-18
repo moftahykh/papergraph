@@ -152,3 +152,10 @@ The scanner now uses a precision-first rule before persisting an update:
 
 This improves precision, but no provider can guarantee zero false positives.
 The scanner should continue to be evaluated with real Graph Updates feedback.
+## Cold-start notification tap fix
+
+A notification tap that launches a fully terminated Android process must be
+read through `getNotificationAppLaunchDetails()`. The local notification
+service now forwards that launch payload to the same research deep-link handler
+used for warm/background taps, so the app opens `Graph Updates` instead of
+stopping at the home screen.

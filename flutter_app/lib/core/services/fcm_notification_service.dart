@@ -72,6 +72,8 @@ class FcmNotificationService {
   static StreamSubscription<RemoteMessage>? _openedSub;
   static StreamSubscription<String>? _tokenSub;
   static bool _initialized = false;
+  static bool _appShellReady = false;
+  static ResearchPushPayload? _pendingTapPayload;
 
   static bool get isEnabled {
     if (!Hive.isBoxOpen(HiveService.settingsBoxName)) return false;
@@ -225,7 +227,23 @@ class FcmNotificationService {
   static void _handleTapData(Map<String, dynamic> data) {
     final payload = ResearchPushPayload.fromData(data);
     if (!payload.isResearchUpdate) return;
+    if (!_appShellReady) {
+      _pendingTapPayload = payload;
+      return;
+    }
     _openUpdatesWhenReady(payload);
+  }
+
+  /// Called by the authenticated main shell after SplashView has been
+  /// replaced. Cold-start notification taps must wait for this point or the
+  /// splash route will replace GraphUpdatesView a few seconds later.
+  static void markAppShellReady() {
+    _appShellReady = true;
+    final pending = _pendingTapPayload;
+    _pendingTapPayload = null;
+    if (pending != null) {
+      _openUpdatesWhenReady(pending);
+    }
   }
 
   /// Handles taps from the local notification renderer after a data-only FCM
@@ -272,6 +290,8 @@ class FcmNotificationService {
     _openedSub = null;
     _tokenSub = null;
     _initialized = false;
+    _appShellReady = false;
+    _pendingTapPayload = null;
   }
 }
 

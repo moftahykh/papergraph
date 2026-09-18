@@ -1,0 +1,42 @@
+name: One-time FCM test (all active devices)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type I_UNDERSTAND_SEND_TO_ALL_ACTIVE_DEVICES"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  send-test:
+    name: Send one FCM smoke-test notification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.RESEARCH_MONITORING_DATABASE_URL }}
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+      SEMANTIC_SCHOLAR_API_KEYS: ${{ secrets.SEMANTIC_SCHOLAR_API_KEYS }}
+      CROSSREF_MAILTO: ${{ secrets.CROSSREF_MAILTO }}
+      OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}
+      CONFIRM_FCM_BROADCAST: ${{ inputs.confirmation }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Send confirmed FCM test
+        run: python scripts/send_fcm_test_to_all.py

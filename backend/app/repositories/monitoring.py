@@ -372,3 +372,14 @@ async def list_active_device_tokens(
         .order_by(DeviceToken.last_seen_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def list_all_active_device_tokens(
+    db: AsyncSession,
+) -> list[DeviceToken]:
+    result = await db.execute(
+        select(DeviceToken)
+        .where(DeviceToken.is_active.is_(True))
+        .order_by(DeviceToken.last_seen_at.desc())
+    )
+    return list(result.scalars().all())

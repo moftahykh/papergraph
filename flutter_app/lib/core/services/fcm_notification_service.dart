@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 
 import '../../cubits/notification/notification_cubit.dart';
+import '../../cubits/notification/notification_state.dart';
 import '../../firebase_options.dart';
 import '../../views/research_monitoring/graph_updates_view.dart';
 import '../network/api_client.dart';
@@ -190,6 +191,17 @@ class FcmNotificationService {
   }
 
   static void _handleForeground(RemoteMessage message) {
+    if (message.data['type'] == 'fcm_test') {
+      final context = _navigatorKey?.currentContext;
+      context?.read<NotificationCubit>().notify(
+        title: message.notification?.title ?? 'PaperGraph test notification',
+        message: message.notification?.body ?? 'FCM delivery is connected.',
+        type: NotificationType.success,
+        showToast: true,
+      );
+      return;
+    }
+
     final payload = ResearchPushPayload.fromMessage(message);
     if (!payload.isResearchUpdate) return;
 

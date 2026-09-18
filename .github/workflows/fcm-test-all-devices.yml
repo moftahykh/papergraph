@@ -39,4 +39,4 @@ jobs:
       - name: Install backend dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
       - name: Send confirmed FCM test
-        run: python scripts/send_fcm_test_to_all.py
+        run: python -m scripts.send_fcm_test_to_all

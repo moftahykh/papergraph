@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/notification/notification_cubit.dart';
 import '../../cubits/notification/notification_state.dart';
 import '../../core/theme/app_theme.dart';
+import 'paper_graph_mark.dart';
 
 /// A sleek, floating in-app notification banner overlay.
 /// Placed globally via MaterialApp.builder so notifications can be shown
@@ -187,11 +188,22 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                                       ).withValues(alpha: 0.12),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: Icon(
-                                      _getTypeIcon(_currentToast!.type),
-                                      size: 20,
-                                      color: _getTypeColor(_currentToast!.type),
-                                    ),
+                                    child:
+                                        _currentToast!.category ==
+                                            NotificationCategory.researchUpdate
+                                        ? PaperGraphMark(
+                                            size: 20,
+                                            isDark: isDark,
+                                          )
+                                        : Icon(
+                                            _getTypeIcon(
+                                              _currentToast!.type,
+                                            ),
+                                            size: 20,
+                                            color: _getTypeColor(
+                                              _currentToast!.type,
+                                            ),
+                                          ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(

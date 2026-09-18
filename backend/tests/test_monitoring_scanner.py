@@ -200,6 +200,31 @@ async def test_scanner_persists_score_and_explanation():
 
 
 @pytest.mark.asyncio
+async def test_scanner_filters_uncorroborated_recommendations():
+    candidate = paper(
+        provider_id="s2-recommendation",
+        semantic_scholar_id="s2-recommendation",
+    )
+    scanner = MonitoringScanner(
+        semantic_scholar=FakeProvider(recommendations=[candidate])
+    )
+    db = FakeDB()
+    seed = SimpleNamespace(
+        canonical_id="doi:10.1000/seed",
+        doi="10.1000/seed",
+        semantic_scholar_id="s2-seed",
+        openalex_id=None,
+        title="Seed",
+    )
+
+    result = await scanner.scan_graph(db, graph_with(seed))
+
+    assert result.candidates_seen == 1
+    assert result.updates_created == 0
+    assert db.added == []
+
+
+@pytest.mark.asyncio
 async def test_scanner_raises_when_all_provider_calls_fail():
     scanner = MonitoringScanner(
         semantic_scholar=FakeProvider(error=RuntimeError("upstream unavailable"))

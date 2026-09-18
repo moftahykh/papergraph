@@ -42,24 +42,35 @@ def _credentials() -> service_account.Credentials | None:
 
 
 def _message(graph: MonitoredGraph, update_count: int, token: str) -> dict[str, Any]:
-    count_label = "new paper" if update_count == 1 else "new papers"
+    display_count = min(update_count, 5)
+    count_label = "relevant paper" if display_count == 1 else "relevant papers"
+    graph_title = graph.graph_title.strip() or "your saved graph"
     return {
         "message": {
             "token": token,
             "notification": {
-                "title": f"New research for {graph.graph_title}",
-                "body": f"{update_count} {count_label} matched this saved graph.",
+                "title": f"New research for {graph_title}",
+                "body": (
+                    f"{display_count} {count_label} found. "
+                    "Tap to review the updates."
+                ),
             },
             "data": {
                 "type": "research_updates",
                 "local_graph_id": graph.local_graph_id,
                 "graph_id": graph.local_graph_id,
-                "graph_title": graph.graph_title,
-                "update_count": str(update_count),
+                "graph_title": graph_title,
+                "update_count": str(display_count),
+                "deep_link": (
+                    f"papergraph://graphs/{graph.local_graph_id}/updates"
+                ),
             },
             "android": {
                 "notification": {
                     "channel_id": "paper_graph_channel",
+                    "tag": f"research_updates_{graph.local_graph_id}",
+                    "icon": "ic_stat_papergraph",
+                    "color": "#71717A",
                     "click_action": "FLUTTER_NOTIFICATION_CLICK",
                 }
             },

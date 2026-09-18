@@ -75,6 +75,7 @@ class LocalNotificationService {
         channelName,
         channelDescription: channelDescription,
         icon: '@drawable/ic_stat_papergraph',
+        color: const Color(0xFF71717A),
         importance: Importance.high,
         priority: Priority.high,
         ticker: 'PaperGraph update',

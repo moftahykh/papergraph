@@ -31,6 +31,7 @@ RELATION_PRIORITY = {
         )
     )
 }
+MIN_RELEVANCE_SCORE = 0.84
 
 
 class ProviderScanError(RuntimeError):
@@ -50,6 +51,7 @@ class _Candidate:
     paper: RawPaper
     relation_type: str
     source_count: int = 1
+    providers: set[str] = field(default_factory=set)
 
     @property
     def score(self) -> float:
@@ -170,6 +172,16 @@ def _explanation(candidate: _Candidate) -> str:
     return "Matches the graph's research topic."
 
 
+def _is_update_eligible(candidate: _Candidate) -> bool:
+    """Prefer precision over noisy recommendations in the first release."""
+    if candidate.relation_type == "direct_citation":
+        return True
+    return (
+        candidate.score >= MIN_RELEVANCE_SCORE
+        and len(candidate.providers) >= 2
+    )
+
+
 class MonitoringScanner:
     """Provider orchestration and deterministic update generation."""
 
@@ -224,6 +236,7 @@ class MonitoringScanner:
                     candidates[key] = _Candidate(
                         paper=paper,
                         relation_type=relation_type,
+                        providers={paper.provider},
                     )
                 elif RELATION_PRIORITY[relation_type] > RELATION_PRIORITY[
                     existing.relation_type
@@ -231,9 +244,11 @@ class MonitoringScanner:
                     existing.paper = _merge_paper(existing.paper, paper)
                     existing.relation_type = relation_type
                     existing.source_count += 1
+                    existing.providers.add(paper.provider)
                 else:
                     existing.paper = _merge_paper(existing.paper, paper)
                     existing.source_count += 1
+                    existing.providers.add(paper.provider)
 
         for seed in graph.papers:
             semantic_identifier = seed.semantic_scholar_id or seed.doi
@@ -289,6 +304,13 @@ class MonitoringScanner:
         for candidate in candidates.values():
             paper = candidate.paper
             if _paper_aliases(paper) & existing_aliases:
+                continue
+            if not _is_update_eligible(candidate):
+                logger.info(
+                    "Filtered low-confidence monitoring candidate %s for graph %s.",
+                    _canonical_id(paper),
+                    graph.id,
+                )
                 continue
 
             if self.crossref and paper.doi:

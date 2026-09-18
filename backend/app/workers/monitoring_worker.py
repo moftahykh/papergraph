@@ -6,6 +6,8 @@ import logging
 
 from app.db.session import SessionLocal
 from app.monitoring.scanner import MonitoringScanner
+from app.notifications.fcm import send_research_update_notifications
+from app.models.monitoring import utc_now
 from app.providers.crossref import CrossRefProvider
 from app.providers.openalex import OpenAlexProvider
 from app.providers.semantic_scholar import SemanticScholarProvider
@@ -39,6 +41,13 @@ async def run_once(max_graphs: int = 20) -> int:
 
             try:
                 result = await scanner.scan_graph(db, graph)
+                delivered = await send_research_update_notifications(
+                    db,
+                    graph,
+                    result.updates_created,
+                )
+                if delivered:
+                    graph.last_notified_at = utc_now()
                 await complete_monitored_graph_scan(db, graph)
                 processed += 1
                 logger.info(
@@ -48,6 +57,12 @@ async def run_once(max_graphs: int = 20) -> int:
                     result.updates_created,
                     len(result.provider_errors),
                 )
+                if delivered:
+                    logger.info(
+                        "Delivered research update notification to %d device(s) for graph %s.",
+                        delivered,
+                        result.graph_id,
+                    )
             except Exception:
                 await db.rollback()
                 await release_monitored_graph_claim(db, graph)

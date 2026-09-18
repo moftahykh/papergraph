@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../core/services/biometric_service.dart';
+import '../core/services/fcm_notification_service.dart';
 import '../core/services/hive_service.dart';
 import '../models/user_model.dart';
 
@@ -136,6 +137,7 @@ class AuthProvider extends ChangeNotifier {
     if (accountChanged || scopeChanged) {
       _notifyAuthChanged();
     }
+    unawaited(FcmNotificationService.syncRegistration());
     notifyListeners();
   }
 
@@ -288,6 +290,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await FcmNotificationService.unregisterCurrentToken();
     if (_firebaseReady) {
       try {
         await fb.FirebaseAuth.instance.signOut();

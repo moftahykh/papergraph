@@ -9,6 +9,12 @@ enum NotificationType {
   String get label => name.toUpperCase();
 }
 
+enum NotificationCategory {
+  general,
+  graphReady,
+  researchUpdate,
+}
+
 @immutable
 class InAppNotification {
   final String id;
@@ -19,6 +25,7 @@ class InAppNotification {
   final bool isRead;
   final String? relatedGraphId;
   final String? relatedPaperId;
+  final NotificationCategory category;
 
   const InAppNotification({
     required this.id,
@@ -29,6 +36,7 @@ class InAppNotification {
     this.isRead = false,
     this.relatedGraphId,
     this.relatedPaperId,
+    this.category = NotificationCategory.general,
   });
 
   InAppNotification copyWith({
@@ -40,6 +48,7 @@ class InAppNotification {
     bool? isRead,
     String? relatedGraphId,
     String? relatedPaperId,
+    NotificationCategory? category,
   }) {
     return InAppNotification(
       id: id ?? this.id,
@@ -50,6 +59,7 @@ class InAppNotification {
       isRead: isRead ?? this.isRead,
       relatedGraphId: relatedGraphId ?? this.relatedGraphId,
       relatedPaperId: relatedPaperId ?? this.relatedPaperId,
+      category: category ?? this.category,
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/local_notification_service.dart';
+import 'core/services/fcm_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'cubits/graph/graph_cubit.dart';
 import 'cubits/graph/graph_state.dart';
@@ -32,6 +33,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await FcmNotificationService.initialize(_rootNavigatorKey);
   } catch (e) {
     debugPrint('Firebase initialization notice: $e');
   }
@@ -50,6 +52,8 @@ void main() async {
 
   runApp(const PaperGraphApp());
 }
+
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class PaperGraphApp extends StatelessWidget {
   const PaperGraphApp({super.key});
@@ -109,6 +113,7 @@ class PaperGraphApp extends StatelessWidget {
             builder: (context, themeState) {
               return MaterialApp(
                 title: 'PaperGraph',
+                navigatorKey: _rootNavigatorKey,
                 debugShowCheckedModeBanner: false,
                 theme: AppTheme.lightTheme,
                 darkTheme: AppTheme.darkTheme,

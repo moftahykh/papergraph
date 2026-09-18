@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/services/biometric_service.dart';
+import '../../core/services/fcm_notification_service.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../cubits/theme/theme_cubit.dart';
@@ -22,11 +23,50 @@ class SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<SettingsView> {
   late bool _biometricsEnabled;
+  bool _researchNotificationsEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _biometricsEnabled = HiveService.isBiometricsEnabled();
+    _researchNotificationsEnabled = FcmNotificationService.isEnabled;
+  }
+
+  Future<void> _handleResearchNotificationsToggle(bool value) async {
+    if (value) {
+      final enabled = await FcmNotificationService.enable();
+      if (!mounted) return;
+      if (enabled) {
+        setState(() => _researchNotificationsEnabled = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Research update notifications enabled'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        setState(() => _researchNotificationsEnabled = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Notifications were not enabled. Check device permissions and sign in.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    await FcmNotificationService.disable();
+    if (!mounted) return;
+    setState(() => _researchNotificationsEnabled = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Research update notifications disabled'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _handleBiometricToggle(bool value) async {
@@ -240,6 +280,39 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
                 value: _biometricsEnabled,
                 onChanged: _handleBiometricToggle,
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+
+          // Research monitoring notifications
+          _buildSectionHeader(context, 'Research Monitoring'),
+          _buildGroupContainer(
+            context: context,
+            children: [
+              SwitchListTile(
+                secondary: Icon(
+                  Icons.auto_awesome_outlined,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
+                  size: 22,
+                ),
+                title: const Text(
+                  'Research update notifications',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                ),
+                subtitle: Text(
+                  'Get notified when a monitored graph has new relevant papers',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                ),
+                value: _researchNotificationsEnabled,
+                onChanged: _handleResearchNotificationsToggle,
               ),
             ],
           ),

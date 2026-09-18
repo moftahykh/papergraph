@@ -11,6 +11,7 @@ import '../../models/paper_model.dart';
 import '../graph_view/connected_graph_view.dart';
 import '../paper_details/citation_bottom_sheet.dart';
 import '../paper_details/paper_details_view.dart';
+import '../research_monitoring/graph_updates_view.dart';
 import '../widgets/paper_graph_mark.dart';
 
 class FavoritesView extends StatelessWidget {
@@ -418,9 +419,15 @@ class FavoritesView extends StatelessWidget {
                     onSelected: (value) {
                       if (value == 'remove') {
                         _confirmRemoveGraph(context, snapshot);
+                      } else if (value == 'updates') {
+                        _openGraphUpdates(context, snapshot);
                       }
                     },
                     itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'updates',
+                        child: Text('Research updates'),
+                      ),
                       PopupMenuItem(
                         value: 'remove',
                         child: Text('Remove graph'),
@@ -457,16 +464,42 @@ class FavoritesView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 13),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: openGraph,
-                  icon: const Icon(Icons.account_tree_outlined, size: 18),
-                  label: const Text('Open graph'),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openGraphUpdates(context, snapshot),
+                      icon: const Icon(
+                        Icons.auto_awesome_outlined,
+                        size: 18,
+                      ),
+                      label: const Text('Updates'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: openGraph,
+                      icon: const Icon(Icons.account_tree_outlined, size: 18),
+                      label: const Text('Open graph'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openGraphUpdates(BuildContext context, GraphSnapshot snapshot) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GraphUpdatesView(
+          localGraphId: snapshot.graphId,
+          graphTitle: snapshot.origin.title,
         ),
       ),
     );

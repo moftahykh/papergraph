@@ -22,6 +22,7 @@ jobs:
       # Store the Render External Database URL as a GitHub Actions secret.
       DATABASE_URL: ${{ secrets.RESEARCH_MONITORING_DATABASE_URL }}
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
       SEMANTIC_SCHOLAR_API_KEYS: ${{ secrets.SEMANTIC_SCHOLAR_API_KEYS }}
       CROSSREF_MAILTO: ${{ secrets.CROSSREF_MAILTO }}
       OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}

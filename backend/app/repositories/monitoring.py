@@ -357,3 +357,18 @@ async def deactivate_device_token(
     device.last_seen_at = datetime.now(timezone.utc)
     await db.commit()
     return True
+
+
+async def list_active_device_tokens(
+    db: AsyncSession,
+    user_id: str,
+) -> list[DeviceToken]:
+    result = await db.execute(
+        select(DeviceToken)
+        .where(
+            DeviceToken.user_id == user_id,
+            DeviceToken.is_active.is_(True),
+        )
+        .order_by(DeviceToken.last_seen_at.desc())
+    )
+    return list(result.scalars().all())

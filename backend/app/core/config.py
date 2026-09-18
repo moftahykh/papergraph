@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Firebase Authentication verification.
     # This is a public project identifier, not a service-account secret.
     FIREBASE_PROJECT_ID: Optional[str] = None
+    # Optional Firebase service-account JSON used only by the monitoring worker
+    # to send FCM notifications. Keep this in Render/GitHub secrets.
+    FIREBASE_SERVICE_ACCOUNT_JSON: Optional[str] = None
 
     # Redis Settings
     REDIS_HOST: str = "localhost"

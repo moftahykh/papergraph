@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import '../../models/api_schemas.dart';
 import '../../models/graph_models.dart';
+import '../../models/research_monitoring_models.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -206,6 +207,137 @@ class PaperGraphApiClient {
   Future<void> removeMonitoredGraph(String localGraphId) async {
     try {
       await _dio.delete('/monitoring/graphs/by-local/$localGraphId');
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Lists the signed-in user's saved research-monitoring subscriptions.
+  Future<List<MonitoredGraphSummary>> listMonitoredGraphs() async {
+    try {
+      final response = await _dio.get('/monitoring/graphs');
+      final data = response.data as List<dynamic>? ?? const [];
+      return data
+          .map(
+            (item) => MonitoredGraphSummary.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Loads research updates for one monitored graph.
+  Future<List<ResearchUpdate>> getResearchUpdates(
+    String monitorId, {
+    int limit = 50,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/monitoring/graphs/$monitorId/updates',
+        queryParameters: {'limit': limit},
+      );
+      final data = response.data as List<dynamic>? ?? const [];
+      return data
+          .map(
+            (item) => ResearchUpdate.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Pauses or resumes research monitoring for a saved graph.
+  Future<MonitoredGraphSummary> updateMonitoredGraph(
+    String monitorId, {
+    String? status,
+    String? frequency,
+    String? timezone,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        '/monitoring/graphs/$monitorId',
+        data: {
+          ...?status == null ? null : {'status': status},
+          ...?frequency == null ? null : {'frequency': frequency},
+          ...?timezone == null ? null : {'timezone': timezone},
+        },
+      );
+      return MonitoredGraphSummary.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Marks one update as read for the signed-in user.
+  Future<ResearchUpdate> markResearchUpdateRead(
+    String monitorId,
+    String updateId,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/monitoring/graphs/$monitorId/updates/$updateId/read',
+      );
+      return ResearchUpdate.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Records that the user chose to add an update to the graph.
+  ///
+  /// The backend currently records the intent; graph snapshot mutation remains
+  /// a separate, explicit feature and is never performed automatically.
+  Future<ResearchUpdate> markResearchUpdateAdded(
+    String monitorId,
+    String updateId,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/monitoring/graphs/$monitorId/updates/$updateId/add-to-graph',
+      );
+      return ResearchUpdate.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Registers the current device token for authenticated research updates.
+  Future<void> registerDeviceToken({
+    required String fcmToken,
+    required String platform,
+  }) async {
+    try {
+      await _dio.post(
+        '/monitoring/device-token',
+        data: {'fcm_token': fcmToken, 'platform': platform},
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Deactivates a device token when the user opts out or signs out.
+  Future<void> removeDeviceToken({
+    required String fcmToken,
+    required String platform,
+  }) async {
+    try {
+      await _dio.delete(
+        '/monitoring/device-token',
+        data: {'fcm_token': fcmToken, 'platform': platform},
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     }

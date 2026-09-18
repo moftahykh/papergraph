@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../cubits/notification/notification_cubit.dart';
 import '../../cubits/notification/notification_state.dart';
 import '../graph_view/connected_graph_view.dart';
+import '../research_monitoring/graph_updates_view.dart';
 
 /// BottomSheet showing notification history and actions.
 class NotificationsSheet extends StatelessWidget {
@@ -233,9 +234,16 @@ class NotificationsSheet extends StatelessWidget {
                             Navigator.of(context).pop();
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => ConnectedGraphView(
-                                  seedDoi: notif.relatedGraphId!,
-                                ),
+                                builder: (_) =>
+                                    notif.category ==
+                                        NotificationCategory.researchUpdate
+                                    ? GraphUpdatesView(
+                                        localGraphId: notif.relatedGraphId!,
+                                        graphTitle: 'Saved graph',
+                                      )
+                                    : ConnectedGraphView(
+                                        seedDoi: notif.relatedGraphId!,
+                                      ),
                               ),
                             );
                           }

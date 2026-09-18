@@ -13,6 +13,7 @@ class NotificationCubit extends Cubit<NotificationState> {
     NotificationType type = NotificationType.info,
     String? relatedGraphId,
     String? relatedPaperId,
+    NotificationCategory category = NotificationCategory.general,
     bool showToast = true,
   }) {
     _counter++;
@@ -24,6 +25,7 @@ class NotificationCubit extends Cubit<NotificationState> {
       timestamp: DateTime.now(),
       relatedGraphId: relatedGraphId,
       relatedPaperId: relatedPaperId,
+      category: category,
     );
 
     final updated = [notification, ...state.notifications];
@@ -48,6 +50,7 @@ class NotificationCubit extends Cubit<NotificationState> {
           : '$nodeCount connected papers are ready to explore.',
       type: isPartial ? NotificationType.warning : NotificationType.success,
       relatedGraphId: graphId,
+      category: NotificationCategory.graphReady,
       showToast: true,
     );
   }
@@ -70,6 +73,24 @@ class NotificationCubit extends Cubit<NotificationState> {
       message: friendlyGraphError(error),
       type: NotificationType.error,
       relatedGraphId: graphId,
+      category: NotificationCategory.graphReady,
+      showToast: true,
+    );
+  }
+
+  /// Adds a notification produced by the research-monitoring push channel.
+  void notifyResearchUpdate({
+    required String localGraphId,
+    required int updateCount,
+    String? graphTitle,
+  }) {
+    final countLabel = updateCount == 1 ? 'A new paper' : '$updateCount new papers';
+    notify(
+      title: '$countLabel for ${graphTitle?.trim().isNotEmpty == true ? graphTitle!.trim() : 'a saved graph'}',
+      message: 'Open Graph Updates to review the latest research.',
+      type: NotificationType.info,
+      relatedGraphId: localGraphId,
+      category: NotificationCategory.researchUpdate,
       showToast: true,
     );
   }

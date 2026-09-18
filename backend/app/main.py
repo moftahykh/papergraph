@@ -10,6 +10,7 @@ from app.api.v1.graphs import router as graphs_router
 from app.api.v1.papers import router as papers_router
 from app.api.v1.metrics import router as metrics_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.monitoring import router as monitoring_router
 from app.core.errors import APIError, api_error_handler
 
 app = FastAPI(
@@ -54,4 +55,5 @@ app.include_router(graphs_router, prefix=settings.API_V1_STR)
 app.include_router(papers_router, prefix=settings.API_V1_STR)
 app.include_router(metrics_router, prefix=settings.API_V1_STR)
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(monitoring_router, prefix=settings.API_V1_STR)
 # Authentication & Verification Router Loaded

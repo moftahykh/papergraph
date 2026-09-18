@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/network/api_client.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/canonical_paper.dart';
 import '../../models/graph_models.dart';
@@ -10,13 +11,16 @@ import 'library_state.dart';
 class LibraryCubit extends Cubit<LibraryState> {
   final bool listenToAuth;
   final bool logFailures;
+  final PaperGraphApiClient _apiClient;
 
   LibraryCubit({
     LibraryState initialState = const LibraryInitial(),
     bool loadOnStart = true,
     this.listenToAuth = true,
     this.logFailures = true,
-  }) : super(initialState) {
+    PaperGraphApiClient? apiClient,
+  }) : _apiClient = apiClient ?? PaperGraphApiClient(),
+       super(initialState) {
     if (loadOnStart) loadLibrary();
     if (listenToAuth) AuthProvider.addAuthListener(loadLibrary);
   }
@@ -166,6 +170,7 @@ class LibraryCubit extends Cubit<LibraryState> {
   Future<bool> cacheGraph(GraphSnapshot snapshot) async {
     try {
       await HiveService.saveCachedGraph(snapshot, markAsSaved: true);
+      await _syncMonitoringAfterSave(snapshot);
       final updated = List<GraphSnapshot>.from(_getCurrentGraphs());
       final index = updated.indexWhere(
         (graph) => graph.graphId == snapshot.graphId,
@@ -197,6 +202,7 @@ class LibraryCubit extends Cubit<LibraryState> {
   Future<bool> removeCachedGraph(String graphId) async {
     try {
       await HiveService.removeCachedGraph(graphId);
+      await _syncMonitoringAfterDelete(graphId);
       final updated = _getCurrentGraphs()
           .where((graph) => graph.graphId != graphId)
           .toList();
@@ -254,6 +260,31 @@ class LibraryCubit extends Cubit<LibraryState> {
   void _logWriteFailure(String operation, Object error, StackTrace stackTrace) {
     if (logFailures) {
       debugPrint('Library failed to $operation: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> _syncMonitoringAfterSave(GraphSnapshot snapshot) async {
+    if (!_apiClient.hasAuthenticatedFirebaseUser) return;
+    try {
+      await _apiClient.registerMonitoredGraph(snapshot);
+    } catch (error, stackTrace) {
+      // Local persistence remains the source of truth while offline. A
+      // durable retry queue will be added before production monitoring ships.
+      debugPrint(
+        'Saved graph locally, but monitoring sync failed: $error\n$stackTrace',
+      );
+    }
+  }
+
+  Future<void> _syncMonitoringAfterDelete(String graphId) async {
+    if (!_apiClient.hasAuthenticatedFirebaseUser) return;
+    try {
+      await _apiClient.removeMonitoredGraph(graphId);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Deleted graph locally, but monitoring removal failed: '
+        '$error\n$stackTrace',
+      );
     }
   }
 

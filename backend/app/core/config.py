@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
+    # Firebase Authentication verification.
+    # This is a public project identifier, not a service-account secret.
+    FIREBASE_PROJECT_ID: Optional[str] = None
+
     # Redis Settings
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379

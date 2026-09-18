@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_core/firebase_core.dart';
 
 import '../../models/api_schemas.dart';
 import '../../models/graph_models.dart';
@@ -34,6 +36,7 @@ class PaperGraphApiClient {
         },
       ),
     );
+    dio.interceptors.add(_FirebaseAuthInterceptor());
     dio.interceptors.add(_RetryInterceptor(dio: dio));
     return dio;
   }
@@ -139,6 +142,75 @@ class PaperGraphApiClient {
     }
   }
 
+  /// Registers a saved graph for automatic research monitoring.
+  ///
+  /// The endpoint is account-scoped server-side. Anonymous users keep the
+  /// local graph, but are not registered for remote monitoring.
+  Future<void> registerMonitoredGraph(GraphSnapshot snapshot) async {
+    final papers = <Map<String, dynamic>>[];
+    final seen = <String>{};
+
+    void addPaper({
+      required String canonicalId,
+      required String title,
+      int? year,
+      String? doi,
+    }) {
+      final cleanId = canonicalId.trim();
+      if (cleanId.isEmpty || !seen.add(cleanId)) return;
+      papers.add({
+        'canonical_id': cleanId,
+        'title': title.trim().isEmpty ? 'Untitled work' : title.trim(),
+        'year': year,
+        'doi': doi,
+      });
+    }
+
+    addPaper(
+      canonicalId: snapshot.origin.canonicalId.isNotEmpty
+          ? snapshot.origin.canonicalId
+          : snapshot.origin.id,
+      title: snapshot.origin.title,
+      year: snapshot.origin.year,
+      doi: snapshot.origin.doi,
+    );
+    for (final node in snapshot.nodes) {
+      addPaper(
+        canonicalId: node.canonicalId.isNotEmpty ? node.canonicalId : node.id,
+        title: node.title,
+        year: node.year,
+      );
+    }
+
+    if (papers.isEmpty) {
+      throw const ApiException('The graph has no identifiable papers to monitor.');
+    }
+
+    try {
+      await _dio.post(
+        '/monitoring/graphs',
+        data: {
+          'local_graph_id': snapshot.graphId,
+          'graph_title': snapshot.origin.title,
+          'papers': papers,
+          'frequency': 'daily',
+          'timezone': 'Asia/Riyadh',
+        },
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Stops remote monitoring for a locally deleted saved graph.
+  Future<void> removeMonitoredGraph(String localGraphId) async {
+    try {
+      await _dio.delete('/monitoring/graphs/by-local/$localGraphId');
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
   /// Retrieves deep on-demand paper metadata and BibTeX citation.
   Future<PaperDetailsResponse> getPaperDetails(
     String paperId, {
@@ -193,6 +265,15 @@ class PaperGraphApiClient {
     }
   }
 
+  bool get hasAuthenticatedFirebaseUser {
+    try {
+      return Firebase.apps.isNotEmpty &&
+          firebase_auth.FirebaseAuth.instance.currentUser != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
   ApiException _handleDioError(DioException error) {
     if (error.type == DioExceptionType.cancel) {
       return const ApiException('Request was cancelled.');
@@ -227,6 +308,34 @@ class PaperGraphApiClient {
     return const ApiException(
       'Unable to connect to the server. Please check your internet connection and try again.',
     );
+  }
+}
+
+/// Adds the current Firebase ID token when a signed-in Firebase app is ready.
+///
+/// Public endpoints remain usable for anonymous users. Protected endpoints
+/// should enforce authentication server-side; this interceptor only transports
+/// the token and never treats a local Firebase session as proof of authorization.
+class _FirebaseAuthInterceptor extends Interceptor {
+  @override
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        final user = firebase_auth.FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final token = await user.getIdToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+        }
+      }
+    } catch (_) {
+      // Keep anonymous/public requests usable when Firebase is unavailable.
+    }
+    handler.next(options);
   }
 }
 

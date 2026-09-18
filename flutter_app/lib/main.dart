@@ -20,6 +20,7 @@ import 'providers/papers_provider.dart';
 import 'views/splash/splash_view.dart';
 import 'views/widgets/error_boundary.dart';
 import 'views/widgets/notification_toast_overlay.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +29,9 @@ void main() async {
 
   await LocalNotificationService.init();
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (e) {
     debugPrint('Firebase initialization notice: $e');
   }

@@ -65,6 +65,15 @@ class LocalNotificationService {
           _notificationTapHandler?.call(response.payload);
         },
       );
+      final launchDetails = await activePlugin.getNotificationAppLaunchDetails();
+      final launchPayload = launchDetails?.notificationResponse?.payload;
+      if (launchDetails?.didNotificationLaunchApp == true &&
+          launchPayload != null &&
+          launchPayload.trim().isNotEmpty) {
+        Future<void>.delayed(const Duration(milliseconds: 300), () {
+          _notificationTapHandler?.call(launchPayload);
+        });
+      }
       await activePlugin
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin

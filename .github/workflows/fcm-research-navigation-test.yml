@@ -1,0 +1,44 @@
+name: One-graph research notification navigation test
+
+on:
+  workflow_dispatch:
+    inputs:
+      local_graph_id:
+        description: "Existing monitored local_graph_id with at least one saved research update"
+        required: true
+        type: string
+      confirmation:
+        description: "Type I_UNDERSTAND_SEND_ONE_GRAPH_TEST"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  send-test:
+    name: Send one research navigation test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.RESEARCH_MONITORING_DATABASE_URL }}
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+      LOCAL_GRAPH_ID: ${{ inputs.local_graph_id }}
+      CONFIRM_FCM_GRAPH_TEST: ${{ inputs.confirmation }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Send one-graph navigation test
+        run: python -m scripts.send_research_navigation_test

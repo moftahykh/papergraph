@@ -21,6 +21,20 @@ Run one bounded Research Monitoring scan pass:
 The worker scans due active graphs, persists deduplicated research updates, and
 exits. It is intentionally separate from the FastAPI web process.
 
+For a Render Free service without Shell or One-Off Jobs, run migrations locally
+against the Render **External Database URL**. Set it only in the current shell;
+do not commit it or print it:
+
+```powershell
+$env:DATABASE_URL = "<Render External Database URL>"
+.\.venv\Scripts\python.exe -m alembic upgrade head
+Remove-Item Env:DATABASE_URL
+```
+
+The backend converts Render's `postgresql://`/`postgres://` URL to
+`postgresql+asyncpg://` and maps `sslmode=require` to the asyncpg SSL option.
+
+
 Run the authenticated Research Monitoring smoke test after starting the backend and applying migrations:
 
 ```powershell

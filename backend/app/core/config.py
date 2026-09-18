@@ -1,4 +1,5 @@
 from typing import List, Union, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,9 +22,12 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "papergraph"
     POSTGRES_PASSWORD: str = "papergraph_dev_pass"
     POSTGRES_DB: str = "papergraph"
+    DATABASE_URL: Optional[str] = None
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            return normalize_database_url(self.DATABASE_URL)
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # Firebase Authentication verification.
@@ -92,3 +96,33 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def normalize_database_url(database_url: str) -> str:
+    """Normalize Render/Postgres URLs for SQLAlchemy's asyncpg dialect.
+
+    Render exposes URLs using ``postgres://`` or ``postgresql://`` and commonly
+    includes ``sslmode=require``. SQLAlchemy needs the asyncpg dialect, while
+    asyncpg expects the SSL option as ``ssl=require``.
+    """
+    parsed = urlsplit(database_url.strip())
+    scheme = parsed.scheme.lower()
+    if scheme == "postgres":
+        scheme = "postgresql"
+    if scheme == "postgresql":
+        scheme = "postgresql+asyncpg"
+
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    sslmode = query.pop("sslmode", None)
+    if sslmode and "ssl" not in query:
+        query["ssl"] = sslmode
+
+    return urlunsplit(
+        (
+            scheme,
+            parsed.netloc,
+            parsed.path,
+            urlencode(query),
+            parsed.fragment,
+        )
+    )

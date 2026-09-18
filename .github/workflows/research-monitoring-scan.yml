@@ -1,0 +1,51 @@
+name: Research Monitoring Scanner
+
+on:
+  schedule:
+    # Run at the start of every hour. The worker itself selects only due graphs.
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-monitoring-scanner
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Scan due monitored graphs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Store the Render External Database URL as a GitHub Actions secret.
+      DATABASE_URL: ${{ secrets.RESEARCH_MONITORING_DATABASE_URL }}
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      SEMANTIC_SCHOLAR_API_KEYS: ${{ secrets.SEMANTIC_SCHOLAR_API_KEYS }}
+      CROSSREF_MAILTO: ${{ secrets.CROSSREF_MAILTO }}
+      OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+
+      - name: Apply database migrations
+        run: python -m alembic upgrade head
+
+      - name: Scan due monitored graphs
+        run: python -m app.workers.monitoring_worker --once

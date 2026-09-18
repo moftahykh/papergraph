@@ -27,6 +27,27 @@ jobs:
   backend-tests:
     name: Backend Test Suite
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: papergraph
+          POSTGRES_PASSWORD: papergraph_dev_pass
+          POSTGRES_DB: papergraph_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U papergraph -d papergraph_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_SERVER: 127.0.0.1
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: papergraph
+      POSTGRES_PASSWORD: papergraph_dev_pass
+      POSTGRES_DB: papergraph_test
+      FIREBASE_PROJECT_ID: papergraph-cb9c3
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -42,6 +63,10 @@ jobs:
           # and pytest-asyncio is required by asyncio_mode=auto in pyproject.
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov
+      - name: Run database migrations
+        run: |
+          cd backend
+          python -m alembic upgrade head
       - name: Run pytest suite
         run: |
           cd backend

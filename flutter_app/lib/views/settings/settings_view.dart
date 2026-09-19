@@ -12,7 +12,6 @@ import '../../cubits/library/library_state.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_view.dart';
 import '../auth/register_view.dart';
-import '../widgets/paper_graph_mark.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -202,6 +201,9 @@ class _SettingsViewState extends State<SettingsView> {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
         title: Text(
           'Settings',
           style: AppTheme.brandTitleStyle(
@@ -217,10 +219,10 @@ class _SettingsViewState extends State<SettingsView> {
         children: [
           // Profile Header
           _buildProfileSection(isDark, authProvider),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-          // Preferences
-          _buildSectionHeader(context, 'Preferences'),
+          // 1. General (Preferences & Security)
+          _buildSectionHeader(context, 'General'),
           _buildGroupContainer(
             context: context,
             children: [
@@ -239,7 +241,7 @@ class _SettingsViewState extends State<SettingsView> {
                 subtitle: Text(
                   isDark ? 'Dark Lab theme active' : 'Paper & Ink theme active',
                   style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 12.5,
                     color: isDark
                         ? AppTheme.darkTextSecondary
                         : AppTheme.lightTextSecondary,
@@ -248,15 +250,7 @@ class _SettingsViewState extends State<SettingsView> {
                 value: isDark,
                 onChanged: (_) => context.read<ThemeCubit>().toggleTheme(),
               ),
-            ],
-          ),
-          const SizedBox(height: 28),
-
-          // Security & Privacy
-          _buildSectionHeader(context, 'Security & Privacy'),
-          _buildGroupContainer(
-            context: context,
-            children: [
+              _buildGroupDivider(context),
               SwitchListTile(
                 secondary: Icon(
                   Icons.fingerprint_rounded,
@@ -283,10 +277,10 @@ class _SettingsViewState extends State<SettingsView> {
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-          // Research monitoring notifications
-          _buildSectionHeader(context, 'Research Monitoring'),
+          // 2. Research & Data
+          _buildSectionHeader(context, 'Research & Data'),
           _buildGroupContainer(
             context: context,
             children: [
@@ -314,19 +308,14 @@ class _SettingsViewState extends State<SettingsView> {
                 value: _researchNotificationsEnabled,
                 onChanged: _handleResearchNotificationsToggle,
               ),
-            ],
-          ),
-          const SizedBox(height: 28),
-
-          // Data & Storage
-          _buildSectionHeader(context, 'Data & Storage'),
-          _buildGroupContainer(
-            context: context,
-            children: [
+              _buildGroupDivider(context),
               ListTile(
-                leading: PaperGraphMark(
+                leading: Icon(
+                  Icons.download_done_rounded,
+                  color: isDark
+                      ? AppTheme.primaryLightBlue
+                      : AppTheme.primaryBlue,
                   size: 22,
-                  isDark: isDark,
                 ),
                 title: const Text(
                   'Offline graphs',
@@ -341,24 +330,50 @@ class _SettingsViewState extends State<SettingsView> {
                         : AppTheme.lightTextSecondary,
                   ),
                 ),
-                trailing: TextButton(
-                  onPressed: cachedGraphsCount > 0
-                      ? _showClearCacheDialog
-                      : null,
-                  style: TextButton.styleFrom(
-                    foregroundColor: isDark
-                        ? AppTheme.actionPurpleDark
-                        : AppTheme.actionPurple,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (cachedGraphsCount > 0) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF242426)
+                              : const Color(0xFFF2F2F7),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0x18FFFFFF)
+                                : const Color(0xFFE5E5EA),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          '$cachedGraphsCount',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary,
                     ),
-                  ),
-                  child: const Text(
-                    'Manage',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+                  ],
                 ),
+                onTap: cachedGraphsCount > 0 ? _showClearCacheDialog : null,
               ),
               _buildGroupDivider(context),
               ListTile(
@@ -382,14 +397,20 @@ class _SettingsViewState extends State<SettingsView> {
                         : AppTheme.lightTextSecondary,
                   ),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
+                ),
                 onTap: () => openAppSettings(),
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-          // About & Legal
+          // 3. About & Resources
           _buildSectionHeader(context, 'About & Resources'),
           _buildGroupContainer(
             context: context,
@@ -429,7 +450,13 @@ class _SettingsViewState extends State<SettingsView> {
                   'Open Source Licenses',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
+                ),
                 onTap: () => showLicensePage(
                   context: context,
                   applicationName: 'PaperGraph',
@@ -438,7 +465,7 @@ class _SettingsViewState extends State<SettingsView> {
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
           // Sign Out Action (for Authenticated Users)
           if (authProvider.isAuthenticated) ...[
@@ -459,12 +486,17 @@ class _SettingsViewState extends State<SettingsView> {
                       fontSize: 14.5,
                     ),
                   ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppTheme.accentRose,
+                    size: 20,
+                  ),
                   onTap: () => _showSignOutDialog(authProvider),
                 ),
               ],
             ),
-            const SizedBox(height: 32),
           ],
+          const SizedBox(height: 110), // Clearance for floating navigation bar
         ],
       ),
     );
@@ -612,31 +644,46 @@ class _SettingsViewState extends State<SettingsView> {
         : 'Academic Researcher';
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          width: 0.75,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 30 : 6),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // Flat solid monogram avatar (Zero gradients, zero neon glow)
+          // Academic verified avatar
           Container(
             width: 50,
             height: 50,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? const Color(0xFF252730) : AppTheme.primaryBlue,
+              color: isDark ? const Color(0xFF202026) : const Color(0xFFF2F2F7),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0x33FFFFFF)
+                    : const Color(0x24000000),
+                width: 1.5,
+              ),
             ),
             child: Center(
               child: Text(
                 name.isNotEmpty ? name[0].toUpperCase() : 'R',
                 style: TextStyle(
-                  color: isDark ? AppTheme.primaryLightBlue : Colors.white,
+                  color: isDark ? Colors.white : AppTheme.primaryBlue,
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
                 ),
               ),
             ),
@@ -701,6 +748,14 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
           ),
         ],
       ),

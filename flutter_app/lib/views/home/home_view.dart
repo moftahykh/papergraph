@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,8 @@ import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../cubits/graph/graph_cubit.dart';
 import '../../cubits/graph/graph_state.dart';
+import '../../cubits/discovery/discovery_cubit.dart';
+import '../../cubits/discovery/discovery_state.dart';
 import '../../cubits/library/library_cubit.dart';
 import '../../cubits/library/library_state.dart';
 import '../../cubits/notification/notification_cubit.dart';
@@ -23,6 +26,7 @@ import '../graph_view/connected_graph_view.dart';
 import 'recent_graphs_view.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/paper_graph_mark.dart';
+import '../research_monitoring/graph_updates_view.dart';
 
 /// Search-first home (the Connected Papers model).
 ///
@@ -41,9 +45,43 @@ class _HomeViewState extends State<HomeView> {
   String? _dismissedReadyGraphId;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<DiscoveryCubit>().load();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handlePasteDoi() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    if (!mounted) return;
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Clipboard is empty or does not contain text'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    _searchController.text = text;
+    setState(() {});
+    if (_looksLikeIdentifier(text)) {
+      _openGraphFor(text);
+    } else {
+      if (!_checkGuestSearchLimit()) return;
+      if (!mounted) return;
+      context.read<SearchCubit>().search(text, immediate: true);
+    }
   }
 
   @override
@@ -187,12 +225,13 @@ class _HomeViewState extends State<HomeView> {
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Text(
                 'Explore connected literature.',
                 style: AppTheme.brandTitleStyle(
@@ -217,12 +256,14 @@ class _HomeViewState extends State<HomeView> {
               _buildGuestTrialBanner(isDark),
               const SizedBox(height: 12),
               _buildSearchField(isDark),
+              _buildTrendingChips(isDark),
               _buildActiveGraphJob(isDark, accent),
               const SizedBox(height: 6),
               _buildSearchResults(isDark, accent),
               const SizedBox(height: 24),
               _buildRecentGraphs(isDark, accent),
-              const SizedBox(height: 24),
+              _buildDiscoveryRecommendation(isDark, accent),
+              const SizedBox(height: 110),
             ],
           ),
         ),
@@ -636,6 +677,8 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget _buildSearchField(bool isDark) {
+    final hasText = _searchController.text.isNotEmpty;
+
     return TextField(
       controller: _searchController,
       textInputAction: TextInputAction.search,
@@ -668,9 +711,9 @@ class _HomeViewState extends State<HomeView> {
         }
       },
       decoration: InputDecoration(
-        hintText: 'Search papers, DOI, or paste a link',
+        hintText: 'Search papers, DOI',
         prefixIcon: const Icon(Icons.search_rounded, size: 20),
-        suffixIcon: _searchController.text.isNotEmpty
+        suffixIcon: hasText
             ? IconButton(
                 tooltip: 'Clear',
                 icon: const Icon(Icons.close_rounded, size: 19),
@@ -680,8 +723,158 @@ class _HomeViewState extends State<HomeView> {
                   setState(() {});
                 },
               )
-            : null,
+            : Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: _handlePasteDoi,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF27272A)
+                              : const Color(0xFFE4E4E7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.content_paste_rounded,
+                              size: 13,
+                              color: isDark
+                                  ? const Color(0xFFF4F4F5)
+                                  : const Color(0xFF18181B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Paste DOI',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? const Color(0xFFF4F4F5)
+                                    : const Color(0xFF18181B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
       ),
+    );
+  }
+
+  Widget _buildTrendingChips(bool isDark) {
+    return BlocBuilder<DiscoveryCubit, DiscoveryState>(
+      builder: (context, discoveryState) {
+        final topics = discoveryState is DiscoveryLoaded
+            ? discoveryState.topics
+            : const <DiscoveryTopic>[];
+
+        if (topics.isEmpty) {
+          if (discoveryState is DiscoveryUnavailable) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Row(
+                children: [
+                  Text(
+                    'Trending topics unavailable',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () =>
+                        context.read<DiscoveryCubit>().load(force: true),
+                    child: Text(
+                      'Retry',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppTheme.primaryLightBlue
+                            : AppTheme.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: SizedBox(
+            height: 32,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: topics.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final topic = topics[index];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () {
+                    _searchController.text = topic.query;
+                    setState(() {});
+                    if (!_checkGuestSearchLimit()) return;
+                    context
+                        .read<SearchCubit>()
+                        .search(topic.query, immediate: true);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1C1C1F)
+                          : const Color(0xFFEBEBF0),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0x22FFFFFF)
+                            : const Color(0x16000000),
+                        width: 0.75,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        topic.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? const Color(0xFFE4E4E7)
+                              : const Color(0xFF27272A),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -887,89 +1080,356 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget _recentGraphTile(GraphSnapshot graph, bool isDark, Color accent) {
-    final metaParts = <String>[
-      if (graph.origin.year != null) '${graph.origin.year}',
-      '${graph.nodes.length} papers',
-      graph.status == GraphJobStatus.partial ? 'partial' : 'completed',
-    ];
+    final year = graph.origin.year != null ? '${graph.origin.year}' : null;
+    final paperCount = '${graph.nodes.length} papers';
+    final isCompleted = graph.status != GraphJobStatus.partial;
+    final statusText = isCompleted ? 'COMPLETED' : 'PARTIAL';
+    final statusColor = isCompleted
+        ? const Color(0xFF10B981)
+        : const Color(0xFFF59E0B);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () async {
-        final libCubit = context.read<LibraryCubit>();
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ConnectedGraphView(initialSnapshot: graph),
+    final originNode = graph.nodes.where((n) => n.isOrigin).firstOrNull ??
+        (graph.nodes.isNotEmpty ? graph.nodes.first : null);
+    final authorsText = originNode != null && originNode.authors.isNotEmpty
+        ? originNode.authors.take(3).join(', ') +
+            (originNode.authors.length > 3 ? ' et al.' : '')
+        : (originNode?.venue != null && originNode!.venue!.isNotEmpty
+            ? originNode.venue!
+            : null);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? const Color(0x22FFFFFF)
+              : const Color(0xFFE5E5EA),
+          width: 0.75,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 35 : 8),
+            blurRadius: 14,
+            offset: const Offset(0, 3),
           ),
-        );
-        libCubit.loadLibrary();
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF242426)
-                    : const Color(0xFFF2F2F7),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0x18FFFFFF)
-                      : const Color(0xFFE5E5EA),
-                  width: 0.5,
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            final libCubit = context.read<LibraryCubit>();
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ConnectedGraphView(initialSnapshot: graph),
+              ),
+            );
+            libCubit.loadLibrary();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(13),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF242426)
+                        : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0x18FFFFFF)
+                          : const Color(0xFFE5E5EA),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.hub_outlined,
+                    size: 19,
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                  ),
                 ),
-              ),
-              child: Icon(
-                Icons.bubble_chart_outlined,
-                size: 17,
-                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    graph.origin.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppTheme.darkTextPrimary
-                          : AppTheme.lightTextPrimary,
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        graph.origin.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.lightTextPrimary,
+                        ),
+                      ),
+                      if (authorsText != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          authorsText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (year != null)
+                            _buildPillBadge(
+                              text: year,
+                              isDark: isDark,
+                            ),
+                          _buildPillBadge(
+                            text: paperCount,
+                            isDark: isDark,
+                          ),
+                          _buildPillBadge(
+                            text: statusText,
+                            textColor: statusColor,
+                            bgColor: statusColor.withAlpha(25),
+                            borderColor: statusColor.withAlpha(60),
+                            isDark: isDark,
+                            isBold: true,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    metaParts.join(' · '),
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: isDark
-                          ? AppTheme.darkTextSecondary
-                          : AppTheme.lightTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: isDark
-                  ? AppTheme.darkTextSecondary
-                  : AppTheme.lightTextSecondary,
-            ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildPillBadge({
+    required String text,
+    Color? textColor,
+    Color? bgColor,
+    Color? borderColor,
+    required bool isDark,
+    bool isBold = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor ??
+            (isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7)),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: borderColor ??
+              (isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA)),
+          width: 0.5,
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+          letterSpacing: isBold ? 0.3 : 0,
+          color: textColor ??
+              (isDark ? const Color(0xFFD4D4D8) : const Color(0xFF52525B)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDiscoveryRecommendation(bool isDark, Color accent) {
+    return BlocBuilder<DiscoveryCubit, DiscoveryState>(
+      builder: (context, state) {
+        if (state is! DiscoveryLoaded || state.recommendation == null) {
+          return const SizedBox.shrink();
+        }
+
+        final recommendation = state.recommendation!;
+        final secondary = isDark
+            ? AppTheme.darkTextSecondary
+            : AppTheme.lightTextSecondary;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            Text(
+              'Recommended for your research',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: isDark
+                    ? AppTheme.darkTextPrimary
+                    : AppTheme.lightTextPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0x22FFFFFF)
+                      : const Color(0xFFE5E5EA),
+                  width: 0.75,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(isDark ? 35 : 8),
+                    blurRadius: 14,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () =>
+                      _openExistingGraphForRecommendation(recommendation),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF242426)
+                                    : const Color(0xFFF2F2F7),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.auto_awesome_outlined,
+                                color: accent,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                recommendation.title,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.25,
+                                  color: isDark
+                                      ? AppTheme.darkTextPrimary
+                                      : AppTheme.lightTextPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          recommendation.reason,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: secondary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            _buildPillBadge(
+                              text: recommendation.relationType,
+                              isDark: isDark,
+                              isBold: true,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                recommendation.graphTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: secondary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'View in Graph →',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _openExistingGraphForRecommendation(
+    DiscoveryRecommendation recommendation,
+  ) async {
+    final localGraphId = recommendation.localGraphId.trim();
+    if (localGraphId.isEmpty) return;
+
+    final snapshot =
+        context.read<LibraryCubit>().getCachedGraph(localGraphId);
+    if (snapshot != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ConnectedGraphView(initialSnapshot: snapshot),
+        ),
+      );
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GraphUpdatesView(
+            localGraphId: localGraphId,
+            graphTitle: recommendation.graphTitle.isNotEmpty
+                ? recommendation.graphTitle
+                : 'Saved graph',
+          ),
+        ),
+      );
+    }
+    if (!mounted) return;
+    context.read<LibraryCubit>().loadLibrary();
   }
 
   Widget _hint(bool isDark, String text) {

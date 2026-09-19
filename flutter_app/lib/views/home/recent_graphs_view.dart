@@ -183,17 +183,28 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
     bool isSaved,
     bool isDark,
   ) {
-    final metaParts = <String>[
-      if (graph.origin.year != null) '${graph.origin.year}',
-      '${graph.nodes.length} papers',
-      graph.status == GraphJobStatus.partial ? 'partial' : 'completed',
-    ];
+    final year = graph.origin.year != null ? '${graph.origin.year}' : null;
+    final paperCount = '${graph.nodes.length} papers';
+    final isCompleted = graph.status != GraphJobStatus.partial;
+    final statusText = isCompleted ? 'COMPLETED' : 'PARTIAL';
+    final statusColor = isCompleted
+        ? const Color(0xFF10B981)
+        : const Color(0xFFF59E0B);
+
+    final originNode = graph.nodes.where((n) => n.isOrigin).firstOrNull ??
+        (graph.nodes.isNotEmpty ? graph.nodes.first : null);
+    final authorsText = originNode != null && originNode.authors.isNotEmpty
+        ? originNode.authors.take(3).join(', ') +
+            (originNode.authors.length > 3 ? ' et al.' : '')
+        : (originNode?.venue != null && originNode!.venue!.isNotEmpty
+            ? originNode.venue!
+            : null);
 
     return Material(
       color: isDark ? AppTheme.darkCard : Colors.white,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: () async {
           await Navigator.of(context).push(
             MaterialPageRoute(
@@ -206,18 +217,25 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-              width: 1,
+              color: isDark ? const Color(0x22FFFFFF) : const Color(0xFFE5E5EA),
+              width: 0.75,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(isDark ? 35 : 8),
+                blurRadius: 14,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: isDark
                       ? const Color(0xFF242426)
@@ -231,8 +249,8 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                   ),
                 ),
                 child: Icon(
-                  Icons.bubble_chart_outlined,
-                  size: 18,
+                  Icons.hub_outlined,
+                  size: 19,
                   color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                 ),
               ),
@@ -244,9 +262,9 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                     Text(
                       graph.origin.title,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w600,
-                        height: 1.3,
+                        height: 1.25,
                         color: isDark
                             ? AppTheme.darkTextPrimary
                             : AppTheme.lightTextPrimary,
@@ -254,21 +272,42 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    if (authorsText != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        authorsText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
                     Wrap(
-                      spacing: 8,
+                      spacing: 6,
                       runSpacing: 4,
                       children: [
-                        for (final part in metaParts)
-                          Text(
-                            part,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark
-                                  ? AppTheme.darkTextSecondary
-                                  : AppTheme.lightTextSecondary,
-                            ),
+                        if (year != null)
+                          _buildPillBadge(
+                            text: year,
+                            isDark: isDark,
                           ),
+                        _buildPillBadge(
+                          text: paperCount,
+                          isDark: isDark,
+                        ),
+                        _buildPillBadge(
+                          text: statusText,
+                          textColor: statusColor,
+                          bgColor: statusColor.withAlpha(25),
+                          borderColor: statusColor.withAlpha(60),
+                          isDark: isDark,
+                          isBold: true,
+                        ),
                       ],
                     ),
                   ],
@@ -339,6 +378,39 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPillBadge({
+    required String text,
+    Color? textColor,
+    Color? bgColor,
+    Color? borderColor,
+    required bool isDark,
+    bool isBold = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor ??
+            (isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7)),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: borderColor ??
+              (isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA)),
+          width: 0.5,
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+          letterSpacing: isBold ? 0.3 : 0,
+          color: textColor ??
+              (isDark ? const Color(0xFFD4D4D8) : const Color(0xFF52525B)),
         ),
       ),
     );

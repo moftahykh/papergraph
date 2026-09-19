@@ -8,6 +8,7 @@ import 'core/services/fcm_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'cubits/graph/graph_cubit.dart';
 import 'cubits/graph/graph_state.dart';
+import 'cubits/discovery/discovery_cubit.dart';
 import 'cubits/library/library_cubit.dart';
 import 'cubits/notification/notification_cubit.dart';
 import 'cubits/notification/notification_state.dart';
@@ -67,6 +68,7 @@ class PaperGraphApp extends StatelessWidget {
       providers: [
         BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()),
         BlocProvider<SearchCubit>(create: (_) => SearchCubit()),
+        BlocProvider<DiscoveryCubit>(create: (_) => DiscoveryCubit()),
         BlocProvider<PaperDetailsCubit>(create: (_) => PaperDetailsCubit()),
         BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
         BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),

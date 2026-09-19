@@ -19,6 +19,7 @@ from app.models.graph import (
     GraphSnapshot,
     GraphJob,
 )
+from app.models.discovery import DiscoveryTopic
 
 __all__ = [
     "GraphJobStatus",
@@ -36,4 +37,5 @@ __all__ = [
     "GraphOrigin",
     "GraphSnapshot",
     "GraphJob",
+    "DiscoveryTopic",
 ]

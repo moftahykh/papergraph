@@ -909,4 +909,23 @@ class HiveService {
     if (!Hive.isBoxOpen(settingsBoxName)) return;
     await settingsBox.put('guest_search_count', 0);
   }
+
+  // Cached Discovery Topics for offline and Render cold-start resilience
+  static const String _cachedDiscoveryTopicsKey = 'cached_discovery_topics';
+
+  static List<Map<String, dynamic>>? getCachedDiscoveryTopics() {
+    if (!Hive.isBoxOpen(settingsBoxName)) return null;
+    final raw = settingsBox.get(_cachedDiscoveryTopicsKey);
+    if (raw is List) {
+      return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return null;
+  }
+
+  static Future<void> saveCachedDiscoveryTopics(
+    List<Map<String, dynamic>> topics,
+  ) async {
+    if (!Hive.isBoxOpen(settingsBoxName)) return;
+    await settingsBox.put(_cachedDiscoveryTopicsKey, topics);
+  }
 }

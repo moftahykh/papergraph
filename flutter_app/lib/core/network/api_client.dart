@@ -57,6 +57,25 @@ class PaperGraphApiClient {
     return 'https://papergraph-backend.onrender.com/api/v1';
   }
 
+  /// Loads server-managed discovery topics and an optional user-grounded
+  /// recommendation. The backend intentionally returns no recommendation when
+  /// there is no real research signal instead of inventing featured content.
+  Future<DiscoveryHomeResponse> getDiscoveryHome({
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/discover/home',
+        cancelToken: cancelToken,
+      );
+      return DiscoveryHomeResponse.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
   /// Performs academic literature search.
   Future<SearchResponse> search(
     String query, {

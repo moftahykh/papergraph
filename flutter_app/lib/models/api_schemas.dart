@@ -194,3 +194,120 @@ class PaperDetailsResponse {
     'is_saved': isSaved,
   };
 }
+
+@immutable
+class DiscoveryTopic {
+  final String label;
+  final String query;
+  final int rank;
+
+  const DiscoveryTopic({
+    required this.label,
+    required this.query,
+    this.rank = 0,
+  });
+
+  factory DiscoveryTopic.fromJson(Map<String, dynamic> json) {
+    return DiscoveryTopic(
+      label: (json['label'] as String?) ?? '',
+      query: (json['query'] as String?) ?? '',
+      rank: (json['rank'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'label': label,
+    'query': query,
+    'rank': rank,
+  };
+}
+
+@immutable
+class DiscoveryRecommendation {
+  final String canonicalId;
+  final String? doi;
+  final String title;
+  final String reason;
+  final String localGraphId;
+  final String graphTitle;
+  final String relationType;
+  final double relevanceScore;
+  final DateTime? detectedAt;
+
+  const DiscoveryRecommendation({
+    required this.canonicalId,
+    this.doi,
+    required this.title,
+    required this.reason,
+    required this.localGraphId,
+    required this.graphTitle,
+    required this.relationType,
+    this.relevanceScore = 0,
+    this.detectedAt,
+  });
+
+  factory DiscoveryRecommendation.fromJson(Map<String, dynamic> json) {
+    return DiscoveryRecommendation(
+      canonicalId: (json['canonical_id'] as String?) ?? '',
+      doi: json['doi'] as String?,
+      title: (json['title'] as String?) ?? 'Untitled paper',
+      reason: (json['reason'] as String?) ?? 'Related to your research.',
+      localGraphId: (json['local_graph_id'] as String?) ?? '',
+      graphTitle: (json['graph_title'] as String?) ?? 'Saved graph',
+      relationType: (json['relation_type'] as String?) ?? 'related',
+      relevanceScore: (json['relevance_score'] as num?)?.toDouble() ?? 0,
+      detectedAt: json['detected_at'] == null
+          ? null
+          : DateTime.tryParse(json['detected_at'].toString()),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'canonical_id': canonicalId,
+    'doi': doi,
+    'title': title,
+    'reason': reason,
+    'local_graph_id': localGraphId,
+    'graph_title': graphTitle,
+    'relation_type': relationType,
+    'relevance_score': relevanceScore,
+    'detected_at': detectedAt?.toIso8601String(),
+  };
+}
+
+@immutable
+class DiscoveryHomeResponse {
+  final List<DiscoveryTopic> topics;
+  final DiscoveryRecommendation? recommendation;
+
+  const DiscoveryHomeResponse({
+    this.topics = const [],
+    this.recommendation,
+  });
+
+  factory DiscoveryHomeResponse.fromJson(Map<String, dynamic> json) {
+    return DiscoveryHomeResponse(
+      topics: (json['topics'] as List<dynamic>?)
+              ?.map(
+                (item) => DiscoveryTopic.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .where((topic) => topic.label.isNotEmpty && topic.query.isNotEmpty)
+              .toList() ??
+          const [],
+      recommendation: json['recommendation'] == null
+          ? null
+          : DiscoveryRecommendation.fromJson(
+              Map<String, dynamic>.from(
+                json['recommendation'] as Map,
+              ),
+            ),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'topics': topics.map((t) => t.toJson()).toList(),
+    'recommendation': recommendation?.toJson(),
+  };
+}

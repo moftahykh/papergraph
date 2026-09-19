@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -92,7 +93,7 @@ class _MainNavigationViewState extends State<MainNavigationView> {
         child: Scaffold(
           // Reserve layout space for the floating navigation container so
           // scrollable page content never renders underneath it.
-          extendBody: false,
+          extendBody: true,
           body: IndexedStack(
             index: _currentIndex,
             children: _screens,
@@ -107,29 +108,37 @@ class _MainNavigationViewState extends State<MainNavigationView> {
                   onOpenResults: () => setState(() => _currentIndex = 0),
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkSurface : Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(isDark ? 70 : 18),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppTheme.darkSurface.withAlpha(220)
+                            : Colors.white.withAlpha(225),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0x28FFFFFF)
+                              : const Color(0x1F000000),
+                          width: 0.75,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(isDark ? 80 : 16),
+                            blurRadius: 28,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: NavigationBar(
-                    height: 68,
-                    elevation: 0,
-                    backgroundColor: Colors.transparent,
-                    indicatorColor: isDark
-                        ? AppTheme.primaryLightBlue.withAlpha(30)
-                        : AppTheme.primaryBlue.withAlpha(20),
+                      child: NavigationBar(
+                        height: 66,
+                        elevation: 0,
+                        backgroundColor: Colors.transparent,
+                        indicatorColor: isDark
+                            ? AppTheme.primaryLightBlue.withAlpha(28)
+                            : AppTheme.primaryBlue.withAlpha(18),
                     labelBehavior:
                         NavigationDestinationLabelBehavior.alwaysShow,
                     selectedIndex: _currentIndex,
@@ -187,7 +196,9 @@ class _MainNavigationViewState extends State<MainNavigationView> {
                     ],
                   ),
                 ),
-              ],
+              ),
+            ),
+          ],
             ),
           ),
         ),

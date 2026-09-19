@@ -65,7 +65,8 @@ class LocalNotificationService {
           _notificationTapHandler?.call(response.payload);
         },
       );
-      final launchDetails = await activePlugin.getNotificationAppLaunchDetails();
+      final launchDetails = await activePlugin
+          .getNotificationAppLaunchDetails();
       final launchPayload = launchDetails?.notificationResponse?.payload;
       if (launchDetails?.didNotificationLaunchApp == true &&
           launchPayload != null &&
@@ -152,10 +153,7 @@ class LocalNotificationService {
         importance: Importance.high,
         priority: Priority.high,
         ticker: 'PaperGraph research update',
-        styleInformation: BigTextStyleInformation(
-          body,
-          contentTitle: title,
-        ),
+        styleInformation: BigTextStyleInformation(body, contentTitle: title),
       );
       const darwinDetails = DarwinNotificationDetails(
         presentAlert: true,
@@ -257,8 +255,8 @@ class LocalNotificationService {
       final body = paperTitle != null && paperTitle.trim().isNotEmpty
           ? '$paperTitle ($nodeCount connected papers ready to explore)'
           : isPartial
-              ? '$nodeCount papers are ready. Some sources did not respond.'
-              : '$nodeCount connected papers are ready to explore.';
+          ? '$nodeCount papers are ready. Some sources did not respond.'
+          : '$nodeCount connected papers are ready to explore.';
       await showSystemNotification(
         id: graphId.hashCode.abs() % 100000,
         title: title,

@@ -60,9 +60,10 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
   }
 
   Future<void> _saveNotes() async {
-    final saved = await context
-        .read<LibraryCubit>()
-        .saveNotes(widget.paper.id, _notesController.text);
+    final saved = await context.read<LibraryCubit>().saveNotes(
+      widget.paper.id,
+      _notesController.text,
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -115,12 +116,15 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
         String? tldr;
         bool isLoadingDetails = false;
 
-        if (detailsState is PaperDetailsLoading && detailsState.paperId == widget.paper.id) {
+        if (detailsState is PaperDetailsLoading &&
+            detailsState.paperId == widget.paper.id) {
           isLoadingDetails = true;
         } else if (detailsState is PaperDetailsLoaded &&
             detailsState.details.paper.canonicalId == widget.paper.id) {
           final loaded = detailsState.details;
-          if (loaded.paper.title.isNotEmpty) effectiveTitle = loaded.paper.title;
+          if (loaded.paper.title.isNotEmpty) {
+            effectiveTitle = loaded.paper.title;
+          }
           if (loaded.paper.authors.isNotEmpty) {
             effectiveAuthors = loaded.paper.authors.map((a) => a.name).toList();
           }
@@ -130,7 +134,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
           if (loaded.paper.venue != null && loaded.paper.venue!.isNotEmpty) {
             effectiveVenue = loaded.paper.venue!;
           }
-          if (loaded.paper.abstractText != null && loaded.paper.abstractText!.isNotEmpty) {
+          if (loaded.paper.abstractText != null &&
+              loaded.paper.abstractText!.isNotEmpty) {
             effectiveAbstract = loaded.paper.abstractText!;
           }
           // The details endpoint is authoritative for this paper. A provider
@@ -179,7 +184,9 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
             actions: [
               IconButton(
                 icon: Icon(
-                  isFav ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  isFav
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
                   color: isFav ? AppTheme.accentAmber : null,
                 ),
                 tooltip: isFav ? 'Remove from library' : 'Save to library',
@@ -196,8 +203,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                       content: Text(
                         succeeded
                             ? (wasSaved
-                                ? 'Removed from library'
-                                : 'Saved to library')
+                                  ? 'Removed from library'
+                                  : 'Saved to library')
                             : 'Your change could not be saved. Try again.',
                       ),
                       duration: const Duration(seconds: 2),
@@ -212,8 +219,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                   final shareText = resolvedUrl.isNotEmpty
                       ? resolvedUrl
                       : (effectiveDoi.isNotEmpty
-                          ? 'https://doi.org/$effectiveDoi'
-                          : effectiveTitle);
+                            ? 'https://doi.org/$effectiveDoi'
+                            : effectiveTitle);
                   await Clipboard.setData(ClipboardData(text: shareText));
                   if (!context.mounted) {
                     return;
@@ -247,8 +254,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
           ),
           body: Column(
             children: [
-              if (isLoadingDetails)
-                const LinearProgressIndicator(minHeight: 2),
+              if (isLoadingDetails) const LinearProgressIndicator(minHeight: 2),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(18, 20, 18, 40),
@@ -301,7 +307,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                           ),
                         ),
                       ],
-                      if (effectiveVenue.isNotEmpty || effectiveDoi.isNotEmpty) ...[
+                      if (effectiveVenue.isNotEmpty ||
+                          effectiveDoi.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 10,
@@ -389,10 +396,10 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                           onPressed: resolvedUrl.isEmpty
                               ? null
                               : () => PaperUrlHelper.launchPaper(
-                                    context,
-                                    url: resolvedUrl,
-                                    title: effectiveTitle,
-                                  ),
+                                  context,
+                                  url: resolvedUrl,
+                                  title: effectiveTitle,
+                                ),
                           icon: const Icon(Icons.open_in_new_rounded, size: 18),
                           label: const Text('Read paper'),
                           style: OutlinedButton.styleFrom(
@@ -448,7 +455,10 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                         ),
                       ],
                       const SizedBox(height: 28),
-                      _buildSectionHeader('Abstract', Icons.description_outlined),
+                      _buildSectionHeader(
+                        'Abstract',
+                        Icons.description_outlined,
+                      ),
                       const SizedBox(height: 10),
                       if (effectiveAbstract.isNotEmpty &&
                           !effectiveAbstract.contains(
@@ -493,7 +503,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                             minLines: 3,
                             maxLines: 6,
                             decoration: const InputDecoration(
-                              hintText: 'Add an insight, question, or citation note…',
+                              hintText:
+                                  'Add an insight, question, or citation note…',
                               border: OutlineInputBorder(),
                             ),
                           ),
@@ -550,31 +561,30 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                                 ),
                               ]
                             : connectedPapers
-                                .map(
-                                  (paper) => ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(
-                                      paper.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    subtitle: Text(
-                                      '${paper.year} • ${paper.citationsCount} citations',
-                                    ),
-                                    trailing: const Icon(
-                                      Icons.chevron_right_rounded,
-                                    ),
-                                    onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => PaperDetailsView(
-                                          paper: paper,
+                                  .map(
+                                    (paper) => ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        paper.title,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Text(
+                                        '${paper.year} • ${paper.citationsCount} citations',
+                                      ),
+                                      trailing: const Icon(
+                                        Icons.chevron_right_rounded,
+                                      ),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              PaperDetailsView(paper: paper),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                )
-                                .toList(),
+                                  )
+                                  .toList(),
                       ),
                     ],
                   ),
@@ -587,11 +597,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
     );
   }
 
-  Widget _buildMetadataItem(
-    IconData icon,
-    String label,
-    bool isDark,
-  ) {
+  Widget _buildMetadataItem(IconData icon, String label, bool isDark) {
     final color = isDark
         ? AppTheme.darkTextSecondary
         : AppTheme.lightTextSecondary;
@@ -632,7 +638,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          leading: customLeading ??
+          leading:
+              customLeading ??
               Icon(
                 icon,
                 size: 20,
@@ -669,10 +676,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
         ),
       ],

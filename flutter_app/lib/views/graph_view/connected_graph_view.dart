@@ -678,7 +678,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                         : (isDark
                               ? AppTheme.darkTextSecondary
                               : AppTheme.lightTextSecondary),
-                    disabledColor: isDark ? Colors.white : const Color(0xFF18181B),
+                    disabledColor: isDark
+                        ? Colors.white
+                        : const Color(0xFF18181B),
                     tooltip: isSaved ? 'Saved to library' : 'Save graph',
                     onPressed: isSaved
                         ? null
@@ -695,7 +697,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(6),
+                color: isDark
+                    ? Colors.white.withAlpha(10)
+                    : Colors.black.withAlpha(6),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
@@ -707,7 +711,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                   Icon(
                     Icons.cloud_off_rounded,
                     size: 13,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                   const SizedBox(width: 6),
                   Flexible(
@@ -718,7 +724,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary,
                       ),
                     ),
                   ),
@@ -732,7 +740,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(6),
+                color: isDark
+                    ? Colors.white.withAlpha(10)
+                    : Colors.black.withAlpha(6),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
@@ -744,7 +754,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                   Icon(
                     Icons.warning_amber_rounded,
                     size: 14,
-                    color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A),
+                    color: isDark
+                        ? const Color(0xFFA1A1AA)
+                        : const Color(0xFF71717A),
                   ),
                   const SizedBox(width: 8),
                   Flexible(
@@ -757,7 +769,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A),
+                        color: isDark
+                            ? const Color(0xFFA1A1AA)
+                            : const Color(0xFF71717A),
                       ),
                     ),
                   ),
@@ -771,7 +785,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(6),
+                color: isDark
+                    ? Colors.white.withAlpha(10)
+                    : Colors.black.withAlpha(6),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
@@ -783,7 +799,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                   Icon(
                     Icons.history_toggle_off_rounded,
                     size: 13,
-                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
                   ),
                   const SizedBox(width: 6),
                   Flexible(
@@ -794,7 +812,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary,
                       ),
                     ),
                   ),

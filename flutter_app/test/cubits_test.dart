@@ -504,7 +504,10 @@ void main() {
 
       cubit.notifyGraphReady('graph-partial', 22, isPartial: true);
       expect(cubit.state.notifications.first.type, NotificationType.warning);
-      expect(cubit.state.notifications.first.title, 'Graph ready with limited results');
+      expect(
+        cubit.state.notifications.first.title,
+        'Graph ready with limited results',
+      );
     });
 
     test(

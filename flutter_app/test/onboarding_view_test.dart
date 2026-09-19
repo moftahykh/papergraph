@@ -51,8 +51,9 @@ void main() {
   }
 
   group('OnboardingView Redesign Tests', () {
-    testWidgets('renders slide 1 with PaperGraph mark and brand title',
-        (tester) async {
+    testWidgets('renders slide 1 with PaperGraph mark and brand title', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildTestableOnboarding());
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -63,8 +64,9 @@ void main() {
       expect(find.text('Next'), findsOneWidget);
     });
 
-    testWidgets('advancing through slides renders topology and vault content',
-        (tester) async {
+    testWidgets('advancing through slides renders topology and vault content', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildTestableOnboarding());
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -90,9 +92,9 @@ void main() {
       expect(find.text('BIBTEX READY'), findsOneWidget);
     });
 
-    testWidgets(
-        'tapping Enter PaperGraph persists completion and finishes',
-        (tester) async {
+    testWidgets('tapping Enter PaperGraph persists completion and finishes', (
+      tester,
+    ) async {
       var persisted = false;
       var finished = false;
       await tester.pumpWidget(
@@ -120,8 +122,9 @@ void main() {
       expect(finished, isTrue);
     });
 
-    testWidgets('tapping SKIP persists completion and finishes',
-        (tester) async {
+    testWidgets('tapping SKIP persists completion and finishes', (
+      tester,
+    ) async {
       var persisted = false;
       var finished = false;
       await tester.pumpWidget(
@@ -141,10 +144,12 @@ void main() {
       expect(finished, isTrue);
     });
 
-    test('Hive stores onboarding completion outside the widget test zone',
-        () async {
-      await HiveService.setOnboardingCompleted(true);
-      expect(HiveService.isOnboardingCompleted(), isTrue);
-    });
+    test(
+      'Hive stores onboarding completion outside the widget test zone',
+      () async {
+        await HiveService.setOnboardingCompleted(true);
+        expect(HiveService.isOnboardingCompleted(), isTrue);
+      },
+    );
   });
 }

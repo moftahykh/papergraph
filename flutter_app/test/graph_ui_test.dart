@@ -16,9 +16,7 @@ import 'package:paper_graph/views/graph_view/painters/graph_canvas_painter.dart'
 import 'package:paper_graph/views/graph_view/widgets/graph_bottom_sheet.dart';
 import 'package:paper_graph/views/graph_view/widgets/graph_year_legend.dart';
 
-GraphSnapshot createSampleSnapshot({
-  bool isPartial = false,
-}) {
+GraphSnapshot createSampleSnapshot({bool isPartial = false}) {
   return GraphSnapshot(
     graphId: 'test-graph-101',
     origin: const GraphOrigin(
@@ -34,7 +32,7 @@ GraphSnapshot createSampleSnapshot({
               code: 'PROVIDER_TIMEOUT',
               message: 'Crossref provider timed out; partial completeness.',
               severity: 'warning',
-            )
+            ),
           ]
         : const [],
     nodes: [
@@ -51,14 +49,21 @@ GraphSnapshot createSampleSnapshot({
         finalScore: 1.0,
         confidence: ConfidenceLevel.high,
         scores: {
-          'wbc': MetricResult(value: 0.95, availability: MetricAvailability.available),
-          'ncc': MetricResult(value: 0.90, availability: MetricAvailability.available),
+          'wbc': MetricResult(
+            value: 0.95,
+            availability: MetricAvailability.available,
+          ),
+          'ncc': MetricResult(
+            value: 0.90,
+            availability: MetricAvailability.available,
+          ),
         },
       ),
       const GraphNode(
         id: 'n-prior',
         canonicalId: 'prior-paper-1',
-        title: 'Neural Machine Translation by Jointly Learning to Align and Translate',
+        title:
+            'Neural Machine Translation by Jointly Learning to Align and Translate',
         year: 2014,
         citationCount: 28000,
         x: 850.0,
@@ -67,15 +72,25 @@ GraphSnapshot createSampleSnapshot({
         finalScore: 0.88,
         confidence: ConfidenceLevel.high,
         scores: {
-          'prior_score': MetricResult(value: 0.92, availability: MetricAvailability.available),
-          'wbc': MetricResult(value: 0.82, availability: MetricAvailability.available),
-          'ncc': MetricResult(value: 0.78, availability: MetricAvailability.available),
+          'prior_score': MetricResult(
+            value: 0.92,
+            availability: MetricAvailability.available,
+          ),
+          'wbc': MetricResult(
+            value: 0.82,
+            availability: MetricAvailability.available,
+          ),
+          'ncc': MetricResult(
+            value: 0.78,
+            availability: MetricAvailability.available,
+          ),
         },
       ),
       const GraphNode(
         id: 'n-deriv',
         canonicalId: 'deriv-paper-1',
-        title: 'BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding',
+        title:
+            'BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding',
         year: 2018,
         citationCount: 75000,
         x: 1150.0,
@@ -84,9 +99,18 @@ GraphSnapshot createSampleSnapshot({
         finalScore: 0.94,
         confidence: ConfidenceLevel.high,
         scores: {
-          'derivative_score': MetricResult(value: 0.96, availability: MetricAvailability.available),
-          'wbc': MetricResult(value: 0.89, availability: MetricAvailability.available),
-          'ncc': MetricResult(value: 0.85, availability: MetricAvailability.available),
+          'derivative_score': MetricResult(
+            value: 0.96,
+            availability: MetricAvailability.available,
+          ),
+          'wbc': MetricResult(
+            value: 0.89,
+            availability: MetricAvailability.available,
+          ),
+          'ncc': MetricResult(
+            value: 0.85,
+            availability: MetricAvailability.available,
+          ),
         },
       ),
       const GraphNode(
@@ -149,11 +173,13 @@ Widget createTestGraphApp({
         builder: (context) => Directionality(
           textDirection: direction,
           child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(textScale),
-            ),
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
             child: ConnectedGraphView(
-              initialSnapshot: graphState is GraphLoaded ? graphState.snapshot : null,
+              initialSnapshot: graphState is GraphLoaded
+                  ? graphState.snapshot
+                  : null,
             ),
           ),
         ),
@@ -163,7 +189,6 @@ Widget createTestGraphApp({
 }
 
 void main() {
-
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ConnectionReasonHelper evidence tests', () {
@@ -180,11 +205,15 @@ void main() {
       );
 
       expect(citedByStart.title, 'Cited by the starting paper');
-      expect(citedByStart.evidence.single.value,
-          'The starting paper cites this paper');
+      expect(
+        citedByStart.evidence.single.value,
+        'The starting paper cites this paper',
+      );
       expect(citesStart.title, 'Cites the starting paper');
-      expect(citesStart.evidence.single.value,
-          'This paper cites the starting paper');
+      expect(
+        citesStart.evidence.single.value,
+        'This paper cites the starting paper',
+      );
     });
 
     test('shows the similarity value supplied by the graph snapshot', () {
@@ -218,8 +247,9 @@ void main() {
       expect(explanation.description, contains('No direct citation'));
     });
 
-    testWidgets('distinguishes a real zero score from missing data',
-        (tester) async {
+    testWidgets('distinguishes a real zero score from missing data', (
+      tester,
+    ) async {
       final snapshot = createSampleSnapshot();
       const node = GraphNode(
         id: 'metric-test',
@@ -232,9 +262,7 @@ void main() {
             value: 0,
             availability: MetricAvailability.available,
           ),
-          'ncc': MetricResult(
-            availability: MetricAvailability.unavailable,
-          ),
+          'ncc': MetricResult(availability: MetricAvailability.unavailable),
         },
       );
 
@@ -278,25 +306,33 @@ void main() {
       expect(maxYear, equals(2020));
     });
 
-    test('getNodeColor produces gradient transition from older to newer years', () {
-      final snapshot = createSampleSnapshot();
-      final painter = GraphCanvasPainter(
-        nodes: snapshot.nodes,
-        citationEdges: snapshot.citationEdges,
-        similarityEdges: snapshot.similarityEdges,
-      );
+    test(
+      'getNodeColor produces gradient transition from older to newer years',
+      () {
+        final snapshot = createSampleSnapshot();
+        final painter = GraphCanvasPainter(
+          nodes: snapshot.nodes,
+          citationEdges: snapshot.citationEdges,
+          similarityEdges: snapshot.similarityEdges,
+        );
 
-      final olderColor = painter.getNodeColor(2014);
-      final newerColor = painter.getNodeColor(2020);
+        final olderColor = painter.getNodeColor(2014);
+        final newerColor = painter.getNodeColor(2020);
 
-      expect(olderColor, isNot(equals(newerColor)));
-      // Transition from older muted slate to newer crisp foreground
-      expect(olderColor.computeLuminance(), isNot(equals(newerColor.computeLuminance())));
-    });
+        expect(olderColor, isNot(equals(newerColor)));
+        // Transition from older muted slate to newer crisp foreground
+        expect(
+          olderColor.computeLuminance(),
+          isNot(equals(newerColor.computeLuminance())),
+        );
+      },
+    );
   });
 
   group('GraphYearLegend Widget Tests', () {
-    testWidgets('renders year bounds and both edge type indicators', (tester) async {
+    testWidgets('renders year bounds and both edge type indicators', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -314,7 +350,9 @@ void main() {
   });
 
   group('GraphBottomSheet 4-Tab Navigation Tests', () {
-    testWidgets('renders all 4 tabs and displays paper details', (tester) async {
+    testWidgets('renders all 4 tabs and displays paper details', (
+      tester,
+    ) async {
       final snapshot = createSampleSnapshot();
       GraphNode? selectedNode = snapshot.nodes.first;
 
@@ -348,18 +386,12 @@ void main() {
       // Switch to Earlier works tab
       await tester.tap(find.text('Earlier works'));
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('Neural Machine Translation'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Neural Machine Translation'), findsOneWidget);
 
       // Switch to Later works tab
       await tester.tap(find.text('Later works'));
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('BERT: Pre-training'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('BERT: Pre-training'), findsOneWidget);
 
       // Switch to All papers tab
       await tester.tap(find.text('All papers'));
@@ -370,19 +402,22 @@ void main() {
       // Test paper list filtering
       await tester.enterText(find.byType(TextField), 'GPT-3');
       await tester.pumpAndSettle();
-      expect(find.text('Language Models are Few-Shot Learners (GPT-3)'), findsOneWidget);
+      expect(
+        find.text('Language Models are Few-Shot Learners (GPT-3)'),
+        findsOneWidget,
+      );
       expect(find.textContaining('BERT'), findsNothing);
     });
   });
 
   group('ConnectedGraphView Lifecycle & Interaction Tests', () {
-    testWidgets('renders interactive canvas and year legend in loaded state', (tester) async {
+    testWidgets('renders interactive canvas and year legend in loaded state', (
+      tester,
+    ) async {
       final snapshot = createSampleSnapshot();
 
       await tester.pumpWidget(
-        createTestGraphApp(
-          graphState: GraphLoaded(snapshot: snapshot),
-        ),
+        createTestGraphApp(graphState: GraphLoaded(snapshot: snapshot)),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -392,44 +427,46 @@ void main() {
       expect(find.byType(GraphYearLegend), findsOneWidget);
       expect(find.text('Attention Is All You Need'), findsOneWidget);
       expect(
-        find.textContaining(
-          '4 papers · 2 citation links · 1 similarity link',
-        ),
+        find.textContaining('4 papers · 2 citation links · 1 similarity link'),
         findsOneWidget,
       );
     });
 
-    testWidgets('displays partial graph warning banner when isPartial is true', (tester) async {
-      final partialSnapshot = createSampleSnapshot(isPartial: true);
+    testWidgets(
+      'displays partial graph warning banner when isPartial is true',
+      (tester) async {
+        final partialSnapshot = createSampleSnapshot(isPartial: true);
 
-      await tester.pumpWidget(
-        createTestGraphApp(
-          graphState: GraphLoaded(
-            snapshot: partialSnapshot,
-            isPartial: true,
-            warnings: partialSnapshot.warnings,
+        await tester.pumpWidget(
+          createTestGraphApp(
+            graphState: GraphLoaded(
+              snapshot: partialSnapshot,
+              isPartial: true,
+              warnings: partialSnapshot.warnings,
+            ),
           ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-      expect(
-        find.textContaining('Crossref provider timed out; partial completeness.'),
-        findsOneWidget,
-      );
-    });
+        expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+        expect(
+          find.textContaining(
+            'Crossref provider timed out; partial completeness.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
 
-    testWidgets('displays offline cached badge when fromOfflineCache is true', (tester) async {
+    testWidgets('displays offline cached badge when fromOfflineCache is true', (
+      tester,
+    ) async {
       final snapshot = createSampleSnapshot();
 
       await tester.pumpWidget(
         createTestGraphApp(
-          graphState: GraphLoaded(
-            snapshot: snapshot,
-            fromOfflineCache: true,
-          ),
+          graphState: GraphLoaded(snapshot: snapshot, fromOfflineCache: true),
         ),
       );
       await tester.pump();
@@ -439,13 +476,13 @@ void main() {
       expect(find.text('Available offline'), findsOneWidget);
     });
 
-    testWidgets('toggles bottom sheet details visibility via floating button', (tester) async {
+    testWidgets('toggles bottom sheet details visibility via floating button', (
+      tester,
+    ) async {
       final snapshot = createSampleSnapshot();
 
       await tester.pumpWidget(
-        createTestGraphApp(
-          graphState: GraphLoaded(snapshot: snapshot),
-        ),
+        createTestGraphApp(graphState: GraphLoaded(snapshot: snapshot)),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -469,7 +506,9 @@ void main() {
   });
 
   group('Arabic RTL & Small Screen Responsiveness Tests', () {
-    testWidgets('renders Arabic RTL directionality without overflow', (tester) async {
+    testWidgets('renders Arabic RTL directionality without overflow', (
+      tester,
+    ) async {
       final snapshot = createSampleSnapshot();
 
       await tester.pumpWidget(
@@ -485,7 +524,9 @@ void main() {
       expect(find.byType(InteractiveViewer), findsOneWidget);
     });
 
-    testWidgets('renders on compact small screen (320x568) without overflow', (tester) async {
+    testWidgets('renders on compact small screen (320x568) without overflow', (
+      tester,
+    ) async {
       final snapshot = createSampleSnapshot();
 
       tester.view.physicalSize = const Size(320, 568);
@@ -494,9 +535,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
-        createTestGraphApp(
-          graphState: GraphLoaded(snapshot: snapshot),
-        ),
+        createTestGraphApp(graphState: GraphLoaded(snapshot: snapshot)),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -505,20 +544,23 @@ void main() {
       expect(find.byType(InteractiveViewer), findsOneWidget);
     });
 
-    testWidgets('renders with 2.0x large accessibility text scaling without overflow', (tester) async {
-      final snapshot = createSampleSnapshot();
+    testWidgets(
+      'renders with 2.0x large accessibility text scaling without overflow',
+      (tester) async {
+        final snapshot = createSampleSnapshot();
 
-      await tester.pumpWidget(
-        createTestGraphApp(
-          graphState: GraphLoaded(snapshot: snapshot),
-          textScale: 2.0,
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpWidget(
+          createTestGraphApp(
+            graphState: GraphLoaded(snapshot: snapshot),
+            textScale: 2.0,
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      expect(tester.takeException(), isNull);
-      expect(find.byType(InteractiveViewer), findsOneWidget);
-    });
+        expect(tester.takeException(), isNull);
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+      },
+    );
   });
 }

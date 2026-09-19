@@ -9,11 +9,7 @@ enum NotificationType {
   String get label => name.toUpperCase();
 }
 
-enum NotificationCategory {
-  general,
-  graphReady,
-  researchUpdate,
-}
+enum NotificationCategory { general, graphReady, researchUpdate }
 
 @immutable
 class InAppNotification {

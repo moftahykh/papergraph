@@ -141,9 +141,7 @@ class AppTheme {
         elevation: 0,
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: Colors.white,
-        ),
+        style: TextButton.styleFrom(foregroundColor: Colors.white),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -231,9 +229,7 @@ class AppTheme {
         elevation: 0,
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF18181B),
-        ),
+        style: TextButton.styleFrom(foregroundColor: const Color(0xFF18181B)),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {

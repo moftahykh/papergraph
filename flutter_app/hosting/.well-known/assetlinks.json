@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.papergraph.paper_graph",
+      "sha256_cert_fingerprints": [
+        "60:E8:B6:18:CC:63:F1:79:CE:BF:E8:7E:98:D8:74:E6:A6:71:61:08:5F:52:DB:09:0D:C0:91:56:BB:2B:BB:24"
+      ]
+    }
+  }
+]

@@ -36,19 +36,23 @@ class GraphFloatingControls extends StatelessWidget {
     Color? iconColor,
     bool highlight = false,
   }) {
-    final activeColor = iconColor ?? (isDark ? AppTheme.darkTextPrimary : const Color(0xFF1E293B));
+    final activeColor =
+        iconColor ??
+        (isDark ? AppTheme.darkTextPrimary : const Color(0xFF1E293B));
 
     return Tooltip(
       message: tooltip,
       preferBelow: false,
       child: Material(
         color: highlight
-            ? (isDark ? AppTheme.actionPurple.withAlpha(40) : const Color(0xFFEEF2FF))
+            ? (isDark
+                  ? AppTheme.actionPurple.withAlpha(40)
+                  : const Color(0xFFEEF2FF))
             : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onPressed,
-        borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
           child: SizedBox(
             width: 46,
             height: 46,
@@ -71,7 +75,9 @@ class GraphFloatingControls extends StatelessWidget {
         ? AppTheme.darkCard.withValues(alpha: 0.94)
         : Colors.white.withValues(alpha: 0.96);
     final borderColor = isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0);
-    final dividerColor = isDark ? AppTheme.darkBorder.withAlpha(120) : const Color(0xFFE2E8F0);
+    final dividerColor = isDark
+        ? AppTheme.darkBorder.withAlpha(120)
+        : const Color(0xFFE2E8F0);
 
     return Container(
       decoration: BoxDecoration(
@@ -114,7 +120,9 @@ class GraphFloatingControls extends StatelessWidget {
           // Focus Selected Node or Reset
           _buildControlButton(
             icon: Icons.center_focus_strong_rounded,
-            tooltip: hasSelectedNode ? 'Focus on Selected Paper' : 'Reset View & Center',
+            tooltip: hasSelectedNode
+                ? 'Focus on Selected Paper'
+                : 'Reset View & Center',
             highlight: hasSelectedNode,
             onPressed: hasSelectedNode && onFocusSelected != null
                 ? onFocusSelected!

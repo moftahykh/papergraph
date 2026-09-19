@@ -19,13 +19,7 @@ class ResearchMonitoringCubit extends Cubit<ResearchMonitoringState> {
   final String localGraphId;
 
   Future<void> load() async {
-    emit(
-      state.copyWith(
-        isLoading: true,
-        clearError: true,
-        updates: const [],
-      ),
-    );
+    emit(state.copyWith(isLoading: true, clearError: true, updates: const []));
     try {
       final graphs = await _apiClient.listMonitoredGraphs();
       MonitoredGraphSummary? monitoring;
@@ -57,12 +51,7 @@ class ResearchMonitoringCubit extends Cubit<ResearchMonitoringState> {
         ),
       );
     } on ApiException catch (error) {
-      emit(
-        state.copyWith(
-          isLoading: false,
-          errorMessage: error.message,
-        ),
-      );
+      emit(state.copyWith(isLoading: false, errorMessage: error.message));
     } catch (_) {
       emit(
         state.copyWith(
@@ -179,7 +168,8 @@ class ResearchMonitoringCubit extends Cubit<ResearchMonitoringState> {
       emit(
         state.copyWith(
           isActing: false,
-          errorMessage: 'Added to this device, but sync is pending: ${error.message}',
+          errorMessage:
+              'Added to this device, but sync is pending: ${error.message}',
         ),
       );
       return true;

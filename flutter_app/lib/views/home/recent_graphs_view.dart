@@ -43,7 +43,9 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
             size: 19,
-            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+            color: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.lightTextPrimary,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -51,7 +53,9 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
           'Recent Graphs',
           style: AppTheme.brandTitleStyle(
             fontSize: 28,
-            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+            color: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.lightTextPrimary,
           ),
         ),
       ),
@@ -100,13 +104,17 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                        color: isDark
+                            ? AppTheme.darkBorder
+                            : AppTheme.lightBorder,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                        color: isDark
+                            ? AppTheme.darkBorder
+                            : AppTheme.lightBorder,
                       ),
                     ),
                   ),
@@ -121,7 +129,8 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final graph = filtered[index];
-                          final isSaved = state is LibraryLoaded &&
+                          final isSaved =
+                              state is LibraryLoaded &&
                               state.isGraphCached(graph.graphId);
                           return _buildGraphCard(
                             context,
@@ -191,14 +200,15 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
         ? const Color(0xFF10B981)
         : const Color(0xFFF59E0B);
 
-    final originNode = graph.nodes.where((n) => n.isOrigin).firstOrNull ??
+    final originNode =
+        graph.nodes.where((n) => n.isOrigin).firstOrNull ??
         (graph.nodes.isNotEmpty ? graph.nodes.first : null);
     final authorsText = originNode != null && originNode.authors.isNotEmpty
         ? originNode.authors.take(3).join(', ') +
-            (originNode.authors.length > 3 ? ' et al.' : '')
+              (originNode.authors.length > 3 ? ' et al.' : '')
         : (originNode?.venue != null && originNode!.venue!.isNotEmpty
-            ? originNode.venue!
-            : null);
+              ? originNode.venue!
+              : null);
 
     return Material(
       color: isDark ? AppTheme.darkCard : Colors.white,
@@ -292,14 +302,8 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                       runSpacing: 4,
                       children: [
                         if (year != null)
-                          _buildPillBadge(
-                            text: year,
-                            isDark: isDark,
-                          ),
-                        _buildPillBadge(
-                          text: paperCount,
-                          isDark: isDark,
-                        ),
+                          _buildPillBadge(text: year, isDark: isDark),
+                        _buildPillBadge(text: paperCount, isDark: isDark),
                         _buildPillBadge(
                           text: statusText,
                           textColor: statusColor,
@@ -348,9 +352,9 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                 color: isDark ? AppTheme.darkCard : Colors.white,
                 onSelected: (action) async {
                   if (action == 'delete') {
-                    await context
-                        .read<LibraryCubit>()
-                        .removeCachedGraph(graph.graphId);
+                    await context.read<LibraryCubit>().removeCachedGraph(
+                      graph.graphId,
+                    );
                   }
                 },
                 itemBuilder: (_) => [
@@ -394,11 +398,13 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: bgColor ??
+        color:
+            bgColor ??
             (isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7)),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: borderColor ??
+          color:
+              borderColor ??
               (isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA)),
           width: 0.5,
         ),
@@ -409,7 +415,8 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
           fontSize: 10.5,
           fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
           letterSpacing: isBold ? 0.3 : 0,
-          color: textColor ??
+          color:
+              textColor ??
               (isDark ? const Color(0xFFD4D4D8) : const Color(0xFF52525B)),
         ),
       ),

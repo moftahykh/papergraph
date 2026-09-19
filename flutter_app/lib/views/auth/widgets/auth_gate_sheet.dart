@@ -66,9 +66,7 @@ class AuthGateBottomSheet extends StatelessWidget {
                   width: 1.2,
                 ),
               ),
-              child: Center(
-                child: PaperGraphMark(size: 44, isDark: isDark),
-              ),
+              child: Center(child: PaperGraphMark(size: 44, isDark: isDark)),
             ),
             const SizedBox(height: 20),
 
@@ -154,8 +152,12 @@ class AuthGateBottomSheet extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
-                  foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+                  backgroundColor: isDark
+                      ? Colors.white
+                      : const Color(0xFF18181B),
+                  foregroundColor: isDark
+                      ? const Color(0xFF09090B)
+                      : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -214,7 +216,8 @@ class AuthGateBottomSheet extends StatelessWidget {
     required String text,
     required bool isDark,
   }) {
-    final iconColor = color ?? (isDark ? Colors.white : const Color(0xFF18181B));
+    final iconColor =
+        color ?? (isDark ? Colors.white : const Color(0xFF18181B));
     return Row(
       children: [
         customIcon ?? Icon(icon, size: 18, color: iconColor),

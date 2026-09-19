@@ -1,1 +1,49 @@
-{"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"papergraph-cb9c3","configurations":{"android":"1:840270607951:android:4b416bd12907634f8bdc3a","ios":"1:840270607951:ios:10d2dbe86f6562498bdc3a"}}},"android":{"default":{"projectId":"papergraph-cb9c3","appId":"1:840270607951:android:4b416bd12907634f8bdc3a","fileOutput":"android/app/google-services.json"}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "papergraph-cb9c3",
+          "configurations": {
+            "android": "1:840270607951:android:4b416bd12907634f8bdc3a",
+            "ios": "1:840270607951:ios:10d2dbe86f6562498bdc3a"
+          }
+        }
+      },
+      "android": {
+        "default": {
+          "projectId": "papergraph-cb9c3",
+          "appId": "1:840270607951:android:4b416bd12907634f8bdc3a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "hosting",
+    "ignore": [
+      "firebase.json",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ]
+  }
+}

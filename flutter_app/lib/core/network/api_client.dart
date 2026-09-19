@@ -204,7 +204,9 @@ class PaperGraphApiClient {
     }
 
     if (papers.isEmpty) {
-      throw const ApiException('The graph has no identifiable papers to monitor.');
+      throw const ApiException(
+        'The graph has no identifiable papers to monitor.',
+      );
     }
 
     try {
@@ -262,9 +264,8 @@ class PaperGraphApiClient {
       final data = response.data as List<dynamic>? ?? const [];
       return data
           .map(
-            (item) => ResearchUpdate.fromJson(
-              Map<String, dynamic>.from(item as Map),
-            ),
+            (item) =>
+                ResearchUpdate.fromJson(Map<String, dynamic>.from(item as Map)),
           )
           .toList();
     } on DioException catch (e) {

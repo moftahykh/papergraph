@@ -80,24 +80,20 @@ class GraphCanvasPainter extends CustomPainter {
 
   /// Color mapping by publication year (Refined monochrome/slate tonal ramp)
   Color getNodeColor(int? year) {
-    if (year == null) return isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
-    if (maxYear == minYear) return isDark ? const Color(0xFFF4F4F5) : const Color(0xFF18181B);
+    if (year == null) {
+      return isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
+    }
+    if (maxYear == minYear) {
+      return isDark ? const Color(0xFFF4F4F5) : const Color(0xFF18181B);
+    }
 
     final t = ((year - minYear) / (maxYear - minYear)).clamp(0.0, 1.0);
     if (isDark) {
       // Dark mode: Older (slate-600) -> Newer (zinc-100 crisp white)
-      return Color.lerp(
-        const Color(0xFF52525B),
-        const Color(0xFFF4F4F5),
-        t,
-      )!;
+      return Color.lerp(const Color(0xFF52525B), const Color(0xFFF4F4F5), t)!;
     } else {
       // Light mode: Older (slate-400 silver) -> Newer (zinc-900 deep ink)
-      return Color.lerp(
-        const Color(0xFF94A3B8),
-        const Color(0xFF18181B),
-        t,
-      )!;
+      return Color.lerp(const Color(0xFF94A3B8), const Color(0xFF18181B), t)!;
     }
   }
 
@@ -357,8 +353,9 @@ class GraphCanvasPainter extends CustomPainter {
       // 1. Origin Node Architectural Outer Ring (mirrors the PaperGraph mark)
       if (node.isOrigin) {
         final originRingPaint = Paint()
-          ..color = (isDark ? Colors.white : const Color(0xFF18181B))
-              .withAlpha(isDimmed ? 60 : 180)
+          ..color = (isDark ? Colors.white : const Color(0xFF18181B)).withAlpha(
+            isDimmed ? 60 : 180,
+          )
           ..strokeWidth = 2.0
           ..style = PaintingStyle.stroke;
         canvas.drawCircle(pos, radius + 6.0, originRingPaint);
@@ -549,11 +546,11 @@ class GraphCanvasPainter extends CustomPainter {
 
       final pillColor = isDark
           ? (isSelected
-              ? AppTheme.darkCard
-              : (node.isOrigin ? AppTheme.darkSurface : AppTheme.darkBg))
+                ? AppTheme.darkCard
+                : (node.isOrigin ? AppTheme.darkSurface : AppTheme.darkBg))
           : (isSelected
-              ? const Color(0xFFF4F4F5)
-              : (node.isOrigin ? const Color(0xFFF4F4F5) : Colors.white));
+                ? const Color(0xFFF4F4F5)
+                : (node.isOrigin ? const Color(0xFFF4F4F5) : Colors.white));
 
       final borderPillColor = isDark
           ? (isSelected ? Colors.white : AppTheme.darkBorder)

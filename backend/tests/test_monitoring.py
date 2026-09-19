@@ -83,7 +83,7 @@ async def client():
 # 1. Unauthenticated requests are rejected
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_unauthenticated_monitoring_request_rejected(client):
     """Without an override or token, monitoring routes must reject the request."""
     app.dependency_overrides.pop(get_required_auth_user, None)
@@ -96,7 +96,7 @@ async def test_unauthenticated_monitoring_request_rejected(client):
 # 2. Create monitored graph
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_create_monitored_graph(client):
     """POST /monitoring/graphs returns 201 with correct fields."""
     _set_user("alice-create")
@@ -119,7 +119,7 @@ async def test_create_monitored_graph(client):
 # 3. List only the current user's graphs
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_only_current_user_graphs(client):
     """Each user sees only their own monitored graphs."""
     # Alice creates a graph
@@ -163,7 +163,7 @@ async def test_list_only_current_user_graphs(client):
 # 4. Pause monitoring
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_pause_monitoring(client):
     """PATCH with status=paused sets the graph to paused."""
     _set_user("alice-pause")
@@ -187,7 +187,7 @@ async def test_pause_monitoring(client):
 # 5. Resume monitoring
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resume_monitoring(client):
     """PATCH with status=active resumes a paused graph."""
     _set_user("alice-resume")
@@ -215,7 +215,7 @@ async def test_resume_monitoring(client):
 # 6. Update frequency
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_update_frequency(client):
     """PATCH with frequency=weekly changes the check cadence."""
     _set_user("alice-freq")
@@ -239,7 +239,7 @@ async def test_update_frequency(client):
 # 7. List research updates (empty baseline)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_research_updates_empty(client):
     """GET updates for a new graph returns an empty list."""
     _set_user("alice-updates")
@@ -261,7 +261,7 @@ async def test_list_research_updates_empty(client):
 # 8. Delete monitoring
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_delete_monitoring(client):
     """DELETE returns 204 and the graph is no longer listed."""
     _set_user("alice-del")
@@ -285,7 +285,7 @@ async def test_delete_monitoring(client):
 # 9. Device-token registration and deactivation
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_device_token_register_and_deactivate(client):
     """POST then DELETE /device-token both return 204."""
     _set_user("alice-device")
@@ -304,7 +304,7 @@ async def test_device_token_register_and_deactivate(client):
 # 10. Ownership isolation between two users
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_ownership_isolation_between_users(client):
     """User B cannot PATCH or DELETE User A's monitored graph."""
     # Alice creates

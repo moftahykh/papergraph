@@ -71,51 +71,54 @@ void main() {
       expect(state.unreadCount, 1);
     });
 
-    test('adding an update creates one node and preserves the existing graph', () {
-      final origin = const GraphNode(
-        id: 'doi:10.1000/origin',
-        canonicalId: 'doi:10.1000/origin',
-        title: 'Origin paper',
-        isOrigin: true,
-        x: 0,
-        y: 0,
-      );
-      final snapshot = GraphSnapshot(
-        graphId: 'graph_1',
-        origin: const GraphOrigin(
+    test(
+      'adding an update creates one node and preserves the existing graph',
+      () {
+        final origin = const GraphNode(
           id: 'doi:10.1000/origin',
           canonicalId: 'doi:10.1000/origin',
           title: 'Origin paper',
-          doi: '10.1000/origin',
-        ),
-        status: GraphJobStatus.completed,
-        nodes: [origin],
-        createdAt: DateTime.utc(2026, 9, 18),
-      );
-      final update = ResearchUpdate(
-        id: 'update_1',
-        monitoredGraphId: 'monitor_1',
-        canonicalPaperId: 'doi:10.1000/new',
-        doi: '10.1000/new',
-        title: 'New citation',
-        relevanceScore: 0.95,
-        relationType: 'direct_citation',
-        explanation: 'Cites the origin.',
-        detectedAt: DateTime.utc(2026, 9, 18),
-      );
+          isOrigin: true,
+          x: 0,
+          y: 0,
+        );
+        final snapshot = GraphSnapshot(
+          graphId: 'graph_1',
+          origin: const GraphOrigin(
+            id: 'doi:10.1000/origin',
+            canonicalId: 'doi:10.1000/origin',
+            title: 'Origin paper',
+            doi: '10.1000/origin',
+          ),
+          status: GraphJobStatus.completed,
+          nodes: [origin],
+          createdAt: DateTime.utc(2026, 9, 18),
+        );
+        final update = ResearchUpdate(
+          id: 'update_1',
+          monitoredGraphId: 'monitor_1',
+          canonicalPaperId: 'doi:10.1000/new',
+          doi: '10.1000/new',
+          title: 'New citation',
+          relevanceScore: 0.95,
+          relationType: 'direct_citation',
+          explanation: 'Cites the origin.',
+          detectedAt: DateTime.utc(2026, 9, 18),
+        );
 
-      final updated = ResearchUpdateGraphService.addToSnapshot(
-        snapshot,
-        update,
-      );
+        final updated = ResearchUpdateGraphService.addToSnapshot(
+          snapshot,
+          update,
+        );
 
-      expect(updated.nodes, hasLength(2));
-      expect(updated.nodes.last.canonicalId, 'doi:10.1000/new');
-      expect(updated.nodes.first.x, 0);
-      expect(updated.nodes.first.y, 0);
-      expect(updated.citationEdges, hasLength(1));
-      expect(updated.citationEdges.single.source, 'doi:10.1000/new');
-    });
+        expect(updated.nodes, hasLength(2));
+        expect(updated.nodes.last.canonicalId, 'doi:10.1000/new');
+        expect(updated.nodes.first.x, 0);
+        expect(updated.nodes.first.y, 0);
+        expect(updated.citationEdges, hasLength(1));
+        expect(updated.citationEdges.single.source, 'doi:10.1000/new');
+      },
+    );
 
     test('adding the same update twice does not duplicate the node', () {
       final snapshot = GraphSnapshot(
@@ -155,19 +158,25 @@ void main() {
       expect(twice.similarityEdges, hasLength(1));
     });
 
-    test('formats structured abstracts without breaking scientific notation', () {
-      final sections = parseAbstractSections(
-        'SUMMARY\n\nBACKGROUND\nThis study compared lung function.\n'
-        'METHODS\nMeasurements included FEV\n1 and FVC.',
-      );
+    test(
+      'formats structured abstracts without breaking scientific notation',
+      () {
+        final sections = parseAbstractSections(
+          'SUMMARY\n\nBACKGROUND\nThis study compared lung function.\n'
+          'METHODS\nMeasurements included FEV\n1 and FVC.',
+        );
 
-      expect(sections.map((section) => section.heading), [
-        'Background',
-        'Methods',
-      ]);
-      expect(sections.last.body, contains('FEV₁'));
-      expect(sections.last.body, isNot(contains('\n')));
-      expect(abstractPreview(sections.last.body, maxCharacters: 10), endsWith('…'));
-    });
+        expect(sections.map((section) => section.heading), [
+          'Background',
+          'Methods',
+        ]);
+        expect(sections.last.body, contains('FEV₁'));
+        expect(sections.last.body, isNot(contains('\n')));
+        expect(
+          abstractPreview(sections.last.body, maxCharacters: 10),
+          endsWith('…'),
+        );
+      },
+    );
   });
 }

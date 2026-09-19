@@ -144,10 +144,7 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
     }
   }
 
-  Future<void> _confirmAdd(
-    BuildContext context,
-    ResearchUpdate update,
-  ) async {
+  Future<void> _confirmAdd(BuildContext context, ResearchUpdate update) async {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
@@ -163,11 +160,7 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              Text(
-                update.title,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+              Text(update.title, maxLines: 3, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 10),
               const Text(
                 'PaperGraph will add one node, preserve the current layout, '
@@ -200,9 +193,9 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
     );
     if (confirmed != true || !context.mounted) return;
 
-    final added = await context
-        .read<ResearchMonitoringCubit>()
-        .addToGraph(update);
+    final added = await context.read<ResearchMonitoringCubit>().addToGraph(
+      update,
+    );
     if (!context.mounted || !added) return;
 
     final snapshot = context.read<LibraryCubit>().getCachedGraph(
@@ -355,11 +348,9 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
       doi: update.doi ?? '',
       keyTakeaways: const [],
     );
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PaperDetailsView(paper: paper),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => PaperDetailsView(paper: paper)));
   }
 
   Future<void> _confirmStop(BuildContext context) async {
@@ -390,7 +381,6 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
       if (stopped && context.mounted) Navigator.pop(context);
     }
   }
-
 }
 
 class _UpdateDetailsActions extends StatelessWidget {
@@ -438,11 +428,7 @@ class _UpdateDetailsActions extends StatelessWidget {
             if (compact) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  openButton,
-                  const SizedBox(height: 8),
-                  addButton,
-                ],
+                children: [openButton, const SizedBox(height: 8), addButton],
               );
             }
 
@@ -567,8 +553,7 @@ class _MonitoringHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (unreadCount > 0)
-                  _CountBadge(count: unreadCount),
+                if (unreadCount > 0) _CountBadge(count: unreadCount),
               ],
             ),
             const SizedBox(height: 14),
@@ -591,9 +576,7 @@ class _MonitoringHeader extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: isActing ? null : onPauseResume,
                     icon: Icon(
-                      isPaused
-                          ? Icons.play_arrow_rounded
-                          : Icons.pause_rounded,
+                      isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
                       size: 18,
                     ),
                     label: Text(isPaused ? 'Resume' : 'Pause'),
@@ -698,10 +681,7 @@ class _ResearchUpdateCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             border: Border(
-              left: BorderSide(
-                color: accent,
-                width: update.isRead ? 2 : 4,
-              ),
+              left: BorderSide(color: accent, width: update.isRead ? 2 : 4),
             ),
           ),
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
@@ -958,11 +938,7 @@ class _EmptyUpdatesView extends StatelessWidget {
                 ? 'We will show an update here when the scanner finds research connected to this graph.'
                 : 'There are no $filterLabel updates to show right now.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: secondary,
-              fontSize: 13,
-              height: 1.45,
-            ),
+            style: TextStyle(color: secondary, fontSize: 13, height: 1.45),
           ),
         ],
       ),

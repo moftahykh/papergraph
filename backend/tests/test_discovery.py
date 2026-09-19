@@ -41,7 +41,14 @@ def test_discovery_schemas_serialization():
 
 
 def test_discovery_migration_revision_chain():
-    migration_mod = importlib.import_module("alembic.versions.0003_discovery")
+    import importlib.util
+    from pathlib import Path
+
+    file_path = Path(__file__).parent.parent / "alembic" / "versions" / "0003_discovery.py"
+    spec = importlib.util.spec_from_file_location("0003_discovery", file_path)
+    migration_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration_mod)
+
     assert migration_mod.revision == "0003_discovery"
     assert migration_mod.down_revision == "0002_monitoring_scan_claim"
 

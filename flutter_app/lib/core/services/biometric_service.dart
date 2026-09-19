@@ -36,7 +36,9 @@ class BiometricService {
             'Please authenticate with your fingerprint or face to access PaperGraph',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true,
+          // Keep the device passcode/PIN fallback so users cannot be locked
+          // out after a biometric enrollment change or temporary sensor issue.
+          biometricOnly: false,
           useErrorDialogs: true,
         ),
       );

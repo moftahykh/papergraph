@@ -85,9 +85,7 @@ void main() {
         BlocProvider<NotificationCubit>.value(
           value: notificationCubit ?? NotificationCubit(),
         ),
-        BlocProvider<GraphCubit>.value(
-          value: graphCubit ?? GraphCubit(),
-        ),
+        BlocProvider<GraphCubit>.value(value: graphCubit ?? GraphCubit()),
       ],
       child: MultiProvider(
         providers: [
@@ -111,45 +109,46 @@ void main() {
   }
 
   group('UI/UX Improvements Verification', () {
-    testWidgets('RecentGraphsView displays recent graphs, search filtering, and library actions', (
-      tester,
-    ) async {
-      final snapshot1 = _mockSnapshot(
-        id: 'graph-1',
-        title: 'Quantum Computing in 2026',
-      );
-      final snapshot2 = _mockSnapshot(
-        id: 'graph-2',
-        title: 'Neural Radiance Fields Review',
-      );
-      final libraryCubit = LibraryCubit.seeded(
-        recentGraphs: [snapshot1, snapshot2],
-      );
+    testWidgets(
+      'RecentGraphsView displays recent graphs, search filtering, and library actions',
+      (tester) async {
+        final snapshot1 = _mockSnapshot(
+          id: 'graph-1',
+          title: 'Quantum Computing in 2026',
+        );
+        final snapshot2 = _mockSnapshot(
+          id: 'graph-2',
+          title: 'Neural Radiance Fields Review',
+        );
+        final libraryCubit = LibraryCubit.seeded(
+          recentGraphs: [snapshot1, snapshot2],
+        );
 
-      await tester.pumpWidget(
-        buildWidgetTree(
-          child: const RecentGraphsView(),
-          libraryCubit: libraryCubit,
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpWidget(
+          buildWidgetTree(
+            child: const RecentGraphsView(),
+            libraryCubit: libraryCubit,
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      // Verify both graphs appear
-      expect(find.text('Recent Graphs'), findsOneWidget);
-      expect(find.text('Quantum Computing in 2026'), findsOneWidget);
-      expect(find.text('Neural Radiance Fields Review'), findsOneWidget);
+        // Verify both graphs appear
+        expect(find.text('Recent Graphs'), findsOneWidget);
+        expect(find.text('Quantum Computing in 2026'), findsOneWidget);
+        expect(find.text('Neural Radiance Fields Review'), findsOneWidget);
 
-      // Search filter
-      await tester.enterText(find.byType(TextField), 'Quantum');
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        // Search filter
+        await tester.enterText(find.byType(TextField), 'Quantum');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Quantum Computing in 2026'), findsOneWidget);
-      expect(find.text('Neural Radiance Fields Review'), findsNothing);
+        expect(find.text('Quantum Computing in 2026'), findsOneWidget);
+        expect(find.text('Neural Radiance Fields Review'), findsNothing);
 
-      await libraryCubit.close();
-    });
+        await libraryCubit.close();
+      },
+    );
 
     testWidgets(
       'Opening cached snapshot provides scoped cubit and does not cancel root background job',

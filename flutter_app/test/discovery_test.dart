@@ -21,10 +21,7 @@ class MockDiscoveryApiClient extends PaperGraphApiClient {
   ApiException? mockException;
   int callCount = 0;
 
-  MockDiscoveryApiClient({
-    this.mockResponse,
-    this.mockException,
-  });
+  MockDiscoveryApiClient({this.mockResponse, this.mockException});
 
   @override
   Future<DiscoveryHomeResponse> getDiscoveryHome({
@@ -102,7 +99,7 @@ void main() {
     test('DiscoveryHomeResponse handles missing recommendation cleanly', () {
       final json = {
         'topics': [
-          {'label': 'Biotech', 'query': 'biotechnology', 'rank': 20}
+          {'label': 'Biotech', 'query': 'biotechnology', 'rank': 20},
         ],
         'recommendation': null,
       };
@@ -149,7 +146,10 @@ void main() {
 
       // 2. Api client throws network error / timeout
       final mockApi = MockDiscoveryApiClient(
-        mockException: const ApiException('Connection timed out', statusCode: 504),
+        mockException: const ApiException(
+          'Connection timed out',
+          statusCode: 504,
+        ),
       );
 
       final cubit = DiscoveryCubit(apiClient: mockApi, listenToAuth: false);
@@ -164,19 +164,22 @@ void main() {
       await cubit.close();
     });
 
-    test('Empty cache plus failed network emits DiscoveryUnavailable', () async {
-      final mockApi = MockDiscoveryApiClient(
-        mockException: const ApiException('Network unreachable'),
-      );
+    test(
+      'Empty cache plus failed network emits DiscoveryUnavailable',
+      () async {
+        final mockApi = MockDiscoveryApiClient(
+          mockException: const ApiException('Network unreachable'),
+        );
 
-      final cubit = DiscoveryCubit(apiClient: mockApi, listenToAuth: false);
-      await cubit.load();
+        final cubit = DiscoveryCubit(apiClient: mockApi, listenToAuth: false);
+        await cubit.load();
 
-      expect(cubit.state, isA<DiscoveryUnavailable>());
-      final unavailable = cubit.state as DiscoveryUnavailable;
-      expect(unavailable.message, 'Network unreachable');
-      await cubit.close();
-    });
+        expect(cubit.state, isA<DiscoveryUnavailable>());
+        final unavailable = cubit.state as DiscoveryUnavailable;
+        expect(unavailable.message, 'Network unreachable');
+        await cubit.close();
+      },
+    );
 
     test('Successful refresh replaces cached topics in Hive', () async {
       await HiveService.saveCachedDiscoveryTopics([
@@ -185,9 +188,7 @@ void main() {
 
       final mockApi = MockDiscoveryApiClient(
         mockResponse: const DiscoveryHomeResponse(
-          topics: [
-            DiscoveryTopic(label: 'New Topic', query: 'new', rank: 1),
-          ],
+          topics: [DiscoveryTopic(label: 'New Topic', query: 'new', rank: 1)],
         ),
       );
 
@@ -209,7 +210,9 @@ void main() {
 
       final mockApi = MockDiscoveryApiClient(
         mockResponse: const DiscoveryHomeResponse(
-          topics: [DiscoveryTopic(label: 'Genetics', query: 'genetics', rank: 1)],
+          topics: [
+            DiscoveryTopic(label: 'Genetics', query: 'genetics', rank: 1),
+          ],
           recommendation: null,
         ),
       );
@@ -256,7 +259,10 @@ void main() {
 
       expect(cubit.state, isA<DiscoveryLoaded>());
       final loadedAfterLogin = cubit.state as DiscoveryLoaded;
-      expect(loadedAfterLogin.recommendation?.title, 'User A Recommended Paper');
+      expect(
+        loadedAfterLogin.recommendation?.title,
+        'User A Recommended Paper',
+      );
       expect(loadedAfterLogin.recommendation?.localGraphId, 'graph_A');
       await cubit.close();
     });
@@ -428,7 +434,10 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.text('New CRISPR Breakthrough in Genomics'), findsOneWidget);
+        expect(
+          find.text('New CRISPR Breakthrough in Genomics'),
+          findsOneWidget,
+        );
 
         // Tap the recommendation action
         await tester.tap(find.text('New CRISPR Breakthrough in Genomics'));
@@ -437,10 +446,14 @@ void main() {
 
         // Verify that ConnectedGraphView was opened with the existing initialSnapshot
         expect(find.byType(ConnectedGraphView), findsOneWidget);
-        final graphView =
-            tester.widget<ConnectedGraphView>(find.byType(ConnectedGraphView));
+        final graphView = tester.widget<ConnectedGraphView>(
+          find.byType(ConnectedGraphView),
+        );
         expect(graphView.initialSnapshot?.graphId, localId);
-        expect(graphView.seedDoi, isNull); // PROVES IT DID NOT GENERATE A NEW GRAPH!
+        expect(
+          graphView.seedDoi,
+          isNull,
+        ); // PROVES IT DID NOT GENERATE A NEW GRAPH!
 
         await libraryCubit.close();
       },
@@ -512,8 +525,9 @@ void main() {
 
         // Verify GraphUpdatesView was opened with localGraphId
         expect(find.byType(GraphUpdatesView), findsOneWidget);
-        final updatesView =
-            tester.widget<GraphUpdatesView>(find.byType(GraphUpdatesView));
+        final updatesView = tester.widget<GraphUpdatesView>(
+          find.byType(GraphUpdatesView),
+        );
         expect(updatesView.localGraphId, localId);
         expect(updatesView.graphTitle, 'Superconductivity Graph');
 

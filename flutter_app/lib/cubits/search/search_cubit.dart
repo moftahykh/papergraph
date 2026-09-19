@@ -15,8 +15,8 @@ class SearchCubit extends Cubit<SearchState> {
   static const Duration debounceDuration = Duration(milliseconds: 350);
 
   SearchCubit({PaperGraphApiClient? apiClient})
-      : _apiClient = apiClient ?? PaperGraphApiClient(),
-        super(const SearchInitial()) {
+    : _apiClient = apiClient ?? PaperGraphApiClient(),
+      super(const SearchInitial()) {
     AuthProvider.addAuthListener(clear);
   }
 

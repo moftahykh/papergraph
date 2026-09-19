@@ -44,10 +44,14 @@ class GraphErrorView extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7),
+                color: isDark
+                    ? const Color(0xFF242426)
+                    : const Color(0xFFF2F2F7),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA),
+                  color: isDark
+                      ? const Color(0x18FFFFFF)
+                      : const Color(0xFFE5E5EA),
                   width: 0.5,
                 ),
               ),
@@ -98,8 +102,12 @@ class GraphErrorView extends StatelessWidget {
                   icon: const Icon(Icons.refresh_rounded, size: 16),
                   label: const Text('Retry'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
-                    foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+                    backgroundColor: isDark
+                        ? Colors.white
+                        : const Color(0xFF18181B),
+                    foregroundColor: isDark
+                        ? const Color(0xFF09090B)
+                        : Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -141,9 +149,7 @@ class GraphEmptyStateView extends StatelessWidget {
                 color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
               ),
             ),
-            child: Center(
-              child: PaperGraphMark(size: 56, isDark: isDark),
-            ),
+            child: Center(child: PaperGraphMark(size: 56, isDark: isDark)),
           ),
           const SizedBox(height: 20),
           Text(

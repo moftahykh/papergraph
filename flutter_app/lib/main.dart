@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/local_notification_service.dart';
 import 'core/services/fcm_notification_service.dart';
+import 'core/services/password_reset_link_service.dart';
 import 'core/theme/app_theme.dart';
 import 'cubits/graph/graph_cubit.dart';
 import 'cubits/graph/graph_state.dart';
@@ -21,6 +24,7 @@ import 'providers/auth_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/papers_provider.dart';
 import 'views/splash/splash_view.dart';
+import 'views/auth/password_reset_view.dart';
 import 'views/widgets/error_boundary.dart';
 import 'views/widgets/notification_toast_overlay.dart';
 import 'firebase_options.dart';
@@ -59,8 +63,55 @@ void main() async {
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-class PaperGraphApp extends StatelessWidget {
+class PaperGraphApp extends StatefulWidget {
   const PaperGraphApp({super.key});
+
+  @override
+  State<PaperGraphApp> createState() => _PaperGraphAppState();
+}
+
+class _PaperGraphAppState extends State<PaperGraphApp> {
+  String? _pendingResetCode;
+  bool _resetRouteOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(
+      PasswordResetLinkService.instance.start(
+        onResetCode: _handlePasswordResetCode,
+      ),
+    );
+  }
+
+  void _handlePasswordResetCode(String code) {
+    _pendingResetCode = code;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openPendingPasswordReset();
+    });
+  }
+
+  void _openPendingPasswordReset() {
+    final code = _pendingResetCode;
+    final navigator = _rootNavigatorKey.currentState;
+    if (code == null || navigator == null || _resetRouteOpen) return;
+
+    _pendingResetCode = null;
+    _resetRouteOpen = true;
+    navigator
+        .push(
+          MaterialPageRoute(
+            builder: (_) => PasswordResetView(actionCode: code),
+          ),
+        )
+        .whenComplete(() => _resetRouteOpen = false);
+  }
+
+  @override
+  void dispose() {
+    unawaited(PasswordResetLinkService.instance.dispose());
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

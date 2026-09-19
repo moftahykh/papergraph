@@ -123,8 +123,12 @@ class _SplashViewState extends State<SplashView>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppTheme.darkBg : AppTheme.lightBg;
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textMuted = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textPrimary = isDark
+        ? AppTheme.darkTextPrimary
+        : AppTheme.lightTextPrimary;
+    final textMuted = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
     final barTrack = isDark ? const Color(0x14FFFFFF) : const Color(0x14000000);
     final barFill = isDark ? Colors.white : const Color(0xFF18181B);
 
@@ -138,11 +142,16 @@ class _SplashViewState extends State<SplashView>
             // Unfold smoothly across the first 2.5s (0.55 of duration)
             final graphProgress = (progress / 0.55).clamp(0.0, 1.0);
             // Continuous living pulse that breathes for the rest of the splash
-            final pulseProgress = progress > 0.40 ? (progress - 0.40) * 3.5 : 0.0;
+            final pulseProgress = progress > 0.40
+                ? (progress - 0.40) * 3.5
+                : 0.0;
 
             return Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 40,
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

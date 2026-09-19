@@ -29,9 +29,21 @@ void main() {
       expect(
         AppLockPolicy.shouldLockAfter(
           backgroundedAt: backgroundedAt,
-          resumedAt: backgroundedAt.add(const Duration(minutes: 2)),
+          resumedAt: backgroundedAt.add(const Duration(minutes: 6)),
         ),
         isTrue,
+      );
+    });
+
+    test('does not lock before the five-minute timeout', () {
+      expect(
+        AppLockPolicy.shouldLockAfter(
+          backgroundedAt: backgroundedAt,
+          resumedAt: backgroundedAt.add(
+            const Duration(minutes: 4, seconds: 59),
+          ),
+        ),
+        isFalse,
       );
     });
   });

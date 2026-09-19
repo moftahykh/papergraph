@@ -19,10 +19,7 @@ class DiscoveryLoaded extends DiscoveryState {
   final List<DiscoveryTopic> topics;
   final DiscoveryRecommendation? recommendation;
 
-  const DiscoveryLoaded({
-    this.topics = const [],
-    this.recommendation,
-  });
+  const DiscoveryLoaded({this.topics = const [], this.recommendation});
 
   @override
   bool operator ==(Object other) =>

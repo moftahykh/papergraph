@@ -25,7 +25,7 @@ class AppLockGate extends StatefulWidget {
 /// a system dialog is visible. Re-authentication is required only after the
 /// app has actually been hidden for at least this timeout.
 class AppLockPolicy {
-  static const Duration backgroundTimeout = Duration(minutes: 1);
+  static const Duration backgroundTimeout = Duration(minutes: 5);
 
   static bool shouldLockAfter({
     required DateTime backgroundedAt,
@@ -164,7 +164,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Authenticate with your fingerprint or face to continue.',
+                        'Use Face ID, fingerprint, or your device passcode to continue.',
                         style: Theme.of(context).textTheme.bodyMedium,
                         textAlign: TextAlign.center,
                       ),

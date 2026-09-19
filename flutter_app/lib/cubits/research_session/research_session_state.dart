@@ -1,13 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum ResearchSessionStatus {
-  idle,
-  searching,
-  results,
-  building,
-  ready,
-  error,
-}
+enum ResearchSessionStatus { idle, searching, results, building, ready, error }
 
 @immutable
 class ResearchSessionState {

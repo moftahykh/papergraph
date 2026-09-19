@@ -96,7 +96,9 @@ void main() {
           MaterialApp(
             home: MultiBlocProvider(
               providers: [
-                BlocProvider<LibraryCubit>(create: (_) => LibraryCubit.seeded()),
+                BlocProvider<LibraryCubit>(
+                  create: (_) => LibraryCubit.seeded(),
+                ),
                 BlocProvider<NotificationCubit>(
                   create: (_) => NotificationCubit(),
                 ),

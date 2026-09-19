@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "TEAM_ID_REQUIRED.com.papergraph.paperGraph"
+        ],
+        "components": [
+          {
+            "/": "/__/auth/action*"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -275,7 +275,9 @@ class NotificationsSheet extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: isDark
                                 ? (notif.isRead
-                                      ? AppTheme.darkSurface.withValues(alpha: 0.5)
+                                      ? AppTheme.darkSurface.withValues(
+                                          alpha: 0.5,
+                                        )
                                       : const Color(0xFF161618))
                                 : (notif.isRead
                                       ? const Color(0xFFF8FAFC)

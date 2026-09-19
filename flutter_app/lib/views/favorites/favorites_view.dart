@@ -157,12 +157,7 @@ class _FavoritesViewState extends State<FavoritesView>
           return TabBarView(
             controller: _tabController,
             children: [
-              _buildPapersTab(
-                context,
-                papers,
-                notes,
-                isDark,
-              ),
+              _buildPapersTab(context, papers, notes, isDark),
               _buildGraphsTab(context, graphs, isDark),
             ],
           );
@@ -348,9 +343,7 @@ class _FavoritesViewState extends State<FavoritesView>
       side: BorderSide(
         color: selected ? AppTheme.primaryBlue : AppTheme.lightBorder,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(999),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     );
   }
 
@@ -678,10 +671,7 @@ class _FavoritesViewState extends State<FavoritesView>
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _openGraphUpdates(context, snapshot),
-                      icon: const Icon(
-                        Icons.auto_awesome_outlined,
-                        size: 18,
-                      ),
+                      icon: const Icon(Icons.auto_awesome_outlined, size: 18),
                       label: const Text('Updates'),
                     ),
                   ),
@@ -810,22 +800,19 @@ class _FavoritesViewState extends State<FavoritesView>
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.darkSurface
-                    : const Color(0xFFF4F4F5),
+                color: isDark ? AppTheme.darkSurface : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                 ),
               ),
               child: Center(
-                child: customIcon ??
+                child:
+                    customIcon ??
                     Icon(
                       icon,
                       size: 32,
-                      color: isDark
-                          ? Colors.white
-                          : const Color(0xFF18181B),
+                      color: isDark ? Colors.white : const Color(0xFF18181B),
                     ),
               ),
             ),

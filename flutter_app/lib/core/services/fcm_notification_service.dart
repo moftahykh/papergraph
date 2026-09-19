@@ -77,12 +77,11 @@ class FcmNotificationService {
 
   static bool get isEnabled {
     if (!Hive.isBoxOpen(HiveService.settingsBoxName)) return false;
-    return HiveService.settingsBox.get(_enabledKey, defaultValue: false) as bool;
+    return HiveService.settingsBox.get(_enabledKey, defaultValue: false)
+        as bool;
   }
 
-  static Future<void> initialize(
-    GlobalKey<NavigatorState> navigatorKey,
-  ) async {
+  static Future<void> initialize(GlobalKey<NavigatorState> navigatorKey) async {
     if (_initialized || Firebase.apps.isEmpty) return;
     _initialized = true;
     _navigatorKey = navigatorKey;
@@ -152,10 +151,7 @@ class FcmNotificationService {
 
   static Future<void> _registerToken(String token) async {
     try {
-      await _api.registerDeviceToken(
-        fcmToken: token,
-        platform: _platform,
-      );
+      await _api.registerDeviceToken(fcmToken: token, platform: _platform);
     } catch (_) {
       // Registration is retried by token refresh or the next explicit sync.
     }
@@ -198,10 +194,10 @@ class FcmNotificationService {
     if (message.data['type'] == 'fcm_test') {
       final context = _navigatorKey?.currentContext;
       context?.read<NotificationCubit>().notify(
-        title: message.data['title']?.toString() ??
-            'PaperGraph test notification',
-        message: message.data['body']?.toString() ??
-            'FCM delivery is connected.',
+        title:
+            message.data['title']?.toString() ?? 'PaperGraph test notification',
+        message:
+            message.data['body']?.toString() ?? 'FCM delivery is connected.',
         type: NotificationType.success,
         showToast: true,
       );
@@ -308,16 +304,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final type = data['type']?.toString();
   if (type != 'research_updates' && type != 'fcm_test') return;
 
-  final title = data['title']?.toString() ??
+  final title =
+      data['title']?.toString() ??
       (type == 'fcm_test'
           ? 'PaperGraph test notification'
           : 'New research update');
-  final body = data['body']?.toString() ??
+  final body =
+      data['body']?.toString() ??
       (type == 'fcm_test'
           ? 'FCM delivery is connected.'
           : 'Open PaperGraph to review the latest updates.');
   await LocalNotificationService.showResearchUpdateNotification(
-    id: (data['local_graph_id'] ?? data['test_id'] ?? type)
+    id:
+        (data['local_graph_id'] ?? data['test_id'] ?? type)
             .toString()
             .hashCode
             .abs() %

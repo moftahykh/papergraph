@@ -321,7 +321,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Sends a password reset email via Firebase Auth.
-  Future<bool> sendPasswordReset(String email) async {
+  Future<bool> sendPasswordReset(
+    String email, {
+    fb.ActionCodeSettings? actionCodeSettings,
+  }) async {
     _setLoading(true);
     _errorMessage = null;
 
@@ -338,10 +341,19 @@ class AuthProvider extends ChangeNotifier {
     }
 
     try {
-      await fb.FirebaseAuth.instance.sendPasswordResetEmail(email: cleanEmail);
+      await fb.FirebaseAuth.instance.sendPasswordResetEmail(
+        email: cleanEmail,
+        actionCodeSettings: actionCodeSettings,
+      );
       _setLoading(false);
       return true;
     } on fb.FirebaseAuthException catch (e) {
+      // Keep the response generic so the reset flow does not reveal whether
+      // an email address is registered.
+      if (e.code == 'user-not-found') {
+        _setLoading(false);
+        return true;
+      }
       _errorMessage = _mapAuthError(e);
       _setLoading(false);
       return false;

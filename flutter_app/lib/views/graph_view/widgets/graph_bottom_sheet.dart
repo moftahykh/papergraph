@@ -57,7 +57,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   @override
   void didUpdateWidget(covariant GraphBottomSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedNode?.canonicalId != widget.selectedNode?.canonicalId &&
+    if (oldWidget.selectedNode?.canonicalId !=
+            widget.selectedNode?.canonicalId &&
         widget.selectedNode != null) {
       _tabController.animateTo(0);
     }
@@ -113,7 +114,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF4B4F59) : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? const Color(0xFF4B4F59)
+                          : const Color(0xFFCBD5E1),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -122,7 +125,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                     onPressed: widget.onClose,
                     tooltip: 'Close sheet',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 32,
+                    ),
                   ),
                 ],
               ),
@@ -134,17 +140,26 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            indicatorColor: isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple,
+            indicatorColor: isDark
+                ? AppTheme.actionPurpleDark
+                : AppTheme.actionPurple,
             indicatorWeight: 2.5,
-            labelColor: isDark ? AppTheme.darkTextPrimary : AppTheme.actionPurple,
-            unselectedLabelColor: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
-            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12.5),
+            labelColor: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.actionPurple,
+            unselectedLabelColor: isDark
+                ? AppTheme.darkTextSecondary
+                : const Color(0xFF64748B),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12.5,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 12.5,
+            ),
             tabs: const [
-              Tab(
-                icon: Icon(Icons.article_outlined, size: 16),
-                text: 'Paper',
-              ),
+              Tab(icon: Icon(Icons.article_outlined, size: 16), text: 'Paper'),
               Tab(
                 icon: Icon(Icons.history_edu_outlined, size: 16),
                 text: 'Earlier works',
@@ -190,7 +205,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             Icon(
               Icons.touch_app_outlined,
               size: 36,
-              color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF94A3B8),
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : const Color(0xFF94A3B8),
             ),
             const SizedBox(height: 8),
             Text(
@@ -198,7 +215,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+                color: isDark
+                    ? AppTheme.darkTextPrimary
+                    : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 4),
@@ -207,7 +226,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : const Color(0xFF64748B),
               ),
             ),
           ],
@@ -215,8 +236,12 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       );
     }
 
-    final textColor = isDark ? AppTheme.darkTextPrimary : const Color(0xFF111827);
-    final subtextColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF6B7280);
+    final textColor = isDark
+        ? AppTheme.darkTextPrimary
+        : const Color(0xFF111827);
+    final subtextColor = isDark
+        ? AppTheme.darkTextSecondary
+        : const Color(0xFF6B7280);
 
     // Explain connection to seed/origin
     final explanation = ConnectionReasonHelper.explainConnection(
@@ -236,7 +261,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         badgeColor = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A);
         break;
       default:
-        badgeColor = isDark ? AppTheme.darkTextSecondary : const Color(0xFF71717A);
+        badgeColor = isDark
+            ? AppTheme.darkTextSecondary
+            : const Color(0xFF71717A);
     }
 
     return ListView(
@@ -263,7 +290,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withAlpha(12) : Colors.black.withAlpha(8),
+                color: isDark
+                    ? Colors.white.withAlpha(12)
+                    : Colors.black.withAlpha(8),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
                   color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
@@ -345,9 +374,15 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               child: IconButton.filled(
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
                 style: IconButton.styleFrom(
-                  backgroundColor: isDark ? AppTheme.darkBorder : const Color(0xFFE4E4E7),
-                  foregroundColor: isDark ? Colors.white : const Color(0xFF18181B),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  backgroundColor: isDark
+                      ? AppTheme.darkBorder
+                      : const Color(0xFFE4E4E7),
+                  foregroundColor: isDark
+                      ? Colors.white
+                      : const Color(0xFF18181B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   padding: const EdgeInsets.all(8),
                 ),
                 onPressed: () {
@@ -355,7 +390,11 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                     canonicalId: node.canonicalId,
                     title: node.title,
                   );
-                  PaperUrlHelper.launchPaper(context, url: url, title: node.title);
+                  PaperUrlHelper.launchPaper(
+                    context,
+                    url: url,
+                    title: node.title,
+                  );
                 },
               ),
             ),
@@ -364,14 +403,26 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             ElevatedButton.icon(
               onPressed: () => widget.onOpenFullDetails?.call(node),
               icon: const Icon(Icons.menu_book_rounded, size: 15),
-              label: const Text('Paper details', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+              label: const Text(
+                'Paper details',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
-                foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+                backgroundColor: isDark
+                    ? Colors.white
+                    : const Color(0xFF18181B),
+                foregroundColor: isDark
+                    ? const Color(0xFF09090B)
+                    : Colors.white,
                 elevation: 0,
                 visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
 
@@ -380,13 +431,27 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               OutlinedButton.icon(
                 onPressed: () => widget.onRecenterGraph?.call(node.canonicalId),
                 icon: const Icon(Icons.refresh_rounded, size: 15),
-                label: const Text('Center graph', style: TextStyle(fontSize: 11.5)),
+                label: const Text(
+                  'Center graph',
+                  style: TextStyle(fontSize: 11.5),
+                ),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: isDark ? AppTheme.darkTextSecondary : const Color(0xFF475569),
-                  side: BorderSide(color: isDark ? AppTheme.darkBorder : const Color(0xFFCBD5E1)),
+                  foregroundColor: isDark
+                      ? AppTheme.darkTextSecondary
+                      : const Color(0xFF475569),
+                  side: BorderSide(
+                    color: isDark
+                        ? AppTheme.darkBorder
+                        : const Color(0xFFCBD5E1),
+                  ),
                   visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
 
@@ -396,19 +461,28 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               icon: const Icon(Icons.center_focus_strong_rounded, size: 15),
               label: const Text('Focus', style: TextStyle(fontSize: 11.5)),
               style: OutlinedButton.styleFrom(
-                foregroundColor: isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple,
-                side: BorderSide(color: isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple),
+                foregroundColor: isDark
+                    ? AppTheme.actionPurpleDark
+                    : AppTheme.actionPurple,
+                side: BorderSide(
+                  color: isDark
+                      ? AppTheme.actionPurpleDark
+                      : AppTheme.actionPurple,
+                ),
                 visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
           ],
         ),
 
         const SizedBox(height: 10),
-
-
       ],
     );
   }
@@ -423,8 +497,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       if (n.archetype == 'foundational') return true;
       if (n.year != null && n.year! < originYear) return true;
       return false;
-    }).toList()
-      ..sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0));
+    }).toList()..sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0));
 
     if (priorNodes.isEmpty) {
       return _buildEmptyTab(
@@ -438,7 +511,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: priorNodes.length,
-      itemBuilder: (context, idx) => _buildSimpleNodeTile(priorNodes[idx], isDark),
+      itemBuilder: (context, idx) =>
+          _buildSimpleNodeTile(priorNodes[idx], isDark),
     );
   }
 
@@ -449,11 +523,12 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       if (n.isOrigin) return false;
       final dScore = n.scores?['derivative_score']?.value;
       if (dScore != null && dScore > 0.0) return true;
-      if (n.archetype == 'subsequent' || n.archetype == 'derivative') return true;
+      if (n.archetype == 'subsequent' || n.archetype == 'derivative') {
+        return true;
+      }
       if (n.year != null && n.year! >= originYear) return true;
       return false;
-    }).toList()
-      ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
+    }).toList()..sort((a, b) => b.citationCount.compareTo(a.citationCount));
 
     if (derivNodes.isEmpty) {
       return _buildEmptyTab(
@@ -467,7 +542,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: derivNodes.length,
-      itemBuilder: (context, idx) => _buildSimpleNodeTile(derivNodes[idx], isDark),
+      itemBuilder: (context, idx) =>
+          _buildSimpleNodeTile(derivNodes[idx], isDark),
     );
   }
 
@@ -507,7 +583,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                     hintText: 'Search papers…',
                     prefixIcon: const Icon(Icons.search_rounded, size: 18),
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     suffixIcon: _listFilter.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 16),
@@ -526,11 +605,20 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 onSelected: (val) => setState(() => _sortBy = val),
                 tooltip: 'Sort papers',
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F5F9),
+                    color: isDark
+                        ? AppTheme.darkSurface
+                        : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
+                    border: Border.all(
+                      color: isDark
+                          ? AppTheme.darkBorder
+                          : const Color(0xFFE2E8F0),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -539,7 +627,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                         _sortBy == 'citations'
                             ? 'Citations'
                             : (_sortBy == 'year' ? 'Year' : 'Score'),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(width: 4),
                       const Icon(Icons.arrow_drop_down_rounded, size: 16),
@@ -549,7 +640,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'citations', child: Text('Citations')),
                   PopupMenuItem(value: 'year', child: Text('Year')),
-                  PopupMenuItem(value: 'score', child: Text('Overall relevance')),
+                  PopupMenuItem(
+                    value: 'score',
+                    child: Text('Overall relevance'),
+                  ),
                 ],
               ),
             ],
@@ -560,7 +654,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             itemCount: displayNodes.length,
-            itemBuilder: (context, idx) => _buildSimpleNodeTile(displayNodes[idx], isDark),
+            itemBuilder: (context, idx) =>
+                _buildSimpleNodeTile(displayNodes[idx], isDark),
           ),
         ),
       ],
@@ -572,17 +667,17 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     required Color accent,
     required bool isDark,
   }) {
-    final textColor =
-        isDark ? AppTheme.darkTextPrimary : const Color(0xFF111827);
-    final subtextColor =
-        isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B);
+    final textColor = isDark
+        ? AppTheme.darkTextPrimary
+        : const Color(0xFF111827);
+    final subtextColor = isDark
+        ? AppTheme.darkTextSecondary
+        : const Color(0xFF64748B);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withAlpha(8)
-            : Colors.black.withAlpha(6),
+        color: isDark ? Colors.white.withAlpha(8) : Colors.black.withAlpha(6),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
@@ -612,8 +707,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               ),
               if (explanation.evidenceLimited)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppTheme.darkSurface
@@ -653,8 +750,11 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.check_circle_outline_rounded,
-                        size: 14, color: accent),
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 14,
+                      color: accent,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text.rich(
@@ -817,11 +917,11 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 fontWeight: FontWeight.w700,
                 color: available
                     ? (isDark
-                        ? AppTheme.darkTextPrimary
-                        : const Color(0xFF111827))
+                          ? AppTheme.darkTextPrimary
+                          : const Color(0xFF111827))
                     : (isDark
-                        ? AppTheme.darkTextSecondary
-                        : const Color(0xFF94A3B8)),
+                          ? AppTheme.darkTextSecondary
+                          : const Color(0xFF94A3B8)),
               ),
             ),
           ],
@@ -866,7 +966,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       child: ListTile(
         dense: true,
         selected: isSelected,
-        selectedTileColor: isDark ? AppTheme.actionPurple.withAlpha(30) : const Color(0xFFEEF2FF),
+        selectedTileColor: isDark
+            ? AppTheme.actionPurple.withAlpha(30)
+            : const Color(0xFFEEF2FF),
         contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         title: Text(
@@ -883,7 +985,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
           '${node.year ?? 'N/A'} · ${_citationLabel(node)}',
           style: TextStyle(
             fontSize: 11,
-            color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF6B7280),
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : const Color(0xFF6B7280),
           ),
         ),
         trailing: const Icon(Icons.chevron_right_rounded, size: 18),
@@ -902,21 +1006,34 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     return '${node.citationCount} citations';
   }
 
-  Widget _buildEmptyTab(String title, String description, IconData icon, bool isDark) {
+  Widget _buildEmptyTab(
+    String title,
+    String description,
+    IconData icon,
+    bool isDark,
+  ) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 32, color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF94A3B8)),
+            Icon(
+              icon,
+              size: 32,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : const Color(0xFF94A3B8),
+            ),
             const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF0F172A),
+                color: isDark
+                    ? AppTheme.darkTextPrimary
+                    : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 4),
@@ -925,7 +1042,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11.5,
-                color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B),
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : const Color(0xFF64748B),
               ),
             ),
           ],
@@ -948,7 +1067,13 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF64748B)),
+          Icon(
+            icon,
+            size: 12,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : const Color(0xFF64748B),
+          ),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
@@ -958,7 +1083,9 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF334155),
+                color: isDark
+                    ? AppTheme.darkTextPrimary
+                    : const Color(0xFF334155),
               ),
             ),
           ),

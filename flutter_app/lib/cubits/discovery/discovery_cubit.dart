@@ -12,11 +12,9 @@ class DiscoveryCubit extends Cubit<DiscoveryState> {
   bool _hasLoaded = false;
   String? _lastLoadedUserIdScope;
 
-  DiscoveryCubit({
-    PaperGraphApiClient? apiClient,
-    this.listenToAuth = true,
-  })  : _apiClient = apiClient ?? PaperGraphApiClient(),
-        super(const DiscoveryInitial()) {
+  DiscoveryCubit({PaperGraphApiClient? apiClient, this.listenToAuth = true})
+    : _apiClient = apiClient ?? PaperGraphApiClient(),
+      super(const DiscoveryInitial()) {
     if (listenToAuth) {
       AuthProvider.addAuthListener(onAuthChanged);
     }
@@ -66,8 +64,9 @@ class DiscoveryCubit extends Cubit<DiscoveryState> {
       _hasLoaded = true;
       _lastLoadedUserIdScope = HiveService.activeUserId;
 
-      final topics =
-          response.topics.isNotEmpty ? response.topics : currentTopics;
+      final topics = response.topics.isNotEmpty
+          ? response.topics
+          : currentTopics;
       if (response.topics.isNotEmpty) {
         await HiveService.saveCachedDiscoveryTopics(
           response.topics.map((t) => t.toJson()).toList(),
@@ -90,9 +89,9 @@ class DiscoveryCubit extends Cubit<DiscoveryState> {
       if (currentTopics.isNotEmpty) {
         emit(DiscoveryLoaded(topics: currentTopics, recommendation: null));
       } else {
-        emit(const DiscoveryUnavailable(
-          'Discovery is temporarily unavailable.',
-        ));
+        emit(
+          const DiscoveryUnavailable('Discovery is temporarily unavailable.'),
+        );
       }
     }
   }

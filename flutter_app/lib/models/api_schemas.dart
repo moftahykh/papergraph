@@ -280,28 +280,26 @@ class DiscoveryHomeResponse {
   final List<DiscoveryTopic> topics;
   final DiscoveryRecommendation? recommendation;
 
-  const DiscoveryHomeResponse({
-    this.topics = const [],
-    this.recommendation,
-  });
+  const DiscoveryHomeResponse({this.topics = const [], this.recommendation});
 
   factory DiscoveryHomeResponse.fromJson(Map<String, dynamic> json) {
     return DiscoveryHomeResponse(
-      topics: (json['topics'] as List<dynamic>?)
+      topics:
+          (json['topics'] as List<dynamic>?)
               ?.map(
                 (item) => DiscoveryTopic.fromJson(
                   Map<String, dynamic>.from(item as Map),
                 ),
               )
-              .where((topic) => topic.label.isNotEmpty && topic.query.isNotEmpty)
+              .where(
+                (topic) => topic.label.isNotEmpty && topic.query.isNotEmpty,
+              )
               .toList() ??
           const [],
       recommendation: json['recommendation'] == null
           ? null
           : DiscoveryRecommendation.fromJson(
-              Map<String, dynamic>.from(
-                json['recommendation'] as Map,
-              ),
+              Map<String, dynamic>.from(json['recommendation'] as Map),
             ),
     );
   }

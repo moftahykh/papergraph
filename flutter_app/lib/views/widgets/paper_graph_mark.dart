@@ -10,7 +10,8 @@ class PaperGraphMark extends StatelessWidget {
   final double size;
   final bool? isDark;
   final double progress; // 0.0 to 1.0 (unfold progression, 1.0 = fully drawn)
-  final double pulse; // continuous breathing value (e.g. from a looping controller)
+  final double
+  pulse; // continuous breathing value (e.g. from a looping controller)
 
   const PaperGraphMark({
     super.key,
@@ -65,8 +66,12 @@ class _PaperGraphMarkPainter extends CustomPainter {
     final cy = size.height / 2.0;
 
     // High-contrast, sharp minimal palette tokens
-    final rootColor = isDark ? const Color(0xFFFFFFFF) : const Color(0xFF18181B);
-    final nodeColor = isDark ? const Color(0xFFE4E4E7) : const Color(0xFF27272A);
+    final rootColor = isDark
+        ? const Color(0xFFFFFFFF)
+        : const Color(0xFF18181B);
+    final nodeColor = isDark
+        ? const Color(0xFFE4E4E7)
+        : const Color(0xFF27272A);
     // Clear, visible edge lines (0.40 alpha on dark, 0.32 alpha on light)
     final edgeColor = isDark
         ? const Color(0x66FFFFFF) // 40% white
@@ -87,7 +92,10 @@ class _PaperGraphMarkPainter extends CustomPainter {
         : 1.0;
 
     // 1. Concentric reference guide circle (radius: 95 in 310 space)
-    final guideRadius = 95.0 * scale * (pulse > 0 ? (1.0 + 0.02 * math.sin(pulse * 2 * math.pi)) : 1.0);
+    final guideRadius =
+        95.0 *
+        scale *
+        (pulse > 0 ? (1.0 + 0.02 * math.sin(pulse * 2 * math.pi)) : 1.0);
     final ringAlpha = (elapsed * 0.9).clamp(0.0, 1.0);
     if (ringAlpha > 0) {
       final ringPaint = Paint()

@@ -12,6 +12,7 @@ import '../../cubits/library/library_state.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_view.dart';
 import '../auth/register_view.dart';
+import 'account_view.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -22,6 +23,7 @@ class SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<SettingsView> {
   late bool _biometricsEnabled;
+  bool _biometricsAvailable = false;
   bool _researchNotificationsEnabled = false;
 
   @override
@@ -29,6 +31,21 @@ class _SettingsViewState extends State<SettingsView> {
     super.initState();
     _biometricsEnabled = HiveService.isBiometricsEnabled();
     _researchNotificationsEnabled = FcmNotificationService.isEnabled;
+    _loadBiometricAvailability();
+  }
+
+  Future<void> _loadBiometricAvailability() async {
+    final available =
+        (await BiometricService.getAvailableBiometrics()).isNotEmpty;
+    if (!mounted) return;
+    if (!available && _biometricsEnabled) {
+      await HiveService.setBiometricsEnabled(false);
+    }
+    if (!mounted) return;
+    setState(() {
+      _biometricsAvailable = available;
+      if (!available) _biometricsEnabled = false;
+    });
   }
 
   Future<void> _handleResearchNotificationsToggle(bool value) async {
@@ -69,9 +86,21 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   Future<void> _handleBiometricToggle(bool value) async {
+    if (!_biometricsAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Biometric unlock is unavailable. Set up Face ID or fingerprint in device settings.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final reason = value
-        ? 'Authenticate to enable biometric app lock'
-        : 'Authenticate to disable biometric app lock';
+        ? 'Authenticate to enable PaperGraph biometric unlock'
+        : 'Authenticate to disable PaperGraph biometric unlock';
 
     final authenticated = await BiometricService.authenticate(reason: reason);
     if (!mounted) return;
@@ -154,42 +183,6 @@ class _SettingsViewState extends State<SettingsView> {
     }
   }
 
-  Future<void> _showSignOutDialog(AuthProvider authProvider) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(
-          'Sign Out',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
-        ),
-        content: const Text(
-          'Are you sure you want to sign out of your academic session?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.accentRose),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      await authProvider.logout();
-      if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginView()),
-        (route) => false,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -221,8 +214,8 @@ class _SettingsViewState extends State<SettingsView> {
           _buildProfileSection(isDark, authProvider),
           const SizedBox(height: 24),
 
-          // 1. General (Preferences & Security)
-          _buildSectionHeader(context, 'General'),
+          // 1. Appearance
+          _buildSectionHeader(context, 'Appearance'),
           _buildGroupContainer(
             context: context,
             children: [
@@ -250,21 +243,43 @@ class _SettingsViewState extends State<SettingsView> {
                 value: isDark,
                 onChanged: (_) => context.read<ThemeCubit>().toggleTheme(),
               ),
-              _buildGroupDivider(context),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // 2. Security & Privacy
+          _buildSectionHeader(context, 'Security & Privacy'),
+          _buildGroupContainer(
+            context: context,
+            children: [
               SwitchListTile(
                 secondary: Icon(
                   Icons.fingerprint_rounded,
-                  color: isDark
-                      ? AppTheme.primaryLightBlue
-                      : AppTheme.primaryBlue,
+                  color: _biometricsAvailable
+                      ? (isDark
+                            ? AppTheme.primaryLightBlue
+                            : AppTheme.primaryBlue)
+                      : (isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary),
                   size: 22,
                 ),
-                title: const Text(
-                  'Biometric App Lock',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                title: Text(
+                  'Unlock with biometrics',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                    color: _biometricsAvailable
+                        ? null
+                        : (isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary),
+                  ),
                 ),
                 subtitle: Text(
-                  'Require Face ID / Fingerprint on launch',
+                  _biometricsAvailable
+                      ? 'Use Face ID, fingerprint, or device passcode'
+                      : 'Set up Face ID or fingerprint in device settings',
                   style: TextStyle(
                     fontSize: 12.5,
                     color: isDark
@@ -273,13 +288,13 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                 ),
                 value: _biometricsEnabled,
-                onChanged: _handleBiometricToggle,
+                onChanged: _biometricsAvailable ? _handleBiometricToggle : null,
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // 2. Research & Data
+          // 3. Research & Data
           _buildSectionHeader(context, 'Research & Data'),
           _buildGroupContainer(
             context: context,
@@ -410,7 +425,7 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           const SizedBox(height: 24),
 
-          // 3. About & Resources
+          // 4. About & Resources
           _buildSectionHeader(context, 'About & Resources'),
           _buildGroupContainer(
             context: context,
@@ -467,35 +482,6 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           const SizedBox(height: 24),
 
-          // Sign Out Action (for Authenticated Users)
-          if (authProvider.isAuthenticated) ...[
-            _buildGroupContainer(
-              context: context,
-              children: [
-                ListTile(
-                  leading: const Icon(
-                    Icons.logout_rounded,
-                    color: AppTheme.accentRose,
-                    size: 22,
-                  ),
-                  title: const Text(
-                    'Sign Out',
-                    style: TextStyle(
-                      color: AppTheme.accentRose,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.5,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppTheme.accentRose,
-                    size: 20,
-                  ),
-                  onTap: () => _showSignOutDialog(authProvider),
-                ),
-              ],
-            ),
-          ],
           const SizedBox(height: 110), // Clearance for floating navigation bar
         ],
       ),
@@ -639,9 +625,6 @@ class _SettingsViewState extends State<SettingsView> {
 
     final name = (user.name.isNotEmpty) ? user.name : 'Researcher';
     final email = user.email;
-    final institution = (user.institution.isNotEmpty)
-        ? user.institution
-        : 'Academic Researcher';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -660,104 +643,81 @@ class _SettingsViewState extends State<SettingsView> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Academic verified avatar
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? const Color(0xFF202026) : const Color(0xFFF2F2F7),
-              border: Border.all(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const AccountView())),
+        child: Row(
+          children: [
+            // Academic verified avatar
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color: isDark
-                    ? const Color(0x33FFFFFF)
-                    : const Color(0x24000000),
-                width: 1.5,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : 'R',
-                style: TextStyle(
-                  color: isDark ? Colors.white : AppTheme.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
+                    ? const Color(0xFF202026)
+                    : const Color(0xFFF2F2F7),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0x33FFFFFF)
+                      : const Color(0x24000000),
+                  width: 1.5,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? AppTheme.darkTextPrimary
-                              : AppTheme.lightTextPrimary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  email,
+              child: Center(
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : 'R',
                   style: TextStyle(
-                    fontSize: 12.5,
-                    color: isDark
-                        ? AppTheme.darkTextSecondary
-                        : AppTheme.lightTextSecondary,
+                    color: isDark ? Colors.white : AppTheme.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.primaryLightBlue.withAlpha(25)
-                        : AppTheme.primaryBlue.withAlpha(18),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    institution,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       color: isDark
-                          ? AppTheme.primaryLightBlue
-                          : AppTheme.primaryBlue,
-                      fontWeight: FontWeight.w600,
+                          ? AppTheme.darkTextPrimary
+                          : AppTheme.lightTextPrimary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    email,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: isDark
-                ? AppTheme.darkTextSecondary
-                : AppTheme.lightTextSecondary,
-          ),
-        ],
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }

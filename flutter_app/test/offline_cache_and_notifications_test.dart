@@ -64,7 +64,6 @@ GraphSnapshot createMockSnapshot({
 }
 
 void main() {
-
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('GraphSnapshot Schema Versioning & Expiration Math', () {
@@ -80,41 +79,56 @@ void main() {
       final created = DateTime(2026, 1, 1, 12, 0);
       final snapshot = createMockSnapshot(createdAt: created);
 
-      expect(snapshot.effectiveExpiresAt, equals(created.add(const Duration(days: 14))));
-      expect(snapshot.effectiveExpiresAt.difference(created).inDays, equals(14));
-    });
-
-    test('isExpired is false for new snapshot and true for past expiration date', () {
-      final fresh = createMockSnapshot(createdAt: DateTime.now());
-      expect(fresh.isExpired, isFalse);
-
-      final expired = createMockSnapshot(
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-        expiresAt: DateTime.now().subtract(const Duration(days: 16)),
+      expect(
+        snapshot.effectiveExpiresAt,
+        equals(created.add(const Duration(days: 14))),
       );
-      expect(expired.isExpired, isTrue);
-    });
-
-    test('round-trips schema_version and expires_at through toJson and fromJson', () {
-      final original = createMockSnapshot(
-        schemaVersion: 1,
-        algorithmVersion: 'v1.0',
-        createdAt: DateTime(2026, 3, 1, 10, 0),
-        expiresAt: DateTime(2026, 3, 15, 10, 0),
+      expect(
+        snapshot.effectiveExpiresAt.difference(created).inDays,
+        equals(14),
       );
-
-      final json = original.toJson();
-      expect(json['schema_version'], equals(1));
-      expect(json['algorithm_version'], equals('v1.0'));
-      expect(json['expires_at'], isNotNull);
-
-      final restored = GraphSnapshot.fromJson(json);
-      expect(restored.schemaVersion, equals(original.schemaVersion));
-      expect(restored.algorithmVersion, equals(original.algorithmVersion));
-      expect(restored.expiresAt, isNotNull);
-      expect(restored.effectiveExpiresAt.year, equals(2026));
-      expect(restored.isCompatible(HiveService.currentGraphSchemaVersion), isTrue);
     });
+
+    test(
+      'isExpired is false for new snapshot and true for past expiration date',
+      () {
+        final fresh = createMockSnapshot(createdAt: DateTime.now());
+        expect(fresh.isExpired, isFalse);
+
+        final expired = createMockSnapshot(
+          createdAt: DateTime.now().subtract(const Duration(days: 30)),
+          expiresAt: DateTime.now().subtract(const Duration(days: 16)),
+        );
+        expect(expired.isExpired, isTrue);
+      },
+    );
+
+    test(
+      'round-trips schema_version and expires_at through toJson and fromJson',
+      () {
+        final original = createMockSnapshot(
+          schemaVersion: 1,
+          algorithmVersion: 'v1.0',
+          createdAt: DateTime(2026, 3, 1, 10, 0),
+          expiresAt: DateTime(2026, 3, 15, 10, 0),
+        );
+
+        final json = original.toJson();
+        expect(json['schema_version'], equals(1));
+        expect(json['algorithm_version'], equals('v1.0'));
+        expect(json['expires_at'], isNotNull);
+
+        final restored = GraphSnapshot.fromJson(json);
+        expect(restored.schemaVersion, equals(original.schemaVersion));
+        expect(restored.algorithmVersion, equals(original.algorithmVersion));
+        expect(restored.expiresAt, isNotNull);
+        expect(restored.effectiveExpiresAt.year, equals(2026));
+        expect(
+          restored.isCompatible(HiveService.currentGraphSchemaVersion),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('LibraryCubit Notes and Cache Pruning Tests', () {
@@ -134,8 +148,14 @@ void main() {
     });
 
     test('saveNotes updates notes in state and retrieves correctly', () async {
-      await libraryCubit.saveNotes('paper-123', 'Key finding: Transformer scales logarithmically.');
-      expect(libraryCubit.getNotes('paper-123'), equals('Key finding: Transformer scales logarithmically.'));
+      await libraryCubit.saveNotes(
+        'paper-123',
+        'Key finding: Transformer scales logarithmically.',
+      );
+      expect(
+        libraryCubit.getNotes('paper-123'),
+        equals('Key finding: Transformer scales logarithmically.'),
+      );
 
       if (libraryCubit.state is LibraryLoaded) {
         final state = libraryCubit.state as LibraryLoaded;
@@ -144,18 +164,27 @@ void main() {
       }
 
       // Update notes
-      await libraryCubit.saveNotes('paper-123', 'Updated insights on self-attention.');
-      expect(libraryCubit.getNotes('paper-123'), equals('Updated insights on self-attention.'));
+      await libraryCubit.saveNotes(
+        'paper-123',
+        'Updated insights on self-attention.',
+      );
+      expect(
+        libraryCubit.getNotes('paper-123'),
+        equals('Updated insights on self-attention.'),
+      );
 
       // Delete notes
       await libraryCubit.deleteNotes('paper-123');
       expect(libraryCubit.getNotes('paper-123'), isEmpty);
     });
 
-    test('pruneExpiredGraphs runs safely without throwing exceptions', () async {
-      final count = await libraryCubit.pruneExpiredGraphs();
-      expect(count, isNonNegative);
-    });
+    test(
+      'pruneExpiredGraphs runs safely without throwing exceptions',
+      () async {
+        final count = await libraryCubit.pruneExpiredGraphs();
+        expect(count, isNonNegative);
+      },
+    );
   });
 
   group('Contextual Notification & Offline Mode Guarantees', () {
@@ -164,40 +193,55 @@ void main() {
     setUp(storage.reset);
     tearDownAll(storage.stop);
 
-    test('LocalNotificationService handles per-graph notification toggle and dispatch', () async {
-      const graphId = 'graph-job-notif-1';
+    test(
+      'LocalNotificationService handles per-graph notification toggle and dispatch',
+      () async {
+        const graphId = 'graph-job-notif-1';
 
-      // Verify toggle setting and retrieval
-      await LocalNotificationService.setGraphNotificationEnabled(graphId, true);
-      // Even if Hive box is mock or headless, onGraphCompleted must execute safely:
-      final notifCubit = NotificationCubit();
+        // Verify toggle setting and retrieval
+        await LocalNotificationService.setGraphNotificationEnabled(
+          graphId,
+          true,
+        );
+        // Even if Hive box is mock or headless, onGraphCompleted must execute safely:
+        final notifCubit = NotificationCubit();
 
-      await LocalNotificationService.onGraphCompleted(
-        graphId: graphId,
-        nodeCount: 15,
-        isPartial: false,
-        notificationCubit: notifCubit,
-      );
+        await LocalNotificationService.onGraphCompleted(
+          graphId: graphId,
+          nodeCount: 15,
+          isPartial: false,
+          notificationCubit: notifCubit,
+        );
 
-      expect(notifCubit.state.notifications.isNotEmpty, isTrue);
-      expect(notifCubit.state.notifications.first.relatedGraphId, equals(graphId));
-      expect(notifCubit.state.notifications.first.type, equals(NotificationType.success));
-      notifCubit.close();
-    });
+        expect(notifCubit.state.notifications.isNotEmpty, isTrue);
+        expect(
+          notifCubit.state.notifications.first.relatedGraphId,
+          equals(graphId),
+        );
+        expect(
+          notifCubit.state.notifications.first.type,
+          equals(NotificationType.success),
+        );
+        notifCubit.close();
+      },
+    );
 
-    test('openCachedGraph sets fromOfflineCache: true with zero network calls', () {
-      final graphCubit = GraphCubit();
-      final snapshot = createMockSnapshot();
+    test(
+      'openCachedGraph sets fromOfflineCache: true with zero network calls',
+      () {
+        final graphCubit = GraphCubit();
+        final snapshot = createMockSnapshot();
 
-      graphCubit.openCachedGraph(snapshot);
+        graphCubit.openCachedGraph(snapshot);
 
-      expect(graphCubit.state, isA<GraphLoaded>());
-      final loaded = graphCubit.state as GraphLoaded;
-      expect(loaded.fromOfflineCache, isTrue);
-      expect(loaded.snapshot.graphId, equals(snapshot.graphId));
-      expect(loaded.isPartial, isFalse);
-      graphCubit.close();
-    });
+        expect(graphCubit.state, isA<GraphLoaded>());
+        final loaded = graphCubit.state as GraphLoaded;
+        expect(loaded.fromOfflineCache, isTrue);
+        expect(loaded.snapshot.graphId, equals(snapshot.graphId));
+        expect(loaded.isPartial, isFalse);
+        graphCubit.close();
+      },
+    );
   });
 
   group('FavoritesView Offline Library Widget Tests', () {
@@ -206,7 +250,10 @@ void main() {
         canonicalId: 'paper-offline-1',
         title: 'Deep Residual Learning for Image Recognition',
         normalizedTitle: 'deep residual learning for image recognition',
-        authors: const [Author(name: 'Kaiming He'), Author(name: 'Xiangyu Zhang')],
+        authors: const [
+          Author(name: 'Kaiming He'),
+          Author(name: 'Xiangyu Zhang'),
+        ],
         year: 2016,
         citationCount: 150000,
         topics: const ['Computer Vision'],
@@ -216,9 +263,7 @@ void main() {
       final libraryCubit = LibraryCubit.seeded(
         savedPapers: [samplePaper],
         cachedGraphs: [sampleGraph],
-        paperNotes: const {
-          'paper-offline-1': 'Landmark ResNet paper.',
-        },
+        paperNotes: const {'paper-offline-1': 'Landmark ResNet paper.'},
       );
 
       await tester.pumpWidget(
@@ -242,7 +287,10 @@ void main() {
       expect(find.text('Graphs'), findsOneWidget);
 
       // Verify Tab 1 contents (Saved Papers & Notes)
-      expect(find.text('Deep Residual Learning for Image Recognition'), findsOneWidget);
+      expect(
+        find.text('Deep Residual Learning for Image Recognition'),
+        findsOneWidget,
+      );
       expect(find.text('Landmark ResNet paper.'), findsOneWidget);
 
       // Switch to Tab 2 (Cached Graphs)
@@ -258,7 +306,9 @@ void main() {
       await libraryCubit.close();
     });
 
-    testWidgets('ConnectedGraphView prevents network recenter in offline mode', (tester) async {
+    testWidgets('ConnectedGraphView prevents network recenter in offline mode', (
+      tester,
+    ) async {
       final snapshot = createMockSnapshot();
 
       await tester.pumpWidget(
@@ -287,7 +337,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 
-      await tester.tap(find.text('BERT: Pre-training of Deep Bidirectional Transformers'));
+      await tester.tap(
+        find.text('BERT: Pre-training of Deep Bidirectional Transformers'),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 
@@ -306,7 +358,9 @@ void main() {
 
       // Verify offline protection snackbar
       expect(
-        find.text('Cannot synthesize new graphs in offline mode. Connect to the internet to explore new papers.'),
+        find.text(
+          'Cannot synthesize new graphs in offline mode. Connect to the internet to explore new papers.',
+        ),
         findsOneWidget,
       );
     });

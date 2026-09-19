@@ -20,10 +20,7 @@ import 'widgets/app_lock_gate.dart';
 class MainNavigationView extends StatefulWidget {
   final bool requireInitialUnlock;
 
-  const MainNavigationView({
-    super.key,
-    this.requireInitialUnlock = false,
-  });
+  const MainNavigationView({super.key, this.requireInitialUnlock = false});
 
   /// Allows descendants (like HomeView or notification toasts) to navigate
   /// directly to a specific tab and optionally select a subtab (e.g. Graphs in Library).
@@ -65,11 +62,11 @@ class _MainNavigationViewState extends State<MainNavigationView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<ResearchSessionCubit>().syncSearch(
-            context.read<SearchCubit>().state,
-          );
+        context.read<SearchCubit>().state,
+      );
       context.read<ResearchSessionCubit>().syncGraph(
-            context.read<GraphCubit>().state,
-          );
+        context.read<GraphCubit>().state,
+      );
     });
   }
 
@@ -94,10 +91,7 @@ class _MainNavigationViewState extends State<MainNavigationView> {
           // Reserve layout space for the floating navigation container so
           // scrollable page content never renders underneath it.
           extendBody: true,
-          body: IndexedStack(
-            index: _currentIndex,
-            children: _screens,
-          ),
+          body: IndexedStack(index: _currentIndex, children: _screens),
           bottomNavigationBar: SafeArea(
             minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
             child: Column(
@@ -139,66 +133,66 @@ class _MainNavigationViewState extends State<MainNavigationView> {
                         indicatorColor: isDark
                             ? AppTheme.primaryLightBlue.withAlpha(28)
                             : AppTheme.primaryBlue.withAlpha(18),
-                    labelBehavior:
-                        NavigationDestinationLabelBehavior.alwaysShow,
-                    selectedIndex: _currentIndex,
-                    onDestinationSelected: (index) {
-                      if (index != _currentIndex) {
-                        setState(() => _currentIndex = index);
-                      }
-                    },
-                    destinations: [
-                      NavigationDestination(
-                        icon: Icon(
-                          Icons.explore_outlined,
-                          color: isDark
-                              ? AppTheme.darkTextSecondary
-                              : AppTheme.lightTextSecondary,
-                        ),
-                        selectedIcon: Icon(
-                          Icons.explore_rounded,
-                          color: isDark
-                              ? AppTheme.darkTextPrimary
-                              : AppTheme.lightTextPrimary,
-                        ),
-                        label: 'Explore',
+                        labelBehavior:
+                            NavigationDestinationLabelBehavior.alwaysShow,
+                        selectedIndex: _currentIndex,
+                        onDestinationSelected: (index) {
+                          if (index != _currentIndex) {
+                            setState(() => _currentIndex = index);
+                          }
+                        },
+                        destinations: [
+                          NavigationDestination(
+                            icon: Icon(
+                              Icons.explore_outlined,
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
+                            ),
+                            selectedIcon: Icon(
+                              Icons.explore_rounded,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary,
+                            ),
+                            label: 'Explore',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(
+                              Icons.bookmarks_outlined,
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
+                            ),
+                            selectedIcon: Icon(
+                              Icons.bookmarks_rounded,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary,
+                            ),
+                            label: 'Library',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(
+                              Icons.settings_outlined,
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
+                            ),
+                            selectedIcon: Icon(
+                              Icons.settings_rounded,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary,
+                            ),
+                            label: 'Settings',
+                          ),
+                        ],
                       ),
-                      NavigationDestination(
-                        icon: Icon(
-                          Icons.bookmarks_outlined,
-                          color: isDark
-                              ? AppTheme.darkTextSecondary
-                              : AppTheme.lightTextSecondary,
-                        ),
-                        selectedIcon: Icon(
-                          Icons.bookmarks_rounded,
-                          color: isDark
-                              ? AppTheme.darkTextPrimary
-                              : AppTheme.lightTextPrimary,
-                        ),
-                        label: 'Library',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(
-                          Icons.settings_outlined,
-                          color: isDark
-                              ? AppTheme.darkTextSecondary
-                              : AppTheme.lightTextSecondary,
-                        ),
-                        selectedIcon: Icon(
-                          Icons.settings_rounded,
-                          color: isDark
-                              ? AppTheme.darkTextPrimary
-                              : AppTheme.lightTextPrimary,
-                        ),
-                        label: 'Settings',
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
             ),
           ),
         ),
@@ -244,9 +238,7 @@ class _ResearchSessionDock extends StatelessWidget {
             color: isDark ? const Color(0xFF161618) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDark
-                  ? const Color(0x22FFFFFF)
-                  : const Color(0xFFE5E5EA),
+              color: isDark ? const Color(0x22FFFFFF) : const Color(0xFFE5E5EA),
               width: 0.75,
             ),
             boxShadow: [
@@ -277,9 +269,7 @@ class _ResearchSessionDock extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF1C1C1E),
+                        color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -454,14 +444,10 @@ class _SessionProgressIcon extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF242426)
-                : const Color(0xFFF2F2F7),
+            color: isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7),
             borderRadius: BorderRadius.circular(9),
             border: Border.all(
-              color: isDark
-                  ? const Color(0x18FFFFFF)
-                  : const Color(0xFFE5E5EA),
+              color: isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA),
               width: 0.5,
             ),
           ),

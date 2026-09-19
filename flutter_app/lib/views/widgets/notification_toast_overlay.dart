@@ -244,243 +244,241 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                     position: _offsetAnimation,
                     child: FadeTransition(
                       opacity: _fadeAnimation,
-                        child: Dismissible(
-                          key: Key(_currentToast!.id),
-                          direction: DismissDirection.horizontal,
-                          onDismissed: (_) => _hideToast(),
-                          child: Listener(
-                            onPointerDown: (_) => _pauseTimer(),
-                            onPointerUp: (_) => _resumeTimer(),
-                            onPointerCancel: (_) => _resumeTimer(),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _currentToast!.relatedGraphId == null
-                                    ? null
-                                    : _openRelatedGraph,
-                                borderRadius: BorderRadius.circular(16),
-                                child: Container(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    12,
-                                    10,
-                                    8,
-                                    10,
-                                  ),
-                                  decoration: BoxDecoration(
+                      child: Dismissible(
+                        key: Key(_currentToast!.id),
+                        direction: DismissDirection.horizontal,
+                        onDismissed: (_) => _hideToast(),
+                        child: Listener(
+                          onPointerDown: (_) => _pauseTimer(),
+                          onPointerUp: (_) => _resumeTimer(),
+                          onPointerCancel: (_) => _resumeTimer(),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _currentToast!.relatedGraphId == null
+                                  ? null
+                                  : _openRelatedGraph,
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  10,
+                                  8,
+                                  10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF161618)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
                                     color: isDark
-                                        ? const Color(0xFF161618)
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: isDark
-                                          ? const Color(0x22FFFFFF)
-                                          : const Color(0xFFE5E5EA),
-                                      width: 0.75,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withAlpha(
-                                          isDark ? 80 : 16,
-                                        ),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
+                                        ? const Color(0x22FFFFFF)
+                                        : const Color(0xFFE5E5EA),
+                                    width: 0.75,
                                   ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      // Minimal monochrome icon badge with status dot
-                                      Stack(
-                                        clipBehavior: Clip.none,
-                                        children: [
-                                          Container(
-                                            width: 34,
-                                            height: 34,
-                                            decoration: BoxDecoration(
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withAlpha(
+                                        isDark ? 80 : 16,
+                                      ),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // Minimal monochrome icon badge with status dot
+                                    Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        Container(
+                                          width: 34,
+                                          height: 34,
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? const Color(0xFF242426)
+                                                : const Color(0xFFF2F2F7),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
+                                            border: Border.all(
                                               color: isDark
-                                                  ? const Color(0xFF242426)
-                                                  : const Color(0xFFF2F2F7),
-                                              borderRadius:
-                                                  BorderRadius.circular(9),
+                                                  ? const Color(0x18FFFFFF)
+                                                  : const Color(0xFFE5E5EA),
+                                              width: 0.5,
+                                            ),
+                                          ),
+                                          child:
+                                              _currentToast!.category ==
+                                                  NotificationCategory
+                                                      .researchUpdate
+                                              ? PaperGraphMark(
+                                                  size: 18,
+                                                  isDark: isDark,
+                                                )
+                                              : Icon(
+                                                  _getTypeIcon(
+                                                    _currentToast!.type,
+                                                  ),
+                                                  size: 18,
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : const Color(0xFF1C1C1E),
+                                                ),
+                                        ),
+                                        Positioned(
+                                          top: -2,
+                                          right: -2,
+                                          child: Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: BoxDecoration(
+                                              color: _getStatusDotColor(
+                                                _currentToast!.type,
+                                              ),
+                                              shape: BoxShape.circle,
                                               border: Border.all(
                                                 color: isDark
-                                                    ? const Color(0x18FFFFFF)
-                                                    : const Color(0xFFE5E5EA),
-                                                width: 0.5,
+                                                    ? const Color(0xFF161618)
+                                                    : Colors.white,
+                                                width: 1.2,
                                               ),
                                             ),
-                                            child: _currentToast!.category ==
-                                                    NotificationCategory
-                                                        .researchUpdate
-                                                ? PaperGraphMark(
-                                                    size: 18,
-                                                    isDark: isDark,
-                                                  )
-                                                : Icon(
-                                                    _getTypeIcon(
-                                                      _currentToast!.type,
-                                                    ),
-                                                    size: 18,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                            0xFF1C1C1E,
-                                                          ),
-                                                  ),
                                           ),
-                                          Positioned(
-                                            top: -2,
-                                            right: -2,
-                                            child: Container(
-                                              width: 7,
-                                              height: 7,
-                                              decoration: BoxDecoration(
-                                                color: _getStatusDotColor(
-                                                  _currentToast!.type,
-                                                ),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: isDark
-                                                      ? const Color(0xFF161618)
-                                                      : Colors.white,
-                                                  width: 1.2,
-                                                ),
-                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 11),
+                                    // Content
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            _getCategoryKicker(_currentToast!),
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.7,
+                                              color: isDark
+                                                  ? const Color(0xFFA1A1AA)
+                                                  : const Color(0xFF71717A),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _currentToast!.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF1C1C1E),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            _currentToast!.message,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              height: 1.25,
+                                              color: isDark
+                                                  ? const Color(0xFF8E8E93)
+                                                  : const Color(0xFF636366),
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(width: 11),
-                                      // Content
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              _getCategoryKicker(_currentToast!),
-                                              style: TextStyle(
-                                                fontSize: 9.5,
-                                                fontWeight: FontWeight.w600,
-                                                letterSpacing: 0.7,
-                                                color: isDark
-                                                    ? const Color(0xFFA1A1AA)
-                                                    : const Color(0xFF71717A),
-                                              ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Minimal iOS-style CTA & dismiss icon
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (_currentToast!.relatedGraphId !=
+                                            null) ...[
+                                          InkWell(
+                                            onTap: _openRelatedGraph,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
                                             ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              _currentToast!.title,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : const Color(0xFF1C1C1E),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 1),
-                                            Text(
-                                              _currentToast!.message,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                height: 1.25,
-                                                color: isDark
-                                                    ? const Color(0xFF8E8E93)
-                                                    : const Color(0xFF636366),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      // Minimal iOS-style CTA & dismiss icon
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (_currentToast!.relatedGraphId !=
-                                              null) ...[
-                                            InkWell(
-                                              onTap: _openRelatedGraph,
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 6,
-                                                  vertical: 4,
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Text(
-                                                      'Open',
-                                                      style: TextStyle(
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: isDark
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 4,
+                                                  ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    'Open',
+                                                    style: TextStyle(
+                                                      fontSize: 12.5,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: isDark
                                                           ? Colors.white
                                                           : const Color(
                                                               0xFF1C1C1E,
                                                             ),
-                                                      ),
                                                     ),
-                                                    const SizedBox(width: 1),
-                                                    Icon(
-                                                      Icons
-                                                          .chevron_right_rounded,
-                                                      size: 16,
-                                                      color: isDark
-                                                          ? const Color(
-                                                              0xFFA1A1AA,
-                                                            )
-                                                          : const Color(
-                                                              0xFF8E8E93,
-                                                            ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 0.75,
-                                              height: 18,
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 4,
-                                              ),
-                                              color: isDark
-                                                  ? const Color(0x1EFFFFFF)
-                                                  : const Color(0xFFE5E5EA),
-                                            ),
-                                          ],
-                                          InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            onTap: _hideToast,
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(4.0),
-                                              child: Icon(
-                                                Icons.close_rounded,
-                                                size: 16,
-                                                color: isDark
-                                                    ? const Color(0xFF71717A)
-                                                    : const Color(0xFF8E8E93),
+                                                  ),
+                                                  const SizedBox(width: 1),
+                                                  Icon(
+                                                    Icons.chevron_right_rounded,
+                                                    size: 16,
+                                                    color: isDark
+                                                        ? const Color(
+                                                            0xFFA1A1AA,
+                                                          )
+                                                        : const Color(
+                                                            0xFF8E8E93,
+                                                          ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ),
+                                          Container(
+                                            width: 0.75,
+                                            height: 18,
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            color: isDark
+                                                ? const Color(0x1EFFFFFF)
+                                                : const Color(0xFFE5E5EA),
+                                          ),
                                         ],
-                                      ),
-                                    ],
-                                  ),
+                                        InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          onTap: _hideToast,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4.0),
+                                            child: Icon(
+                                              Icons.close_rounded,
+                                              size: 16,
+                                              color: isDark
+                                                  ? const Color(0xFF71717A)
+                                                  : const Color(0xFF8E8E93),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -490,9 +488,10 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
-      );
-    }
+      ),
+    );
   }
+}

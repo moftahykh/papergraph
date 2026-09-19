@@ -181,10 +181,7 @@ class _HomeViewState extends State<HomeView> {
       appBar: AppBar(
         title: Row(
           children: [
-            PaperGraphMark(
-              size: 24,
-              isDark: isDark,
-            ),
+            PaperGraphMark(size: 24, isDark: isDark),
             const SizedBox(width: 10),
             Text(
               'PaperGraph',
@@ -519,9 +516,7 @@ class _HomeViewState extends State<HomeView> {
                         backgroundColor: isDark
                             ? const Color(0x18FFFFFF)
                             : const Color(0xFFE5E5EA),
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF1C1C1E),
+                        color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -628,9 +623,7 @@ class _HomeViewState extends State<HomeView> {
                 ? Icons.info_outline_rounded
                 : Icons.lock_outline_rounded,
             size: 16,
-            color: isDark
-                ? const Color(0xFFA1A1AA)
-                : const Color(0xFF71717A),
+            color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -835,9 +828,10 @@ class _HomeViewState extends State<HomeView> {
                     _searchController.text = topic.query;
                     setState(() {});
                     if (!_checkGuestSearchLimit()) return;
-                    context
-                        .read<SearchCubit>()
-                        .search(topic.query, immediate: true);
+                    context.read<SearchCubit>().search(
+                      topic.query,
+                      immediate: true,
+                    );
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1054,8 +1048,8 @@ class _HomeViewState extends State<HomeView> {
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                               color: isDark
-                                ? const Color(0xFFA1A1AA)
-                                : const Color(0xFF71717A),
+                                  ? const Color(0xFFA1A1AA)
+                                  : const Color(0xFF71717A),
                             ),
                           ),
                         ),
@@ -1088,14 +1082,15 @@ class _HomeViewState extends State<HomeView> {
         ? const Color(0xFF10B981)
         : const Color(0xFFF59E0B);
 
-    final originNode = graph.nodes.where((n) => n.isOrigin).firstOrNull ??
+    final originNode =
+        graph.nodes.where((n) => n.isOrigin).firstOrNull ??
         (graph.nodes.isNotEmpty ? graph.nodes.first : null);
     final authorsText = originNode != null && originNode.authors.isNotEmpty
         ? originNode.authors.take(3).join(', ') +
-            (originNode.authors.length > 3 ? ' et al.' : '')
+              (originNode.authors.length > 3 ? ' et al.' : '')
         : (originNode?.venue != null && originNode!.venue!.isNotEmpty
-            ? originNode.venue!
-            : null);
+              ? originNode.venue!
+              : null);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1103,9 +1098,7 @@ class _HomeViewState extends State<HomeView> {
         color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark
-              ? const Color(0x22FFFFFF)
-              : const Color(0xFFE5E5EA),
+          color: isDark ? const Color(0x22FFFFFF) : const Color(0xFFE5E5EA),
           width: 0.75,
         ),
         boxShadow: [
@@ -1194,14 +1187,8 @@ class _HomeViewState extends State<HomeView> {
                         runSpacing: 4,
                         children: [
                           if (year != null)
-                            _buildPillBadge(
-                              text: year,
-                              isDark: isDark,
-                            ),
-                          _buildPillBadge(
-                            text: paperCount,
-                            isDark: isDark,
-                          ),
+                            _buildPillBadge(text: year, isDark: isDark),
+                          _buildPillBadge(text: paperCount, isDark: isDark),
                           _buildPillBadge(
                             text: statusText,
                             textColor: statusColor,
@@ -1234,11 +1221,13 @@ class _HomeViewState extends State<HomeView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: bgColor ??
+        color:
+            bgColor ??
             (isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7)),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: borderColor ??
+          color:
+              borderColor ??
               (isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA)),
           width: 0.5,
         ),
@@ -1249,7 +1238,8 @@ class _HomeViewState extends State<HomeView> {
           fontSize: 10.5,
           fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
           letterSpacing: isBold ? 0.3 : 0,
-          color: textColor ??
+          color:
+              textColor ??
               (isDark ? const Color(0xFFD4D4D8) : const Color(0xFF52525B)),
         ),
       ),
@@ -1408,8 +1398,7 @@ class _HomeViewState extends State<HomeView> {
     final localGraphId = recommendation.localGraphId.trim();
     if (localGraphId.isEmpty) return;
 
-    final snapshot =
-        context.read<LibraryCubit>().getCachedGraph(localGraphId);
+    final snapshot = context.read<LibraryCubit>().getCachedGraph(localGraphId);
     if (snapshot != null) {
       await Navigator.of(context).push(
         MaterialPageRoute(

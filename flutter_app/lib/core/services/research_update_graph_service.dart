@@ -51,9 +51,7 @@ class ResearchUpdateGraphService {
       finalScore: update.relevanceScore,
       confidence: ConfidenceLevel.medium,
       cluster: 5,
-      archetype: relation == 'direct_citation'
-          ? 'derivative_work'
-          : 'similar',
+      archetype: relation == 'direct_citation' ? 'derivative_work' : 'similar',
     );
 
     final nodes = [...snapshot.nodes, node];
@@ -123,11 +121,7 @@ class ResearchUpdateGraphService {
   static String? _normalizeDoi(String? value) {
     if (value == null || value.trim().isEmpty) return null;
     var doi = value.trim().toLowerCase();
-    for (final prefix in [
-      'https://doi.org/',
-      'http://doi.org/',
-      'doi:',
-    ]) {
+    for (final prefix in ['https://doi.org/', 'http://doi.org/', 'doi:']) {
       if (doi.startsWith(prefix)) {
         doi = doi.substring(prefix.length);
         break;

@@ -10,7 +10,9 @@ import 'forgot_password_view.dart';
 import 'register_view.dart';
 
 class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+  final String? successMessage;
+
+  const LoginView({super.key, this.successMessage});
 
   @override
   State<LoginView> createState() => _LoginViewState();
@@ -21,6 +23,23 @@ class _LoginViewState extends State<LoginView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.successMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.successMessage!),
+            backgroundColor: AppTheme.accentEmerald,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -70,9 +89,7 @@ class _LoginViewState extends State<LoginView> {
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white),
               SizedBox(width: 10),
-              Expanded(
-                child: Text('Biometric Authentication Successful!'),
-              ),
+              Expanded(child: Text('Biometric Authentication Successful!')),
             ],
           ),
           backgroundColor: AppTheme.accentEmerald,
@@ -113,12 +130,7 @@ class _LoginViewState extends State<LoginView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Connected Research Graph Logo Header
-                  Center(
-                    child: PaperGraphMark(
-                      size: 72,
-                      isDark: isDark,
-                    ),
-                  ),
+                  Center(child: PaperGraphMark(size: 72, isDark: isDark)),
                   const SizedBox(height: 20),
 
                   Text(
@@ -137,7 +149,9 @@ class _LoginViewState extends State<LoginView> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary,
                     ),
                   ),
                   const SizedBox(height: 36),
@@ -148,7 +162,9 @@ class _LoginViewState extends State<LoginView> {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                      color: isDark
+                          ? AppTheme.darkTextPrimary
+                          : AppTheme.lightTextPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -177,7 +193,9 @@ class _LoginViewState extends State<LoginView> {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                      color: isDark
+                          ? AppTheme.darkTextPrimary
+                          : AppTheme.lightTextPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -186,10 +204,15 @@ class _LoginViewState extends State<LoginView> {
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       hintText: '••••••••',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                      prefixIcon: const Icon(
+                        Icons.lock_outline_rounded,
+                        size: 20,
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           size: 20,
                         ),
                         onPressed: () {
@@ -249,8 +272,12 @@ class _LoginViewState extends State<LoginView> {
                     onPressed: authProvider.isLoading ? null : _submitLogin,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
-                      foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+                      backgroundColor: isDark
+                          ? Colors.white
+                          : const Color(0xFF18181B),
+                      foregroundColor: isDark
+                          ? const Color(0xFF09090B)
+                          : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -262,12 +289,17 @@ class _LoginViewState extends State<LoginView> {
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              color: isDark ? const Color(0xFF09090B) : Colors.white,
+                              color: isDark
+                                  ? const Color(0xFF09090B)
+                                  : Colors.white,
                             ),
                           )
                         : const Text(
                             'Sign In',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                   const SizedBox(height: 20),
@@ -277,7 +309,9 @@ class _LoginViewState extends State<LoginView> {
                     children: [
                       Expanded(
                         child: Divider(
-                          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                          color: isDark
+                              ? AppTheme.darkBorder
+                              : AppTheme.lightBorder,
                         ),
                       ),
                       Padding(
@@ -288,13 +322,17 @@ class _LoginViewState extends State<LoginView> {
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.0,
-                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
                           ),
                         ),
                       ),
                       Expanded(
                         child: Divider(
-                          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                          color: isDark
+                              ? AppTheme.darkBorder
+                              : AppTheme.lightBorder,
                         ),
                       ),
                     ],
@@ -307,7 +345,9 @@ class _LoginViewState extends State<LoginView> {
                     icon: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7),
+                        color: isDark
+                            ? const Color(0xFF242426)
+                            : const Color(0xFFF2F2F7),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -327,7 +367,9 @@ class _LoginViewState extends State<LoginView> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       side: BorderSide(
-                        color: isDark ? const Color(0x22FFFFFF) : const Color(0xFF18181B),
+                        color: isDark
+                            ? const Color(0x22FFFFFF)
+                            : const Color(0xFF18181B),
                         width: 1.5,
                       ),
                       shape: RoundedRectangleBorder(
@@ -344,20 +386,26 @@ class _LoginViewState extends State<LoginView> {
                       Text(
                         'New Researcher? ',
                         style: TextStyle(
-                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary,
                         ),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const RegisterView()),
+                            MaterialPageRoute(
+                              builder: (_) => const RegisterView(),
+                            ),
                           );
                         },
                         child: Text(
                           'Create Account',
                           style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF18181B),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF18181B),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -370,14 +418,18 @@ class _LoginViewState extends State<LoginView> {
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const MainNavigationView()),
+                        MaterialPageRoute(
+                          builder: (_) => const MainNavigationView(),
+                        ),
                       );
                     },
                     child: Text(
                       'Continue as Guest Explorer',
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary,
                       ),
                     ),
                   ),

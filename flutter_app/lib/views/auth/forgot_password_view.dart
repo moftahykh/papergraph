@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
@@ -17,6 +20,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   bool _isLoading = false;
   bool _emailSent = false;
   String? _errorMessage;
+  Timer? _resendTimer;
+  int _resendSeconds = 0;
+
+  bool get _fromAccount => widget.initialEmail != null;
 
   @override
   void initState() {
@@ -26,8 +33,26 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _emailController.dispose();
     super.dispose();
+  }
+
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendSeconds = 30);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendSeconds <= 1) {
+        timer.cancel();
+        setState(() => _resendSeconds = 0);
+      } else {
+        setState(() => _resendSeconds -= 1);
+      }
+    });
   }
 
   void _handleReset() async {
@@ -42,7 +67,17 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     });
 
     // Send Password Reset directly via Firebase Auth
-    final success = await authProvider.sendPasswordReset(email);
+    final success = await authProvider.sendPasswordReset(
+      email,
+      actionCodeSettings: fb.ActionCodeSettings(
+        url: 'https://papergraph-cb9c3.firebaseapp.com',
+        handleCodeInApp: true,
+        androidPackageName: 'com.papergraph.paper_graph',
+        androidInstallApp: true,
+        androidMinimumVersion: '1',
+        iOSBundleId: 'com.papergraph.paperGraph',
+      ),
+    );
     if (!mounted) return;
 
     setState(() {
@@ -50,9 +85,11 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
       if (success) {
         _emailSent = true;
       } else {
-        _errorMessage = authProvider.errorMessage ?? 'Failed to send reset email';
+        _errorMessage =
+            authProvider.errorMessage ?? 'Failed to send reset email';
       }
     });
+    if (success) _startResendCooldown();
   }
 
   @override
@@ -60,14 +97,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reset Password'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Reset Password'), elevation: 0),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-          child: _emailSent ? _buildSuccessView(isDark) : _buildFormView(isDark),
+          child: _emailSent
+              ? _buildSuccessView(isDark)
+              : _buildFormView(isDark),
         ),
       ),
     );
@@ -94,7 +130,9 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
               ),
               child: Icon(
                 Icons.lock_reset_rounded,
-                color: isDark ? AppTheme.primaryLightBlue : AppTheme.primaryBlue,
+                color: isDark
+                    ? AppTheme.primaryLightBlue
+                    : AppTheme.primaryBlue,
                 size: 36,
               ),
             ),
@@ -102,38 +140,47 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           const SizedBox(height: 24),
 
           Text(
-            'Forgot Your Password?',
+            _fromAccount ? 'Reset your password' : 'Forgot your password?',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : AppTheme.lightTextPrimary,
             ),
           ),
           const SizedBox(height: 10),
           Text(
-            'Enter your registered email address. We will verify your account and send a secure password recovery link to your inbox.',
+            _fromAccount
+                ? 'We’ll send a secure reset link to your account email.'
+                : 'Enter your registered email address and we’ll send a secure reset link to your inbox.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
               height: 1.5,
-              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
             ),
           ),
           const SizedBox(height: 32),
 
           // Email Input Field
           Text(
-            'Academic / Registered Email',
+            _fromAccount ? 'Account email' : 'Academic / Registered Email',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 13,
-              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : AppTheme.lightTextPrimary,
             ),
           ),
           const SizedBox(height: 8),
           TextFormField(
             controller: _emailController,
+            readOnly: _fromAccount,
             keyboardType: TextInputType.emailAddress,
             decoration: const InputDecoration(
               hintText: 'name@institution.edu',
@@ -163,7 +210,11 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: AppTheme.accentRose, size: 20),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: AppTheme.accentRose,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -201,7 +252,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                     ),
                   )
                 : const Text(
-                    'Send Recovery Link',
+                    'Send reset link',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
           ),
@@ -217,7 +268,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                 color: isDark ? Colors.white : const Color(0xFF18181B),
               ),
               label: Text(
-                'Back to Sign In',
+                _fromAccount ? 'Back to Account' : 'Back to Sign In',
                 style: TextStyle(
                   color: isDark ? Colors.white : const Color(0xFF18181B),
                 ),
@@ -256,25 +307,38 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         const SizedBox(height: 24),
 
         Text(
-          'Recovery Email Sent!',
+          'Check your email',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w800,
-            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+            color: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.lightTextPrimary,
           ),
         ),
         const SizedBox(height: 12),
         Text(
-          'We have sent password reset instructions to:\n${_emailController.text}\n\nPlease check your inbox and spam folder, then follow the instructions to set your new password.',
+          'We sent a password reset link to:\n${_emailController.text}\n\nOpen the link to choose a new password. You can keep using PaperGraph while you wait.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14.5,
             height: 1.6,
-            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
           ),
         ),
         const SizedBox(height: 36),
+        TextButton(
+          onPressed: _resendSeconds == 0 && !_isLoading ? _handleReset : null,
+          child: Text(
+            _resendSeconds == 0
+                ? 'Resend email'
+                : 'Resend email in ${_resendSeconds}s',
+          ),
+        ),
+        const SizedBox(height: 12),
 
         ElevatedButton(
           onPressed: () => Navigator.pop(context),
@@ -287,8 +351,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          child: const Text(
-            'Return to Sign In',
+          child: Text(
+            _fromAccount ? 'Back to Account' : 'Return to Sign In',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),

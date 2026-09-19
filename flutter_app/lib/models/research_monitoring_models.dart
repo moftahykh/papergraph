@@ -83,10 +83,7 @@ class ResearchUpdate {
     this.isAddedToGraph = false,
   });
 
-  ResearchUpdate copyWith({
-    bool? isRead,
-    bool? isAddedToGraph,
-  }) {
+  ResearchUpdate copyWith({bool? isRead, bool? isAddedToGraph}) {
     return ResearchUpdate(
       id: id,
       monitoredGraphId: monitoredGraphId,
@@ -117,7 +114,8 @@ class ResearchUpdate {
       relationType: (json['relation_type'] as String?) ?? 'related',
       explanation: (json['explanation'] as String?) ?? '',
       detectedAt:
-          _parseDate(json['detected_at']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+          _parseDate(json['detected_at']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       isRead: json['is_read'] == true,
       isAddedToGraph: json['is_added_to_graph'] == true,
     );

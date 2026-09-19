@@ -147,9 +147,7 @@ class FormattedAbstract extends StatelessWidget {
             decoration: sections[i].heading == null
                 ? null
                 : BoxDecoration(
-                    border: Border(
-                      left: BorderSide(color: accent, width: 2),
-                    ),
+                    border: Border(left: BorderSide(color: accent, width: 2)),
                   ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +155,8 @@ class FormattedAbstract extends StatelessWidget {
                 if (sections[i].heading != null) ...[
                   Text(
                     sections[i].heading!.toUpperCase(),
-                    style: headingStyle ??
+                    style:
+                        headingStyle ??
                         TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
@@ -170,8 +169,8 @@ class FormattedAbstract extends StatelessWidget {
                 SelectableText(
                   sections[i].body,
                   textAlign: TextAlign.start,
-                  style: bodyStyle ??
-                      const TextStyle(fontSize: 15.5, height: 1.7),
+                  style:
+                      bodyStyle ?? const TextStyle(fontSize: 15.5, height: 1.7),
                 ),
               ],
             ),

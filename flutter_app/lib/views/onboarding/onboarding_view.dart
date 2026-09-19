@@ -111,9 +111,7 @@ class _OnboardingViewState extends State<OnboardingView>
     final textSecondary = isDark
         ? AppTheme.darkTextSecondary
         : AppTheme.lightTextSecondary;
-    final borderColor = isDark
-        ? AppTheme.darkBorder
-        : AppTheme.lightBorder;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
     final buttonBg = isDark ? Colors.white : const Color(0xFF18181B);
     final buttonFg = isDark ? const Color(0xFF09090B) : Colors.white;
 
@@ -130,10 +128,7 @@ class _OnboardingViewState extends State<OnboardingView>
                 children: [
                   Row(
                     children: [
-                      PaperGraphMark(
-                        size: 22,
-                        isDark: isDark,
-                      ),
+                      PaperGraphMark(size: 22, isDark: isDark),
                       const SizedBox(width: 10),
                       Text(
                         'PaperGraph',
@@ -148,7 +143,10 @@ class _OnboardingViewState extends State<OnboardingView>
                     onPressed: _onFinish,
                     style: TextButton.styleFrom(
                       foregroundColor: textSecondary,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       visualDensity: VisualDensity.compact,
                     ),
                     child: Text(
@@ -175,7 +173,10 @@ class _OnboardingViewState extends State<OnboardingView>
                   final slide = _slides[index];
                   return SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 10,
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -192,10 +193,7 @@ class _OnboardingViewState extends State<OnboardingView>
                                 ? Colors.white.withAlpha(8)
                                 : Colors.black.withAlpha(6),
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: borderColor,
-                              width: 0.8,
-                            ),
+                            border: Border.all(color: borderColor, width: 0.8),
                           ),
                           child: Text(
                             slide.tag,
@@ -271,12 +269,7 @@ class _OnboardingViewState extends State<OnboardingView>
             Container(
               padding: const EdgeInsets.fromLTRB(28, 16, 28, 24),
               decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: borderColor,
-                    width: 0.8,
-                  ),
-                ),
+                border: Border(top: BorderSide(color: borderColor, width: 0.8)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -502,8 +495,12 @@ class _OnboardingViewState extends State<OnboardingView>
   Widget _buildVaultHero(bool isDark) {
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
     final cardBg = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textPrimary = isDark
+        ? AppTheme.darkTextPrimary
+        : AppTheme.lightTextPrimary;
+    final textSecondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
 
     return Container(
       width: double.infinity,
@@ -584,10 +581,7 @@ class _OnboardingViewState extends State<OnboardingView>
           // Paper Title Mockup
           Text(
             'Attention Is All You Need',
-            style: AppTheme.brandTitleStyle(
-              fontSize: 20,
-              color: textPrimary,
-            ),
+            style: AppTheme.brandTitleStyle(fontSize: 20, color: textPrimary),
           ),
 
           const SizedBox(height: 4),
@@ -609,9 +603,7 @@ class _OnboardingViewState extends State<OnboardingView>
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF09090B)
-                  : const Color(0xFFECECEC),
+              color: isDark ? const Color(0xFF09090B) : const Color(0xFFECECEC),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: borderColor, width: 0.8),
             ),
@@ -646,10 +638,7 @@ class _OnboardingViewState extends State<OnboardingView>
               Expanded(
                 child: Text(
                   'Graph topology & PDF stored on device',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 10.5, color: textSecondary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -701,10 +690,7 @@ class _MinimalGraphPainter extends CustomPainter {
   final double pulse; // 0.0 .. 1.0
   final bool isDark;
 
-  _MinimalGraphPainter({
-    required this.pulse,
-    required this.isDark,
-  });
+  _MinimalGraphPainter({required this.pulse, required this.isDark});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -712,10 +698,18 @@ class _MinimalGraphPainter extends CustomPainter {
     final cy = size.height * 0.52;
 
     final primaryColor = isDark ? Colors.white : const Color(0xFF18181B);
-    final nodeSecondary = isDark ? const Color(0xFFD4D4D8) : const Color(0xFF3F3F46);
-    final edgeColor = (isDark ? Colors.white : Colors.black).withAlpha(isDark ? 45 : 35);
-    final dashEdgeColor = (isDark ? Colors.white : Colors.black).withAlpha(isDark ? 30 : 25);
-    final ringColor = (isDark ? Colors.white : Colors.black).withAlpha(isDark ? 25 : 18);
+    final nodeSecondary = isDark
+        ? const Color(0xFFD4D4D8)
+        : const Color(0xFF3F3F46);
+    final edgeColor = (isDark ? Colors.white : Colors.black).withAlpha(
+      isDark ? 45 : 35,
+    );
+    final dashEdgeColor = (isDark ? Colors.white : Colors.black).withAlpha(
+      isDark ? 30 : 25,
+    );
+    final ringColor = (isDark ? Colors.white : Colors.black).withAlpha(
+      isDark ? 25 : 18,
+    );
 
     // Nodes geometry relative to center
     final nodes = [
@@ -792,11 +786,7 @@ class _MinimalGraphPainter extends CustomPainter {
       );
 
       // Node body
-      canvas.drawCircle(
-        pos,
-        r,
-        Paint()..color = nodeSecondary,
-      );
+      canvas.drawCircle(pos, r, Paint()..color = nodeSecondary);
 
       // Outer crisp stroke
       canvas.drawCircle(
@@ -827,11 +817,7 @@ class _MinimalGraphPainter extends CustomPainter {
     canvas.drawCircle(originPos, 14.0, archRingPaint);
 
     // Inner origin solid node
-    canvas.drawCircle(
-      originPos,
-      originR,
-      Paint()..color = primaryColor,
-    );
+    canvas.drawCircle(originPos, originR, Paint()..color = primaryColor);
 
     // Center micro core
     canvas.drawCircle(

@@ -101,16 +101,17 @@ class _RegisterViewState extends State<RegisterView> {
 
     // 1. Verify if email already exists before dispatching OTP
     try {
-      final exists = await authProvider.isEmailRegistered(email).timeout(
-        const Duration(seconds: 4),
-        onTimeout: () => false,
-      );
+      final exists = await authProvider
+          .isEmailRegistered(email)
+          .timeout(const Duration(seconds: 4), onTimeout: () => false);
       if (exists) {
         if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('This email is already registered. Please sign in or reset your password.'),
+            content: Text(
+              'This email is already registered. Please sign in or reset your password.',
+            ),
             backgroundColor: AppTheme.accentRose,
             duration: Duration(seconds: 4),
           ),
@@ -122,12 +123,14 @@ class _RegisterViewState extends State<RegisterView> {
     }
 
     try {
-      await _apiClient.sendOtp(email).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw const ApiException(
-          'Connection timed out while sending verification code. Please check your internet connection or server status.',
-        ),
-      );
+      await _apiClient
+          .sendOtp(email)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw const ApiException(
+              'Connection timed out while sending verification code. Please check your internet connection or server status.',
+            ),
+          );
       if (!mounted) return;
 
       setState(() => _isLoading = false);
@@ -239,7 +242,11 @@ class _RegisterViewState extends State<RegisterView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentStep == 0 ? 'Create Researcher Profile' : 'Research Interests'),
+        title: Text(
+          _currentStep == 0
+              ? 'Create Researcher Profile'
+              : 'Research Interests',
+        ),
         elevation: 0,
       ),
       body: SafeArea(
@@ -269,7 +276,9 @@ class _RegisterViewState extends State<RegisterView> {
               fontSize: 24,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.4,
-              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : AppTheme.lightTextPrimary,
             ),
           ),
           const SizedBox(height: 6),
@@ -277,7 +286,9 @@ class _RegisterViewState extends State<RegisterView> {
             'Step 1 of 2: Enter your credentials to receive a verification code.',
             style: TextStyle(
               fontSize: 13.5,
-              color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
             ),
           ),
           const SizedBox(height: 24),
@@ -290,8 +301,9 @@ class _RegisterViewState extends State<RegisterView> {
               hintText: 'e.g. Dr. Alex Morgan',
               prefixIcon: Icon(Icons.person_outline_rounded, size: 20),
             ),
-            validator: (val) =>
-                val == null || val.trim().isEmpty ? 'Please enter your name' : null,
+            validator: (val) => val == null || val.trim().isEmpty
+                ? 'Please enter your name'
+                : null,
           ),
           const SizedBox(height: 18),
 
@@ -327,14 +339,18 @@ class _RegisterViewState extends State<RegisterView> {
               prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  _obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
                   size: 20,
                 ),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
             ),
-            validator: (val) =>
-                val != null && val.length < 6 ? 'Password must be at least 6 characters' : null,
+            validator: (val) => val != null && val.length < 6
+                ? 'Password must be at least 6 characters'
+                : null,
           ),
 
           // Password Strength Bar
@@ -347,8 +363,12 @@ class _RegisterViewState extends State<RegisterView> {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: strength,
-                      backgroundColor: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                      valueColor: AlwaysStoppedAnimation<Color>(_getStrengthColor(strength)),
+                      backgroundColor: isDark
+                          ? AppTheme.darkBorder
+                          : AppTheme.lightBorder,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _getStrengthColor(strength),
+                      ),
                       minHeight: 4,
                     ),
                   ),
@@ -382,8 +402,9 @@ class _RegisterViewState extends State<RegisterView> {
                       : Icons.visibility_outlined,
                   size: 20,
                 ),
-                onPressed: () =>
-                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                onPressed: () => setState(
+                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                ),
               ),
             ),
             validator: (val) {
@@ -424,7 +445,10 @@ class _RegisterViewState extends State<RegisterView> {
                     children: [
                       Text(
                         'Send OTP Verification Code',
-                        style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       SizedBox(width: 8),
                       Icon(Icons.arrow_forward_rounded, size: 18),
@@ -440,7 +464,9 @@ class _RegisterViewState extends State<RegisterView> {
               Text(
                 'Already have an account? ',
                 style: TextStyle(
-                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
                 ),
               ),
               TextButton(
@@ -474,7 +500,11 @@ class _RegisterViewState extends State<RegisterView> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.verified_rounded, color: AppTheme.accentEmerald, size: 22),
+              const Icon(
+                Icons.verified_rounded,
+                color: AppTheme.accentEmerald,
+                size: 22,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -497,7 +527,9 @@ class _RegisterViewState extends State<RegisterView> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.4,
-            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+            color: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.lightTextPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -505,7 +537,9 @@ class _RegisterViewState extends State<RegisterView> {
           'Step 2 of 2: Select your domains of interest to tailor your connected graphs.',
           style: TextStyle(
             fontSize: 13.5,
-            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
           ),
         ),
         const SizedBox(height: 24),
@@ -527,7 +561,9 @@ class _RegisterViewState extends State<RegisterView> {
           spacing: 8,
           runSpacing: 8,
           children: _suggestedDomains.map((domain) {
-            final isSelected = _selectedDomain == domain && _customDomainController.text.isEmpty;
+            final isSelected =
+                _selectedDomain == domain &&
+                _customDomainController.text.isEmpty;
             return ChoiceChip(
               label: Text(domain),
               selected: isSelected,
@@ -537,18 +573,24 @@ class _RegisterViewState extends State<RegisterView> {
                   _customDomainController.clear();
                 });
               },
-              selectedColor: isDark ? const Color(0xFF242426) : const Color(0xFF18181B),
+              selectedColor: isDark
+                  ? const Color(0xFF242426)
+                  : const Color(0xFF18181B),
               backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
               labelStyle: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected
                     ? Colors.white
-                    : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                    : (isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.lightTextSecondary),
               ),
               side: BorderSide(
                 color: isSelected
-                    ? (isDark ? const Color(0x40FFFFFF) : const Color(0xFF18181B))
+                    ? (isDark
+                          ? const Color(0x40FFFFFF)
+                          : const Color(0xFF18181B))
                     : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
               ),
             );

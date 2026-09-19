@@ -44,14 +44,15 @@ class NotificationCubit extends Cubit<NotificationState> {
     String? paperTitle,
     bool isPartial = false,
   }) {
-    final title =
-        isPartial ? 'Graph ready with limited results' : 'Graph ready';
+    final title = isPartial
+        ? 'Graph ready with limited results'
+        : 'Graph ready';
     final hasTitle = paperTitle != null && paperTitle.trim().isNotEmpty;
     final body = hasTitle
         ? '$paperTitle · $nodeCount connected papers'
         : isPartial
-            ? '$nodeCount papers are ready. Some sources did not respond.'
-            : '$nodeCount connected papers are ready to explore.';
+        ? '$nodeCount papers are ready. Some sources did not respond.'
+        : '$nodeCount connected papers are ready to explore.';
 
     notify(
       title: title,
@@ -92,9 +93,12 @@ class NotificationCubit extends Cubit<NotificationState> {
     required int updateCount,
     String? graphTitle,
   }) {
-    final countLabel = updateCount == 1 ? 'A new paper' : '$updateCount new papers';
+    final countLabel = updateCount == 1
+        ? 'A new paper'
+        : '$updateCount new papers';
     notify(
-      title: '$countLabel for ${graphTitle?.trim().isNotEmpty == true ? graphTitle!.trim() : 'a saved graph'}',
+      title:
+          '$countLabel for ${graphTitle?.trim().isNotEmpty == true ? graphTitle!.trim() : 'a saved graph'}',
       message: 'Open Graph Updates to review the latest research.',
       type: NotificationType.info,
       relatedGraphId: localGraphId,

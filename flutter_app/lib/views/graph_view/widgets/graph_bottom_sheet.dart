@@ -80,7 +80,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       height: _sheetHeight,
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(top: BorderSide(color: borderColor, width: 1.0)),
         boxShadow: [
           BoxShadow(
@@ -271,7 +271,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 ),
               ),
               child: Text(
-                node.isOrigin ? 'STARTING PAPER' : explanation.badgeLabel,
+                explanation.badgeLabel,
                 style: TextStyle(
                   color: badgeColor,
                   fontSize: 10,
@@ -307,7 +307,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               ),
             _buildMetaTag(
               Icons.format_quote_rounded,
-              '${node.citationCount} citations',
+              _citationLabel(node),
               isDark,
             ),
             if (node.confidence != null)
@@ -347,7 +347,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 style: IconButton.styleFrom(
                   backgroundColor: isDark ? AppTheme.darkBorder : const Color(0xFFE4E4E7),
                   foregroundColor: isDark ? Colors.white : const Color(0xFF18181B),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.all(8),
                 ),
                 onPressed: () {
@@ -371,7 +371,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 elevation: 0,
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
               ),
             ),
 
@@ -386,7 +386,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                   side: BorderSide(color: isDark ? AppTheme.darkBorder : const Color(0xFFCBD5E1)),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                 ),
               ),
 
@@ -400,7 +400,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                 side: BorderSide(color: isDark ? AppTheme.actionPurpleDark : AppTheme.actionPurple),
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
               ),
             ),
           ],
@@ -701,14 +701,19 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         isDark: isDark,
       ),
       _buildMetricSignal(
-        label: 'Overall relevance',
+        label: node.isOrigin ? 'Graph baseline' : 'Overall relevance',
         result: MetricResult(
-          value: node.finalScore,
-          availability: node.finalScore == null
+          value: node.isOrigin ? null : node.finalScore,
+          availability: node.isOrigin
+              ? MetricAvailability.notApplicable
+              : node.finalScore == null
               ? MetricAvailability.unavailable
               : MetricAvailability.available,
         ),
-        help: 'Combined ranking score returned by the graph service.',
+        displayValue: node.isOrigin ? 'Starting paper' : null,
+        help: node.isOrigin
+            ? 'This is the starting paper used to build the graph.'
+            : 'Combined ranking score returned by the graph service.',
         isDark: isDark,
       ),
       if (node.scores?.containsKey('prior_score') == true)
@@ -730,8 +735,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
+        color: isDark ? AppTheme.darkSurface : const Color(0xFFF7F8FF),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
         ),
@@ -740,7 +745,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Ranking signals',
+            'Connection signals',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -751,7 +756,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
           ),
           const SizedBox(height: 2),
           Text(
-            'These scores explain ranking, not research quality.',
+            'These signals explain why this paper is connected to your graph. They do not measure research quality.',
             style: TextStyle(
               fontSize: 10.5,
               color: isDark
@@ -771,12 +776,15 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     required MetricResult? result,
     required String help,
     required bool isDark,
+    String? displayValue,
   }) {
-    final value = _metricDisplayValue(result);
-    final available = result?.isAvailable == true;
+    final value = displayValue ?? _metricDisplayValue(result);
+    final available = displayValue != null || result?.isAvailable == true;
     final tooltip = result?.reason?.trim().isNotEmpty == true
         ? result!.reason!.trim()
-        : help;
+        : result?.isAvailable == true
+        ? help
+        : '$help No relationship evidence is available in this snapshot.';
     return Tooltip(
       message: tooltip,
       child: Container(
@@ -784,7 +792,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: isDark ? AppTheme.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0),
           ),
@@ -872,7 +880,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
           ),
         ),
         subtitle: Text(
-          '${node.year ?? 'N/A'} · ${node.citationCount} citations',
+          '${node.year ?? 'N/A'} · ${_citationLabel(node)}',
           style: TextStyle(
             fontSize: 11,
             color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF6B7280),
@@ -885,6 +893,13 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         },
       ),
     );
+  }
+
+  String _citationLabel(GraphNode node) {
+    if (node.citationCount == 0) {
+      return 'Citation count not in snapshot';
+    }
+    return '${node.citationCount} citations';
   }
 
   Widget _buildEmptyTab(String title, String description, IconData icon, bool isDark) {

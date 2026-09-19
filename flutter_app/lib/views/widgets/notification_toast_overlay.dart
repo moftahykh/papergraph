@@ -1,18 +1,30 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/services/hive_service.dart';
+import '../../cubits/graph/graph_cubit.dart';
+import '../../cubits/graph/graph_state.dart';
+import '../../cubits/library/library_cubit.dart';
 import '../../cubits/notification/notification_cubit.dart';
 import '../../cubits/notification/notification_state.dart';
-import '../../core/theme/app_theme.dart';
+import '../graph_view/connected_graph_view.dart';
 import 'paper_graph_mark.dart';
 
-/// A sleek, floating in-app notification banner overlay.
-/// Placed globally via MaterialApp.builder so notifications can be shown
-/// anywhere without interrupting navigation or modal flows.
+/// Minimalist iOS / Pro-app style in-app notification banner.
+///
+/// Follows modern Apple HIG and pro productivity app aesthetics (Linear, Things 3):
+/// - Neutral monochrome palette (obsidian dark / pure warm white light).
+/// - Deferential, non-intrusive presentation without neon borders or flashy progress bars.
+/// - Unmistakable tactile action and fluid swipe-to-dismiss.
 class NotificationToastOverlay extends StatefulWidget {
   final Widget child;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
-  const NotificationToastOverlay({super.key, required this.child});
+  const NotificationToastOverlay({
+    super.key,
+    required this.child,
+    this.navigatorKey,
+  });
 
   @override
   State<NotificationToastOverlay> createState() =>
@@ -27,6 +39,10 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
 
   Timer? _autoDismissTimer;
   InAppNotification? _currentToast;
+  bool _isPaused = false;
+  DateTime? _toastShownAt;
+
+  static const Duration _toastDuration = Duration(milliseconds: 6500);
 
   @override
   void initState() {
@@ -37,7 +53,7 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
     );
 
     _offsetAnimation =
-        Tween<Offset>(begin: const Offset(0, -0.6), end: Offset.zero).animate(
+        Tween<Offset>(begin: const Offset(0, -0.1), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _animController,
             curve: Curves.easeOutCubic,
@@ -61,15 +77,38 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
 
   void _showToast(InAppNotification toast) {
     _autoDismissTimer?.cancel();
+    _isPaused = false;
+    _toastShownAt = DateTime.now();
+
     setState(() {
       _currentToast = toast;
     });
 
     _animController.forward(from: 0.0);
 
-    _autoDismissTimer = Timer(const Duration(seconds: 4), () {
+    _autoDismissTimer = Timer(_toastDuration, () {
       _hideToast();
     });
+  }
+
+  void _pauseTimer() {
+    if (_isPaused || _currentToast == null) return;
+    _isPaused = true;
+    _autoDismissTimer?.cancel();
+  }
+
+  void _resumeTimer() {
+    if (!_isPaused || _currentToast == null) return;
+    _isPaused = false;
+    final elapsed = _toastShownAt != null
+        ? DateTime.now().difference(_toastShownAt!)
+        : Duration.zero;
+    final remaining = _toastDuration - elapsed;
+    if (remaining.inMilliseconds <= 200) {
+      _hideToast();
+      return;
+    }
+    _autoDismissTimer = Timer(remaining, _hideToast);
   }
 
   void _hideToast() {
@@ -79,13 +118,76 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
       if (mounted) {
         setState(() {
           _currentToast = null;
+          _isPaused = false;
         });
         context.read<NotificationCubit>().dismissToast();
       }
     });
   }
 
-  Color _getTypeColor(NotificationType type) {
+  Future<void> _openRelatedGraph() async {
+    final toast = _currentToast;
+    final graphId = toast?.relatedGraphId;
+    if (graphId == null || graphId.trim().isEmpty) {
+      _hideToast();
+      return;
+    }
+
+    _hideToast();
+
+    // 1. Check LibraryCubit in-memory cache
+    var snapshot = context.read<LibraryCubit>().getCachedGraph(graphId);
+
+    // 2. Check local Hive storage
+    snapshot ??= HiveService.getCachedGraph(graphId);
+
+    // 3. Check root GraphCubit active state
+    if (snapshot == null) {
+      final rootState = context.read<GraphCubit>().state;
+      if (rootState is GraphLoaded && rootState.snapshot.graphId == graphId) {
+        snapshot = rootState.snapshot;
+      }
+    }
+
+    if (!mounted) return;
+
+    if (snapshot != null) {
+      final nav =
+          widget.navigatorKey?.currentState ?? Navigator.maybeOf(context);
+      if (nav != null) {
+        unawaited(
+          nav.push(
+            MaterialPageRoute(
+              builder: (_) => ConnectedGraphView(initialSnapshot: snapshot),
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('This graph is no longer available offline.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  IconData _getTypeIcon(NotificationType type) {
+    switch (type) {
+      case NotificationType.success:
+        return Icons.bubble_chart_outlined;
+      case NotificationType.warning:
+        return Icons.warning_amber_rounded;
+      case NotificationType.error:
+        return Icons.error_outline_rounded;
+      case NotificationType.info:
+        return Icons.notifications_none_rounded;
+    }
+  }
+
+  Color _getStatusDotColor(NotificationType type) {
     switch (type) {
       case NotificationType.success:
         return const Color(0xFF10B981);
@@ -94,20 +196,20 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
       case NotificationType.error:
         return const Color(0xFFEF4444);
       case NotificationType.info:
-        return const Color(0xFF3B82F6);
+        return const Color(0xFF5269F4);
     }
   }
 
-  IconData _getTypeIcon(NotificationType type) {
-    switch (type) {
-      case NotificationType.success:
-        return Icons.check_circle_rounded;
-      case NotificationType.warning:
-        return Icons.warning_amber_rounded;
-      case NotificationType.error:
-        return Icons.error_outline_rounded;
-      case NotificationType.info:
-        return Icons.notifications_active_rounded;
+  String _getCategoryKicker(InAppNotification toast) {
+    switch (toast.category) {
+      case NotificationCategory.graphReady:
+        return toast.type == NotificationType.warning
+            ? 'GRAPH READY (PARTIAL)'
+            : 'LITERATURE GRAPH READY';
+      case NotificationCategory.researchUpdate:
+        return 'RESEARCH UPDATE';
+      case NotificationCategory.general:
+        return 'NOTIFICATION';
     }
   }
 
@@ -117,12 +219,14 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
 
     return BlocListener<NotificationCubit, NotificationState>(
       listenWhen: (previous, current) =>
-          current.latestToast != null &&
-          current.latestToast?.id != previous.latestToast?.id,
+          current.latestToast?.id != previous.latestToast?.id ||
+          (previous.latestToast != null && current.latestToast == null),
       listener: (context, state) {
         final toast = state.latestToast;
         if (toast != null) {
           _showToast(toast);
+        } else if (_currentToast != null) {
+          _hideToast();
         }
       },
       child: Directionality(
@@ -132,128 +236,252 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
             widget.child,
             if (_currentToast != null)
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
+                top: 10,
+                left: 14,
+                right: 14,
                 child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: SlideTransition(
-                      position: _offsetAnimation,
-                      child: FadeTransition(
-                        opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _offsetAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
                         child: Dismissible(
                           key: Key(_currentToast!.id),
                           direction: DismissDirection.horizontal,
                           onDismissed: (_) => _hideToast(),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppTheme.darkCard.withValues(alpha: 0.96)
-                                    : Colors.white.withValues(alpha: 0.97),
+                          child: Listener(
+                            onPointerDown: (_) => _pauseTimer(),
+                            onPointerUp: (_) => _resumeTimer(),
+                            onPointerCancel: (_) => _resumeTimer(),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _currentToast!.relatedGraphId == null
+                                    ? null
+                                    : _openRelatedGraph,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: _getTypeColor(
-                                    _currentToast!.type,
-                                  ).withValues(alpha: 0.35),
-                                  width: 1.2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.4 : 0.12,
-                                    ),
-                                    blurRadius: 18,
-                                    offset: const Offset(0, 8),
+                                child: Container(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    12,
+                                    10,
+                                    8,
+                                    10,
                                   ),
-                                ],
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: _getTypeColor(
-                                        _currentToast!.type,
-                                      ).withValues(alpha: 0.12),
-                                      shape: BoxShape.circle,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF161618)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0x22FFFFFF)
+                                          : const Color(0xFFE5E5EA),
+                                      width: 0.75,
                                     ),
-                                    child:
-                                        _currentToast!.category ==
-                                            NotificationCategory.researchUpdate
-                                        ? PaperGraphMark(
-                                            size: 20,
-                                            isDark: isDark,
-                                          )
-                                        : Icon(
-                                            _getTypeIcon(
-                                              _currentToast!.type,
-                                            ),
-                                            size: 20,
-                                            color: _getTypeColor(
-                                              _currentToast!.type,
-                                            ),
-                                          ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          _currentToast!.title,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: isDark
-                                                ? AppTheme.darkTextPrimary
-                                                : const Color(0xFF0F172A),
-                                          ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withAlpha(
+                                          isDark ? 80 : 16,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          _currentToast!.message,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w400,
-                                            color: isDark
-                                                ? AppTheme.darkTextSecondary
-                                                : const Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(12),
-                                    onTap: _hideToast,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4.0),
-                                      child: Icon(
-                                        Icons.close_rounded,
-                                        size: 18,
-                                        color: isDark
-                                            ? Colors.white54
-                                            : Colors.black45,
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 6),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                ],
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      // Minimal monochrome icon badge with status dot
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Container(
+                                            width: 34,
+                                            height: 34,
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? const Color(0xFF242426)
+                                                  : const Color(0xFFF2F2F7),
+                                              borderRadius:
+                                                  BorderRadius.circular(9),
+                                              border: Border.all(
+                                                color: isDark
+                                                    ? const Color(0x18FFFFFF)
+                                                    : const Color(0xFFE5E5EA),
+                                                width: 0.5,
+                                              ),
+                                            ),
+                                            child: _currentToast!.category ==
+                                                    NotificationCategory
+                                                        .researchUpdate
+                                                ? PaperGraphMark(
+                                                    size: 18,
+                                                    isDark: isDark,
+                                                  )
+                                                : Icon(
+                                                    _getTypeIcon(
+                                                      _currentToast!.type,
+                                                    ),
+                                                    size: 18,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF1C1C1E,
+                                                          ),
+                                                  ),
+                                          ),
+                                          Positioned(
+                                            top: -2,
+                                            right: -2,
+                                            child: Container(
+                                              width: 7,
+                                              height: 7,
+                                              decoration: BoxDecoration(
+                                                color: _getStatusDotColor(
+                                                  _currentToast!.type,
+                                                ),
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? const Color(0xFF161618)
+                                                      : Colors.white,
+                                                  width: 1.2,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 11),
+                                      // Content
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              _getCategoryKicker(_currentToast!),
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.w600,
+                                                letterSpacing: 0.7,
+                                                color: isDark
+                                                    ? const Color(0xFFA1A1AA)
+                                                    : const Color(0xFF71717A),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _currentToast!.title,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1C1C1E),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 1),
+                                            Text(
+                                              _currentToast!.message,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                height: 1.25,
+                                                color: isDark
+                                                    ? const Color(0xFF8E8E93)
+                                                    : const Color(0xFF636366),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Minimal iOS-style CTA & dismiss icon
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (_currentToast!.relatedGraphId !=
+                                              null) ...[
+                                            InkWell(
+                                              onTap: _openRelatedGraph,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 4,
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      'Open',
+                                                      style: TextStyle(
+                                                        fontSize: 12.5,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: isDark
+                                                          ? Colors.white
+                                                          : const Color(
+                                                              0xFF1C1C1E,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 1),
+                                                    Icon(
+                                                      Icons
+                                                          .chevron_right_rounded,
+                                                      size: 16,
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFFA1A1AA,
+                                                            )
+                                                          : const Color(
+                                                              0xFF8E8E93,
+                                                            ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 0.75,
+                                              height: 18,
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 4,
+                                              ),
+                                              color: isDark
+                                                  ? const Color(0x1EFFFFFF)
+                                                  : const Color(0xFFE5E5EA),
+                                            ),
+                                          ],
+                                          InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            onTap: _hideToast,
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(4.0),
+                                              child: Icon(
+                                                Icons.close_rounded,
+                                                size: 16,
+                                                color: isDark
+                                                    ? const Color(0xFF71717A)
+                                                    : const Color(0xFF8E8E93),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -262,10 +490,9 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
-}

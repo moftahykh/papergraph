@@ -23,24 +23,46 @@ class GraphErrorView extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 24),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkCard : Colors.white,
+          color: isDark ? const Color(0xFF161618) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.accentRose.withAlpha(100)),
+          border: Border.all(
+            color: isDark ? const Color(0x22FFFFFF) : const Color(0xFFE5E5EA),
+            width: 0.75,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDark ? 50 : 10),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              size: 48,
-              color: AppTheme.accentRose,
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA),
+                  width: 0.5,
+                ),
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 24,
+                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               'Unable to Generate Graph',
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
                 color: isDark
                     ? AppTheme.darkTextPrimary
                     : const Color(0xFF0F172A),
@@ -76,8 +98,9 @@ class GraphErrorView extends StatelessWidget {
                   icon: const Icon(Icons.refresh_rounded, size: 16),
                   label: const Text('Retry'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
+                    backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+                    foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

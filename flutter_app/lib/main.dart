@@ -12,6 +12,7 @@ import 'cubits/library/library_cubit.dart';
 import 'cubits/notification/notification_cubit.dart';
 import 'cubits/notification/notification_state.dart';
 import 'cubits/paper_details/paper_details_cubit.dart';
+import 'cubits/research_session/research_session_cubit.dart';
 import 'cubits/search/search_cubit.dart';
 import 'cubits/theme/theme_cubit.dart';
 import 'cubits/theme/theme_state.dart';
@@ -69,6 +70,9 @@ class PaperGraphApp extends StatelessWidget {
         BlocProvider<PaperDetailsCubit>(create: (_) => PaperDetailsCubit()),
         BlocProvider<LibraryCubit>(create: (_) => LibraryCubit()),
         BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),
+        BlocProvider<ResearchSessionCubit>(
+          create: (_) => ResearchSessionCubit(),
+        ),
         BlocProvider<GraphCubit>(
           create: (_) => GraphCubit(resumePendingJob: true),
         ),
@@ -89,6 +93,7 @@ class PaperGraphApp extends StatelessWidget {
                     LocalNotificationService.onGraphCompleted(
                       graphId: state.snapshot.graphId,
                       nodeCount: state.snapshot.nodes.length,
+                      paperTitle: state.snapshot.origin.title,
                       isPartial: state.isPartial,
                       notificationCubit: context.read<NotificationCubit>(),
                     );
@@ -122,6 +127,7 @@ class PaperGraphApp extends StatelessWidget {
                 themeMode: themeState.themeMode,
                 builder: (context, child) {
                   return NotificationToastOverlay(
+                    navigatorKey: _rootNavigatorKey,
                     child: child ?? const SizedBox.shrink(),
                   );
                 },

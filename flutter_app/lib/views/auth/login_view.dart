@@ -230,12 +230,14 @@ class _LoginViewState extends State<LoginView> {
                         minimumSize: const Size(50, 28),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Forgot Password?',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryLightBlue,
+                          color: isDark
+                              ? const Color(0xFFA1A1AA)
+                              : const Color(0xFF52525B),
                         ),
                       ),
                     ),
@@ -247,20 +249,20 @@ class _LoginViewState extends State<LoginView> {
                     onPressed: authProvider.isLoading ? null : _submitLogin,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: AppTheme.primaryBlue,
-                      foregroundColor: Colors.white,
+                      backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+                      foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      elevation: 3,
+                      elevation: 0,
                     ),
                     child: authProvider.isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              color: Colors.white,
+                              color: isDark ? const Color(0xFF09090B) : Colors.white,
                             ),
                           )
                         : const Text(
@@ -305,26 +307,27 @@ class _LoginViewState extends State<LoginView> {
                     icon: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: AppTheme.accentCyan.withAlpha(40),
+                        color: isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.fingerprint_rounded,
-                        color: AppTheme.accentCyan,
+                        color: isDark ? Colors.white : const Color(0xFF18181B),
                         size: 26,
                       ),
                     ),
-                    label: const Text(
+                    label: Text(
                       'Sign In with Biometrics',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF18181B),
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       side: BorderSide(
-                        color: isDark ? AppTheme.accentCyan.withAlpha(120) : AppTheme.primaryBlue,
+                        color: isDark ? const Color(0x22FFFFFF) : const Color(0xFF18181B),
                         width: 1.5,
                       ),
                       shape: RoundedRectangleBorder(
@@ -351,10 +354,10 @@ class _LoginViewState extends State<LoginView> {
                             MaterialPageRoute(builder: (_) => const RegisterView()),
                           );
                         },
-                        child: const Text(
+                        child: Text(
                           'Create Account',
                           style: TextStyle(
-                            color: AppTheme.primaryLightBlue,
+                            color: isDark ? Colors.white : const Color(0xFF18181B),
                             fontWeight: FontWeight.bold,
                           ),
                         ),

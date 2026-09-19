@@ -20,6 +20,7 @@ import '../../models/graph_models.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/widgets/auth_gate_sheet.dart';
 import '../graph_view/connected_graph_view.dart';
+import 'recent_graphs_view.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/paper_graph_mark.dart';
 
@@ -37,11 +38,30 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   final TextEditingController _searchController = TextEditingController();
+  String? _dismissedReadyGraphId;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final searchState = context.read<SearchCubit>().state;
+    final query = switch (searchState) {
+      SearchLoading(:final query) => query,
+      SearchLoaded(:final query) => query,
+      SearchEmpty(:final query) => query,
+      SearchError(:final query) => query,
+      _ => '',
+    };
+    if (query.isNotEmpty && _searchController.text != query) {
+      _searchController
+        ..text = query
+        ..selection = TextSelection.collapsed(offset: query.length);
+    }
   }
 
   bool _checkGuestSearchLimit() {
@@ -150,7 +170,7 @@ class _HomeViewState extends State<HomeView> {
                 icon: Badge(
                   isLabelVisible: unreadCount > 0,
                   label: Text('$unreadCount'),
-                  backgroundColor: AppTheme.accentEmerald,
+                  backgroundColor: const Color(0xFFEF4444),
                   child: const Icon(Icons.notifications_outlined),
                 ),
                 onPressed: () => NotificationsSheet.show(context),
@@ -213,6 +233,203 @@ class _HomeViewState extends State<HomeView> {
   Widget _buildActiveGraphJob(bool isDark, Color accent) {
     return BlocBuilder<GraphCubit, GraphState>(
       builder: (context, graphState) {
+        if (graphState is GraphLoaded && graphState.isNewlyGenerated) {
+          final snapshot = graphState.snapshot;
+          if (_dismissedReadyGraphId == snapshot.graphId) {
+            return const SizedBox.shrink();
+          }
+
+          return Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Material(
+              color: isDark ? const Color(0xFF161618) : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: () async {
+                  final libCubit = context.read<LibraryCubit>();
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ConnectedGraphView(initialSnapshot: snapshot),
+                    ),
+                  );
+                  libCubit.loadLibrary();
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0x22FFFFFF)
+                          : const Color(0xFFE5E5EA),
+                      width: 0.75,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(isDark ? 40 : 8),
+                        blurRadius: 14,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF242426)
+                                  : const Color(0xFFF2F2F7),
+                              borderRadius: BorderRadius.circular(9),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0x18FFFFFF)
+                                    : const Color(0xFFE5E5EA),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.bubble_chart_outlined,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1C1C1E),
+                              size: 18,
+                            ),
+                          ),
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF161618)
+                                      : Colors.white,
+                                  width: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'LITERATURE GRAPH READY',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.7,
+                                color: isDark
+                                    ? const Color(0xFFA1A1AA)
+                                    : const Color(0xFF71717A),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              snapshot.origin.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1C1C1E),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              '${snapshot.nodes.length} connected papers · Tap to explore',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark
+                                    ? const Color(0xFF8E8E93)
+                                    : const Color(0xFF636366),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // iOS Pro pill action button
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1C1C1E),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Open',
+                              style: TextStyle(
+                                color: isDark
+                                    ? const Color(0xFF09090B)
+                                    : Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: isDark
+                                  ? const Color(0xFF09090B)
+                                  : Colors.white,
+                              size: 13,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          setState(() {
+                            _dismissedReadyGraphId = snapshot.graphId;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 15,
+                            color: isDark
+                                ? const Color(0xFF71717A)
+                                : const Color(0xFF8E8E93),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
         if (graphState is! GraphCreating && graphState is! GraphPolling) {
           return const SizedBox.shrink();
         }
@@ -227,23 +444,43 @@ class _HomeViewState extends State<HomeView> {
         return Padding(
           padding: const EdgeInsets.only(top: 12),
           child: Material(
-            color: accent.withAlpha(isDark ? 24 : 14),
-            borderRadius: BorderRadius.circular(12),
+            color: isDark ? const Color(0xFF161618) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             child: InkWell(
               onTap: _openActiveGraphJob,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0x22FFFFFF)
+                        : const Color(0xFFE5E5EA),
+                    width: 0.75,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(isDark ? 40 : 8),
+                      blurRadius: 14,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
                 child: Row(
                   children: [
                     SizedBox(
-                      width: 38,
-                      height: 38,
+                      width: 34,
+                      height: 34,
                       child: CircularProgressIndicator(
                         value: progress,
-                        strokeWidth: 3,
-                        backgroundColor: accent.withAlpha(35),
-                        color: accent,
+                        strokeWidth: 2.2,
+                        backgroundColor: isDark
+                            ? const Color(0x18FFFFFF)
+                            : const Color(0xFFE5E5EA),
+                        color: isDark
+                            ? Colors.white
+                            : const Color(0xFF1C1C1E),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -252,16 +489,28 @@ class _HomeViewState extends State<HomeView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Building literature graph',
+                            'SYNTHESIZING GRAPH',
                             style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.7,
                               color: isDark
-                                  ? AppTheme.darkTextPrimary
-                                  : AppTheme.lightTextPrimary,
+                                  ? const Color(0xFFA1A1AA)
+                                  : const Color(0xFF71717A),
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 1),
+                          Text(
+                            'Building literature graph',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1C1C1E),
+                            ),
+                          ),
+                          const SizedBox(height: 1),
                           Text(
                             originId.isEmpty
                                 ? '${(progress * 100).round()}% completed'
@@ -269,26 +518,39 @@ class _HomeViewState extends State<HomeView> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               color: isDark
-                                  ? AppTheme.darkTextSecondary
-                                  : AppTheme.lightTextSecondary,
+                                  ? const Color(0xFF8E8E93)
+                                  : const Color(0xFF636366),
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      'View',
-                      style: TextStyle(
-                        color: accent,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View',
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1C1C1E),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        const SizedBox(width: 1),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: isDark
+                              ? const Color(0xFFA1A1AA)
+                              : const Color(0xFF8E8E93),
+                          size: 16,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.chevron_right_rounded, color: accent, size: 18),
                   ],
                 ),
               ),
@@ -311,22 +573,11 @@ class _HomeViewState extends State<HomeView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: hasSearchLeft
-            ? (isDark
-                  ? AppTheme.primaryLightBlue.withAlpha(22)
-                  : const Color(0xFFF0F9FF))
-            : (isDark
-                  ? AppTheme.accentRose.withAlpha(22)
-                  : const Color(0xFFFFF1F2)),
+        color: isDark ? const Color(0xFF161618) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: hasSearchLeft
-              ? (isDark
-                    ? AppTheme.accentCyan.withAlpha(60)
-                    : const Color(0xFFBAE6FD))
-              : (isDark
-                    ? AppTheme.accentRose.withAlpha(60)
-                    : const Color(0xFFFECDD3)),
+          color: isDark ? const Color(0x22FFFFFF) : const Color(0xFFE5E5EA),
+          width: 0.75,
         ),
       ),
       child: Row(
@@ -335,48 +586,50 @@ class _HomeViewState extends State<HomeView> {
             hasSearchLeft
                 ? Icons.info_outline_rounded
                 : Icons.lock_outline_rounded,
-            size: 18,
-            color: hasSearchLeft
-                ? AppTheme.primaryLightBlue
-                : AppTheme.accentRose,
+            size: 16,
+            color: isDark
+                ? const Color(0xFFA1A1AA)
+                : const Color(0xFF71717A),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               hasSearchLeft
-                  ? 'Guest Mode: 1 free preview search available'
+                  ? 'Guest Preview: 1 free preview search available'
                   : 'Free search used. Create account for unlimited access',
               style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: hasSearchLeft
-                    ? (isDark ? Colors.white : const Color(0xFF0369A1))
-                    : (isDark ? Colors.white : const Color(0xFFBE123C)),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isDark
+                    ? const Color(0xFFD4D4D8)
+                    : const Color(0xFF3F3F46),
               ),
             ),
           ),
-          if (!hasSearchLeft)
+          if (!hasSearchLeft) ...[
+            const SizedBox(width: 8),
             GestureDetector(
               onTap: () => AuthGateBottomSheet.show(context),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
-                  vertical: 4,
+                  vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentRose,
-                  borderRadius: BorderRadius.circular(8),
+                  color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                  borderRadius: BorderRadius.circular(7),
                 ),
-                child: const Text(
+                child: Text(
                   'Unlock',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF09090B) : Colors.white,
                     fontSize: 11.5,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -415,7 +668,7 @@ class _HomeViewState extends State<HomeView> {
         }
       },
       decoration: InputDecoration(
-        hintText: 'Search by title, DOI, or keyword…',
+        hintText: 'Search papers, DOI, or paste a link',
         prefixIcon: const Icon(Icons.search_rounded, size: 20),
         suffixIcon: _searchController.text.isNotEmpty
             ? IconButton(
@@ -464,12 +717,7 @@ class _HomeViewState extends State<HomeView> {
             ],
           );
         }
-        return _hint(
-          isDark,
-          _looksLikeIdentifier(_searchController.text)
-              ? 'Identifier detected — press Enter to build its graph directly.'
-              : 'Paste any paper link or DOI — or search by title, e.g. "Attention Is All You Need".',
-        );
+        return const SizedBox.shrink();
       },
     );
   }
@@ -593,13 +841,30 @@ class _HomeViewState extends State<HomeView> {
                       ),
                     ),
                     if (graphs.isNotEmpty)
-                      Text(
-                        '${graphs.length}',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark
-                              ? AppTheme.darkTextSecondary
-                              : AppTheme.lightTextSecondary,
+                      InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const RecentGraphsView(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          child: Text(
+                            'View all',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                ? const Color(0xFFA1A1AA)
+                                : const Color(0xFF71717A),
+                            ),
+                          ),
                         ),
                       ),
                   ],
@@ -631,18 +896,13 @@ class _HomeViewState extends State<HomeView> {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () async {
-        final graphState = context.read<GraphCubit>().state;
-        if (graphState is GraphCreating || graphState is GraphPolling) {
-          _showActiveGraphJobMessage();
-          return;
-        }
+        final libCubit = context.read<LibraryCubit>();
         await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => ConnectedGraphView(initialSnapshot: graph),
           ),
         );
-        if (!mounted) return;
-        context.read<LibraryCubit>().loadLibrary();
+        libCubit.loadLibrary();
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
@@ -652,10 +912,22 @@ class _HomeViewState extends State<HomeView> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: accent.withAlpha(20),
+                color: isDark
+                    ? const Color(0xFF242426)
+                    : const Color(0xFFF2F2F7),
                 borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0x18FFFFFF)
+                      : const Color(0xFFE5E5EA),
+                  width: 0.5,
+                ),
               ),
-              child: Icon(Icons.bubble_chart_outlined, size: 17, color: accent),
+              child: Icon(
+                Icons.bubble_chart_outlined,
+                size: 17,
+                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

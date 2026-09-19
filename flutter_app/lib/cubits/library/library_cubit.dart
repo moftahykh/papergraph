@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/services/hive_service.dart';
+import '../../core/services/research_update_graph_service.dart';
 import '../../models/canonical_paper.dart';
 import '../../models/graph_models.dart';
+import '../../models/research_monitoring_models.dart';
 import '../../providers/auth_provider.dart';
 import 'library_state.dart';
 
@@ -197,6 +199,25 @@ class LibraryCubit extends Cubit<LibraryState> {
       _logWriteFailure('save graph', error, stackTrace);
       return false;
     }
+  }
+
+  /// Persists a monitoring result as an incremental graph node.
+  ///
+  /// This does not rebuild the graph or replace existing coordinates. The
+  /// local snapshot is saved first; monitoring registration is then refreshed
+  /// so future scans can treat the new paper as part of the graph.
+  Future<GraphSnapshot?> addResearchUpdateToGraph(
+    String graphId,
+    ResearchUpdate update,
+  ) async {
+    final snapshot = getCachedGraph(graphId);
+    if (snapshot == null) return null;
+
+    final updated = ResearchUpdateGraphService.addToSnapshot(snapshot, update);
+    if (updated == snapshot) return snapshot;
+
+    final saved = await cacheGraph(updated);
+    return saved ? updated : null;
   }
 
   Future<bool> removeCachedGraph(String graphId) async {

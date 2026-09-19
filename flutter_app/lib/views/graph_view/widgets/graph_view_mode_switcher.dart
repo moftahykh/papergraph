@@ -27,10 +27,10 @@ class GraphViewModeSwitcher extends StatelessWidget {
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
     final activeBgColor = isDark
         ? AppTheme.darkBorder
-        : const Color(0xFFF1F5F9);
+        : AppTheme.uiBlueSoft;
     final activeTextColor = isDark
         ? AppTheme.darkTextPrimary
-        : AppTheme.lightTextPrimary;
+        : AppTheme.uiBlue;
     final inactiveTextColor = isDark
         ? AppTheme.darkTextSecondary
         : const Color(0xFF64748B);

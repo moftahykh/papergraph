@@ -15,7 +15,7 @@ class ConnectionReasonHelper {
         category: ConnectionCategory.origin,
         title: 'Starting paper',
         description: 'This is the paper used to build the graph.',
-        badgeLabel: 'STARTING PAPER',
+        badgeLabel: 'Starting paper',
       );
     }
 

@@ -50,6 +50,23 @@ class ConnectedGraphView extends StatelessWidget {
       );
     }
 
+    // When an existing cached snapshot is opened for viewing (e.g. from the Library,
+    // Recent Graphs, or notification sheets), we MUST NOT hijack or clobber the root
+    // GraphCubit. If a background graph generation job is currently running on the root
+    // GraphCubit, taking over the root cubit would invoke openCachedGraph() -> cancel(),
+    // killing the active job and its progress.
+    // An isolated scoped GraphCubit allows offline inspection without side effects.
+    if (initialSnapshot != null) {
+      return BlocProvider<GraphCubit>(
+        create: (_) => GraphCubit()..openCachedGraph(initialSnapshot!),
+        child: _ConnectedGraphContentView(
+          centerPaper: centerPaper,
+          seedDoi: seedDoi,
+          initialSnapshot: initialSnapshot,
+        ),
+      );
+    }
+
     bool hasParentCubit = false;
     try {
       BlocProvider.of<GraphCubit>(context, listen: false);
@@ -130,7 +147,9 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
     final graphCubit = context.read<GraphCubit>();
 
     if (widget.initialSnapshot != null) {
-      graphCubit.openCachedGraph(widget.initialSnapshot!);
+      if (graphCubit.state is! GraphLoaded) {
+        graphCubit.openCachedGraph(widget.initialSnapshot!);
+      }
       return;
     }
 

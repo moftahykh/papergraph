@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/abstract_text_formatter.dart';
+import '../../cubits/library/library_cubit.dart';
 import '../../cubits/research_monitoring/research_monitoring_cubit.dart';
 import '../../cubits/research_monitoring/research_monitoring_state.dart';
 import '../../models/research_monitoring_models.dart';
-import '../../core/utils/paper_url_helper.dart';
+import '../../models/paper_model.dart';
+import '../graph_view/connected_graph_view.dart';
+import '../paper_details/paper_details_view.dart';
 
 class GraphUpdatesView extends StatelessWidget {
   final String localGraphId;
@@ -20,16 +24,28 @@ class GraphUpdatesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ResearchMonitoringCubit(localGraphId: localGraphId)..load(),
+      create: (context) => ResearchMonitoringCubit(
+        localGraphId: localGraphId,
+        libraryCubit: context.read<LibraryCubit>(),
+      )..load(),
       child: _GraphUpdatesScaffold(graphTitle: graphTitle),
     );
   }
 }
 
-class _GraphUpdatesScaffold extends StatelessWidget {
+enum _UpdateFilter { newItems, all, added }
+
+class _GraphUpdatesScaffold extends StatefulWidget {
   final String graphTitle;
 
   const _GraphUpdatesScaffold({required this.graphTitle});
+
+  @override
+  State<_GraphUpdatesScaffold> createState() => _GraphUpdatesScaffoldState();
+}
+
+class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
+  _UpdateFilter _filter = _UpdateFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +82,10 @@ class _GraphUpdatesScaffold extends StatelessWidget {
             );
           }
           if (state.isNotMonitoring) {
-            return _NotMonitoringView(graphTitle: graphTitle);
+            return _NotMonitoringView(graphTitle: widget.graphTitle);
           }
 
+          final visibleUpdates = _visibleUpdates(state.updates);
           return RefreshIndicator(
             onRefresh: context.read<ResearchMonitoringCubit>().load,
             child: ListView(
@@ -84,21 +101,27 @@ class _GraphUpdatesScaffold extends StatelessWidget {
                   onStop: () => _confirmStop(context),
                 ),
                 const SizedBox(height: 18),
-                if (state.updates.isEmpty)
-                  const _EmptyUpdatesView()
+                _UpdateFilterBar(
+                  filter: _filter,
+                  totalCount: state.updates.length,
+                  unreadCount: state.unreadCount,
+                  addedCount: state.updates
+                      .where((update) => update.isAddedToGraph)
+                      .length,
+                  onChanged: (value) => setState(() => _filter = value),
+                ),
+                const SizedBox(height: 12),
+                if (visibleUpdates.isEmpty)
+                  _EmptyUpdatesView(filter: _filter)
                 else
-                  ...state.updates.map(
+                  ...visibleUpdates.map(
                     (update) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _ResearchUpdateCard(
                         update: update,
-                        onRead: () => context
-                            .read<ResearchMonitoringCubit>()
-                            .markRead(update),
-                        onAdd: () => context
-                            .read<ResearchMonitoringCubit>()
-                            .addToGraph(update),
-                        onOpen: () => _openPaper(context, update),
+                        onInspect: () => _showUpdateDetails(context, update),
+                        onAdd: () => _confirmAdd(context, update),
+                        onOpen: () => _openPaperDetails(context, update),
                       ),
                     ),
                   ),
@@ -106,6 +129,235 @@ class _GraphUpdatesScaffold extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  List<ResearchUpdate> _visibleUpdates(List<ResearchUpdate> updates) {
+    switch (_filter) {
+      case _UpdateFilter.newItems:
+        return updates.where((update) => !update.isRead).toList();
+      case _UpdateFilter.all:
+        return updates;
+      case _UpdateFilter.added:
+        return updates.where((update) => update.isAddedToGraph).toList();
+    }
+  }
+
+  Future<void> _confirmAdd(
+    BuildContext context,
+    ResearchUpdate update,
+  ) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Add paper to this graph?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                update.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'PaperGraph will add one node, preserve the current layout, '
+                'and connect it when the scanner has a known relationship.',
+                style: TextStyle(height: 1.35),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(sheetContext, false),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.pop(sheetContext, true),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Add'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final added = await context
+        .read<ResearchMonitoringCubit>()
+        .addToGraph(update);
+    if (!context.mounted || !added) return;
+
+    final snapshot = context.read<LibraryCubit>().getCachedGraph(
+      context.read<ResearchMonitoringCubit>().localGraphId,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Paper added to the saved graph.'),
+        action: snapshot == null
+            ? null
+            : SnackBarAction(
+                label: 'View graph',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ConnectedGraphView(initialSnapshot: snapshot),
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _showUpdateDetails(
+    BuildContext context,
+    ResearchUpdate update,
+  ) async {
+    if (!update.isRead) {
+      await context.read<ResearchMonitoringCubit>().markRead(update);
+    }
+    if (!context.mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+        final secondary = isDark
+            ? AppTheme.darkTextSecondary
+            : AppTheme.lightTextSecondary;
+        final preview = update.abstractText?.trim().isNotEmpty == true
+            ? abstractPreview(update.abstractText!)
+            : null;
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.72,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          update.title,
+                          style: const TextStyle(
+                            fontSize: 19,
+                            height: 1.25,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _InfoChip(
+                              icon: Icons.link_rounded,
+                              label: _ResearchUpdateCard._relationLabel(
+                                update.relationType,
+                              ),
+                            ),
+                            _InfoChip(
+                              icon: Icons.auto_awesome_rounded,
+                              label:
+                                  '${(update.relevanceScore * 100).round()}% relevant',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          update.explanation,
+                          style: TextStyle(color: secondary, height: 1.45),
+                        ),
+                        if (preview != null) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Abstract preview',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            abstractPreview(
+                              update.abstractText!,
+                              maxCharacters: 300,
+                            ),
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: secondary,
+                              height: 1.45,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                _UpdateDetailsActions(
+                  isAdded: update.isAddedToGraph,
+                  onOpenPaper: () {
+                    Navigator.pop(sheetContext);
+                    _openPaperDetails(context, update);
+                  },
+                  onAdd: update.isAddedToGraph
+                      ? null
+                      : () {
+                          Navigator.pop(sheetContext);
+                          _confirmAdd(context, update);
+                        },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openPaperDetails(BuildContext context, ResearchUpdate update) {
+    final paper = PaperModel(
+      id: update.canonicalPaperId,
+      title: update.title,
+      authors: const [],
+      abstractText: update.abstractText ?? '',
+      category: '',
+      year: update.publishedAt?.year ?? DateTime.now().year,
+      citationsCount: 0,
+      influentialCitations: 0,
+      connectedPaperIds: const [],
+      pdfUrl: '',
+      journal: '',
+      doi: update.doi ?? '',
+      keyTakeaways: const [],
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaperDetailsView(paper: paper),
       ),
     );
   }
@@ -139,13 +391,72 @@ class _GraphUpdatesScaffold extends StatelessWidget {
     }
   }
 
-  void _openPaper(BuildContext context, ResearchUpdate update) {
-    final url = PaperUrlHelper.resolvePaperUrl(
-      doi: update.doi,
-      canonicalId: update.canonicalPaperId,
-      title: update.title,
+}
+
+class _UpdateDetailsActions extends StatelessWidget {
+  final bool isAdded;
+  final VoidCallback onOpenPaper;
+  final VoidCallback? onAdd;
+
+  const _UpdateDetailsActions({
+    required this.isAdded,
+    required this.onOpenPaper,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).dividerColor.withAlpha(90),
+            ),
+          ),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 370;
+            final openButton = OutlinedButton.icon(
+              onPressed: onOpenPaper,
+              icon: const Icon(Icons.article_outlined, size: 17),
+              label: const Text('Paper details'),
+            );
+            final addButton = FilledButton.icon(
+              onPressed: onAdd,
+              icon: Icon(
+                isAdded ? Icons.check_rounded : Icons.add_rounded,
+                size: 17,
+              ),
+              label: Text(isAdded ? 'Added' : 'Add to graph'),
+            );
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  openButton,
+                  const SizedBox(height: 8),
+                  addButton,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: openButton),
+                const SizedBox(width: 10),
+                Expanded(child: addButton),
+              ],
+            );
+          },
+        ),
+      ),
     );
-    PaperUrlHelper.launchPaper(context, url: url, title: update.title);
   }
 }
 
@@ -168,7 +479,6 @@ class _MonitoringHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPaused = monitoring.isPaused;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isPaused ? AppTheme.accentAmber : AppTheme.accentEmerald;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -180,18 +490,53 @@ class _MonitoringHeader extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: accent.withAlpha(24),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isPaused
-                        ? Icons.pause_circle_outline_rounded
-                        : Icons.track_changes_rounded,
-                    color: accent,
-                  ),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF242426)
+                            : const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0x18FFFFFF)
+                              : const Color(0xFFE5E5EA),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Icon(
+                        isPaused
+                            ? Icons.pause_rounded
+                            : Icons.track_changes_rounded,
+                        size: 20,
+                        color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                      ),
+                    ),
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: isPaused
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF161618)
+                                : Colors.white,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -223,7 +568,7 @@ class _MonitoringHeader extends StatelessWidget {
                   ),
                 ),
                 if (unreadCount > 0)
-                  _CountBadge(count: unreadCount, color: accent),
+                  _CountBadge(count: unreadCount),
               ],
             ),
             const SizedBox(height: 14),
@@ -269,15 +614,71 @@ class _MonitoringHeader extends StatelessWidget {
   }
 }
 
+class _UpdateFilterBar extends StatelessWidget {
+  final _UpdateFilter filter;
+  final int totalCount;
+  final int unreadCount;
+  final int addedCount;
+  final ValueChanged<_UpdateFilter> onChanged;
+
+  const _UpdateFilterBar({
+    required this.filter,
+    required this.totalCount,
+    required this.unreadCount,
+    required this.addedCount,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$totalCount total updates · $unreadCount new',
+          style: TextStyle(
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.lightTextSecondary,
+            fontSize: 12.5,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _chip('New', unreadCount, _UpdateFilter.newItems),
+              const SizedBox(width: 8),
+              _chip('All', totalCount, _UpdateFilter.all),
+              const SizedBox(width: 8),
+              _chip('Added', addedCount, _UpdateFilter.added),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _chip(String label, int count, _UpdateFilter value) {
+    return ChoiceChip(
+      label: Text('$label $count'),
+      selected: filter == value,
+      onSelected: (_) => onChanged(value),
+    );
+  }
+}
+
 class _ResearchUpdateCard extends StatelessWidget {
   final ResearchUpdate update;
-  final VoidCallback onRead;
+  final VoidCallback onInspect;
   final VoidCallback onAdd;
   final VoidCallback onOpen;
 
   const _ResearchUpdateCard({
     required this.update,
-    required this.onRead,
+    required this.onInspect,
     required this.onAdd,
     required this.onOpen,
   });
@@ -293,7 +694,7 @@ class _ResearchUpdateCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: update.isRead ? null : onRead,
+        onTap: onInspect,
         child: Container(
           decoration: BoxDecoration(
             border: Border(
@@ -347,6 +748,8 @@ class _ResearchUpdateCard extends StatelessWidget {
                 const SizedBox(height: 11),
                 Text(
                   update.explanation,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12.5,
                     height: 1.35,
@@ -359,8 +762,8 @@ class _ResearchUpdateCard extends StatelessWidget {
               if (update.abstractText?.trim().isNotEmpty == true) ...[
                 const SizedBox(height: 8),
                 Text(
-                  update.abstractText!,
-                  maxLines: 3,
+                  abstractPreview(update.abstractText!, maxCharacters: 180),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
@@ -374,8 +777,8 @@ class _ResearchUpdateCard extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     onPressed: onOpen,
-                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                    label: const Text('Open paper'),
+                    icon: const Icon(Icons.article_outlined, size: 16),
+                    label: const Text('Paper details'),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -394,17 +797,6 @@ class _ResearchUpdateCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (!update.isRead)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: onRead,
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    child: const Text('Mark as read'),
-                  ),
-                ),
             ],
           ),
         ),
@@ -442,18 +834,23 @@ class _ScoreBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
       decoration: BoxDecoration(
-        color: AppTheme.accentEmerald.withAlpha(22),
-        borderRadius: BorderRadius.circular(9),
+        color: isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA),
+          width: 0.5,
+        ),
       ),
       child: Text(
-        '${(score * 100).round()}%',
-        style: const TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-          color: AppTheme.accentEmerald,
+        '${(score * 100).round()}% match',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
         ),
       ),
     );
@@ -499,18 +896,17 @@ class _InfoChip extends StatelessWidget {
 
 class _CountBadge extends StatelessWidget {
   final int count;
-  final Color color;
 
-  const _CountBadge({required this.count, required this.color});
+  const _CountBadge({required this.count});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      constraints: const BoxConstraints(minWidth: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFEF4444),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         '$count',
@@ -518,7 +914,7 @@ class _CountBadge extends StatelessWidget {
         style: const TextStyle(
           color: Colors.white,
           fontSize: 11,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -526,7 +922,9 @@ class _CountBadge extends StatelessWidget {
 }
 
 class _EmptyUpdatesView extends StatelessWidget {
-  const _EmptyUpdatesView();
+  final _UpdateFilter filter;
+
+  const _EmptyUpdatesView({required this.filter});
 
   @override
   Widget build(BuildContext context) {
@@ -534,6 +932,11 @@ class _EmptyUpdatesView extends StatelessWidget {
     final secondary = isDark
         ? AppTheme.darkTextSecondary
         : AppTheme.lightTextSecondary;
+    final filterLabel = switch (filter) {
+      _UpdateFilter.newItems => 'new',
+      _UpdateFilter.all => 'all',
+      _UpdateFilter.added => 'added',
+    };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 54),
       child: Column(
@@ -545,13 +948,15 @@ class _EmptyUpdatesView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'No new relevant papers yet',
+            'No updates in this view',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
-            'We will show an update here when the scanner finds research connected to this graph.',
+            filter == _UpdateFilter.all
+                ? 'We will show an update here when the scanner finds research connected to this graph.'
+                : 'There are no $filterLabel updates to show right now.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: secondary,

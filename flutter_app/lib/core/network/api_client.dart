@@ -180,6 +180,7 @@ class PaperGraphApiClient {
         canonicalId: node.canonicalId.isNotEmpty ? node.canonicalId : node.id,
         title: node.title,
         year: node.year,
+        doi: node.doi,
       );
     }
 

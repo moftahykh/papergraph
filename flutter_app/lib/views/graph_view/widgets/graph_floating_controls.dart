@@ -45,13 +45,13 @@ class GraphFloatingControls extends StatelessWidget {
         color: highlight
             ? (isDark ? AppTheme.actionPurple.withAlpha(40) : const Color(0xFFEEF2FF))
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
           child: SizedBox(
-            width: 44,
-            height: 44,
+            width: 46,
+            height: 46,
             child: Icon(
               icon,
               size: 19,
@@ -76,7 +76,7 @@ class GraphFloatingControls extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(

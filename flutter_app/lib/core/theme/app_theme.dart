@@ -11,10 +11,16 @@ import 'package:google_fonts/google_fonts.dart';
 /// UI chrome stays intentionally quiet: in the graph canvas, color carries
 /// meaning (the year gradient), so the interface never competes with the data.
 class AppTheme {
-  // ---- Brand Accents (Minimal Obsidian & Ink) ----
+  // ---- Brand Accents ----
+  //
+  // PaperGraph keeps primary actions in ink, then uses one cool blue for
+  // selection, focus, and graph affordances. This keeps the academic tone
+  // while giving the product a clearer interaction hierarchy.
   /// Light-theme primary — Deep zinc ink.
   static const Color primaryBlue = Color(0xFF18181B);
   static const Color lightPrimary = Color(0xFF18181B);
+  static const Color uiBlue = Color(0xFF5269F4);
+  static const Color uiBlueSoft = Color(0xFFEEF0FF);
 
   /// Dark-theme primary — Crisp off-white.
   static const Color primaryLightBlue = Color(0xFFF4F4F5);
@@ -28,11 +34,11 @@ class AppTheme {
 
   // ---- Scientific Semantic Tokens (Monochrome / Zinc) ----
   /// Action & Selection — Crisp high-contrast monochrome
-  static const Color actionPurple = Color(0xFF18181B);
-  static const Color actionPurpleDark = Color(0xFFF4F4F5);
+  static const Color actionPurple = uiBlue;
+  static const Color actionPurpleDark = Color(0xFFAAB5FF);
 
   /// Citation relationships and citation metrics — Crisp dark ink / zinc
-  static const Color citationBlue = Color(0xFF18181B);
+  static const Color citationBlue = Color(0xFF25262C);
   static const Color citationBlueDark = Color(0xFFE4E4E7);
 
   /// Similarity edges and similarity metrics — Muted slate hairline
@@ -66,13 +72,13 @@ class AppTheme {
   /// Text Secondary: Muted zinc-500
   static const Color darkTextSecondary = Color(0xFF71717A);
 
-  // ---- Minimal Light Palette (From brand HTML spec: #ECECEC) ----
-  static const Color lightBg = Color(0xFFECECEC);
-  static const Color lightSurface = Color(0xFFFBFBFB);
-  static const Color lightCard = Color(0xFFFBFBFB);
-  static const Color lightBorder = Color(0x14000000);
+  // ---- Paper & Ink Light Palette ----
+  static const Color lightBg = Color(0xFFF5F5F7);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightCard = Color(0xFFFFFFFF);
+  static const Color lightBorder = Color(0xFFE4E4E8);
   static const Color lightTextPrimary = Color(0xFF18181B);
-  static const Color lightTextSecondary = Color(0xFF71717A);
+  static const Color lightTextSecondary = Color(0xFF73747D);
 
   /// Instrument Serif italic brand typography helper for "PaperGraph"
   static TextStyle brandTitleStyle({
@@ -111,7 +117,7 @@ class AppTheme {
         color: darkCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: darkBorder, width: 1),
         ),
       ),
@@ -134,6 +140,11 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+        ),
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           return states.contains(WidgetState.selected)
@@ -155,15 +166,15 @@ class AppTheme {
           vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkBorder),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: primaryLightBlue, width: 1.5),
         ),
       ),
@@ -196,7 +207,7 @@ class AppTheme {
         color: lightCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: lightBorder, width: 1),
         ),
       ),
@@ -219,6 +230,11 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF18181B),
+        ),
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           return states.contains(WidgetState.selected)
@@ -240,15 +256,15 @@ class AppTheme {
           vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: lightBorder),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: lightBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: primaryBlue, width: 1.5),
         ),
       ),

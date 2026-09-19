@@ -14,101 +14,159 @@ import '../paper_details/paper_details_view.dart';
 import '../research_monitoring/graph_updates_view.dart';
 import '../widgets/paper_graph_mark.dart';
 
-class FavoritesView extends StatelessWidget {
+class FavoritesView extends StatefulWidget {
   const FavoritesView({super.key});
+
+  static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(0);
+
+  static void selectTab(int index) {
+    selectedTabNotifier.value = index.clamp(0, 1);
+  }
+
+  @override
+  State<FavoritesView> createState() => _FavoritesViewState();
+}
+
+class _FavoritesViewState extends State<FavoritesView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  final TextEditingController _librarySearchController =
+      TextEditingController();
+  String _libraryQuery = '';
+  bool _offlineOnly = false;
+  bool _withNotesOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: FavoritesView.selectedTabNotifier.value.clamp(0, 1),
+    );
+    _tabController.addListener(_handleTabChanged);
+    FavoritesView.selectedTabNotifier.addListener(_handleExternalTabRequest);
+  }
+
+  void _handleTabChanged() {
+    if (_tabController.index != FavoritesView.selectedTabNotifier.value) {
+      FavoritesView.selectedTabNotifier.value = _tabController.index;
+    }
+  }
+
+  void _handleExternalTabRequest() {
+    final target = FavoritesView.selectedTabNotifier.value.clamp(0, 1);
+    if (_tabController.index != target) {
+      _tabController.animateTo(target);
+    }
+  }
+
+  @override
+  void dispose() {
+    FavoritesView.selectedTabNotifier.removeListener(_handleExternalTabRequest);
+    _tabController.removeListener(_handleTabChanged);
+    _tabController.dispose();
+    _librarySearchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 72,
-          title: Text(
-            'Library',
-            style: AppTheme.brandTitleStyle(
-              fontSize: 32,
-              color: isDark
-                  ? AppTheme.darkTextPrimary
-                  : AppTheme.lightTextPrimary,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 72,
+        title: Text(
+          'Library',
+          style: AppTheme.brandTitleStyle(
+            fontSize: 32,
+            color: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.lightTextPrimary,
           ),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(58),
-            child: Container(
-              height: 46,
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F3F7),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: TabBar(
-                dividerColor: Colors.transparent,
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicator: BoxDecoration(
-                  color: isDark ? AppTheme.darkCard : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(isDark ? 30 : 12),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                labelColor: isDark
-                    ? AppTheme.primaryLightBlue
-                    : AppTheme.primaryBlue,
-                unselectedLabelColor: isDark
-                    ? AppTheme.darkTextSecondary
-                    : AppTheme.lightTextSecondary,
-                labelStyle: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                ),
-                tabs: const [
-                  Tab(text: 'Papers'),
-                  Tab(text: 'Graphs'),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(58),
+          child: Container(
+            height: 46,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F3F7),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(isDark ? 30 : 12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
+              labelColor: isDark
+                  ? AppTheme.primaryLightBlue
+                  : AppTheme.primaryBlue,
+              unselectedLabelColor: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
+              labelStyle: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: const [
+                Tab(text: 'Papers'),
+                Tab(text: 'Graphs'),
+              ],
             ),
           ),
         ),
-        body: BlocBuilder<LibraryCubit, LibraryState>(
-          builder: (context, state) {
-            if (state is LibraryError) {
-              return TabBarView(
-                children: [
-                  _buildLoadError(context, state.message, isDark),
-                  _buildLoadError(context, state.message, isDark),
-                ],
-              );
-            }
-            final papers = state is LibraryLoaded
-                ? state.savedPapers
-                : <CanonicalPaper>[];
-            final graphs = state is LibraryLoaded
-                ? state.cachedGraphs
-                : <GraphSnapshot>[];
-            final notes = state is LibraryLoaded
-                ? state.paperNotes
-                : <String, String>{};
-
+      ),
+      body: BlocBuilder<LibraryCubit, LibraryState>(
+        builder: (context, state) {
+          if (state is LibraryError) {
             return TabBarView(
+              controller: _tabController,
               children: [
-                _buildPapersTab(context, papers, notes, isDark),
-                _buildGraphsTab(context, graphs, isDark),
+                _buildLoadError(context, state.message, isDark),
+                _buildLoadError(context, state.message, isDark),
               ],
             );
-          },
-        ),
+          }
+          final papers = state is LibraryLoaded
+              ? state.savedPapers
+              : <CanonicalPaper>[];
+          final graphs = state is LibraryLoaded
+              ? state.cachedGraphs
+              : <GraphSnapshot>[];
+          final notes = state is LibraryLoaded
+              ? state.paperNotes
+              : <String, String>{};
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildPapersTab(
+                context,
+                papers,
+                notes,
+                isDark,
+              ),
+              _buildGraphsTab(context, graphs, isDark),
+            ],
+          );
+        },
       ),
     );
   }
@@ -129,12 +187,62 @@ class FavoritesView extends StatelessWidget {
       );
     }
 
+    final query = _libraryQuery.toLowerCase();
+    final visiblePapers = papers.where((paper) {
+      final matchesQuery =
+          query.isEmpty ||
+          paper.title.toLowerCase().contains(query) ||
+          paper.authorDisplay.toLowerCase().contains(query);
+      final matchesNotes =
+          !_withNotesOnly || (notes[paper.canonicalId] ?? '').trim().isNotEmpty;
+      // Saved papers are already locally available. Keep this filter as a
+      // product-level affordance so the UI remains ready for remote-only rows.
+      final matchesOffline = !_offlineOnly || paper.canonicalId.isNotEmpty;
+      return matchesQuery && matchesNotes && matchesOffline;
+    }).toList();
+
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
-      itemCount: papers.length,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
+      itemCount: visiblePapers.isEmpty ? 2 : visiblePapers.length + 1,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        final paper = papers[index];
+        if (index == 0) {
+          return _buildLibraryTools(isDark);
+        }
+        if (visiblePapers.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 44, horizontal: 20),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.search_off_rounded,
+                  size: 34,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.lightTextSecondary,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No papers match these filters',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Try another title, author, or filter.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final paper = visiblePapers[index - 1];
         return _buildPaperCard(
           context,
           paper,
@@ -142,6 +250,107 @@ class FavoritesView extends StatelessWidget {
           isDark,
         );
       },
+    );
+  }
+
+  Widget _buildLibraryTools(bool isDark) {
+    final secondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+
+    return Column(
+      children: [
+        TextField(
+          controller: _librarySearchController,
+          onChanged: (value) => setState(() => _libraryQuery = value.trim()),
+          textInputAction: TextInputAction.search,
+          style: const TextStyle(fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'Search your library',
+            prefixIcon: const Icon(Icons.search_rounded, size: 19),
+            suffixIcon: _libraryQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    icon: const Icon(Icons.clear_rounded, size: 18),
+                    onPressed: () {
+                      _librarySearchController.clear();
+                      setState(() => _libraryQuery = '');
+                    },
+                  ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _libraryFilterChip(
+                label: 'All',
+                selected: !_offlineOnly && !_withNotesOnly,
+                onSelected: () => setState(() {
+                  _offlineOnly = false;
+                  _withNotesOnly = false;
+                }),
+              ),
+              const SizedBox(width: 8),
+              _libraryFilterChip(
+                label: 'Offline',
+                selected: _offlineOnly,
+                onSelected: () => setState(() {
+                  _offlineOnly = !_offlineOnly;
+                  _withNotesOnly = false;
+                }),
+              ),
+              const SizedBox(width: 8),
+              _libraryFilterChip(
+                label: 'With notes',
+                selected: _withNotesOnly,
+                onSelected: () => setState(() {
+                  _withNotesOnly = !_withNotesOnly;
+                  _offlineOnly = false;
+                }),
+              ),
+            ],
+          ),
+        ),
+        if (_libraryQuery.isNotEmpty || _offlineOnly || _withNotesOnly)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Refined library view',
+                style: TextStyle(fontSize: 11.5, color: secondary),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _libraryFilterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onSelected,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected ? Colors.white : AppTheme.lightTextSecondary,
+      ),
+      selectedColor: AppTheme.primaryBlue,
+      backgroundColor: Colors.white,
+      side: BorderSide(
+        color: selected ? AppTheme.primaryBlue : AppTheme.lightBorder,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+      ),
     );
   }
 
@@ -360,7 +569,7 @@ class FavoritesView extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
       itemCount: graphs.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) =>

@@ -293,12 +293,12 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                   elevation: 0,
                 ),
                 child: _isLoading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: Colors.white,
+                          color: isDark ? const Color(0xFF09090B) : Colors.white,
                         ),
                       )
                     : const Text(
@@ -340,19 +340,24 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                     : TextButton.icon(
                         onPressed: _isResending ? null : _resendCode,
                         icon: _isResending
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: isDark ? Colors.white : const Color(0xFF18181B),
                                 ),
                               )
-                            : const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text(
+                            : Icon(
+                                Icons.refresh_rounded,
+                                size: 18,
+                                color: isDark ? Colors.white : const Color(0xFF18181B),
+                              ),
+                        label: Text(
                           'Resend Code',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryLightBlue,
+                            color: isDark ? Colors.white : const Color(0xFF18181B),
                           ),
                         ),
                       ),
@@ -403,9 +408,9 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppTheme.primaryLightBlue,
-                width: 2.0,
+              borderSide: BorderSide(
+                color: isDark ? Colors.white : const Color(0xFF18181B),
+                width: 1.5,
               ),
             ),
           ),

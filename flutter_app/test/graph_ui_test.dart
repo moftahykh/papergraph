@@ -338,10 +338,12 @@ void main() {
 
       // Verify paper details
       expect(find.text('Attention Is All You Need'), findsOneWidget);
-      expect(find.text('STARTING PAPER'), findsOneWidget);
+      // The origin label is intentionally repeated in the badge, connection
+      // explanation, and graph-year legend. Assert presence, not uniqueness.
+      expect(find.text('Starting paper'), findsAtLeastNWidgets(1));
       expect(find.text('Shared references'), findsOneWidget);
       expect(find.text('Co-citation'), findsOneWidget);
-      expect(find.text('Overall relevance'), findsOneWidget);
+      expect(find.text('Graph baseline'), findsOneWidget);
 
       // Switch to Earlier works tab
       await tester.tap(find.text('Earlier works'));
@@ -489,6 +491,7 @@ void main() {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
         createTestGraphApp(

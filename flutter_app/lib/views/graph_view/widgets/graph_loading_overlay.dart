@@ -239,27 +239,33 @@ class _GraphProgressiveLoadingViewState
 
     if (isEnabled) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withAlpha(25),
+          color: isDark ? const Color(0xFF242426) : const Color(0xFFF2F2F7),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF10B981).withAlpha(80)),
+          border: Border.all(
+            color: isDark ? const Color(0x18FFFFFF) : const Color(0xFFE5E5EA),
+            width: 0.5,
+          ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.notifications_active_rounded,
-              size: 13,
-              color: Color(0xFF10B981),
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: Color(0xFF10B981),
+                shape: BoxShape.circle,
+              ),
             ),
-            SizedBox(width: 6),
+            const SizedBox(width: 6),
             Text(
               'Notification enabled when ready',
               style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF10B981),
-                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white70 : const Color(0xFF1C1C1E),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -300,8 +306,8 @@ class _GraphProgressiveLoadingViewState
       label: const Text('Notify me when done', style: TextStyle(fontSize: 11)),
       style: TextButton.styleFrom(
         foregroundColor: isDark
-            ? const Color(0xFF38BDF8)
-            : const Color(0xFF0284C7),
+            ? const Color(0xFFA1A1AA)
+            : const Color(0xFF71717A),
       ),
     );
   }

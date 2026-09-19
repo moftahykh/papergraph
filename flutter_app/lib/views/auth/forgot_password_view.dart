@@ -192,10 +192,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
               elevation: 0,
             ),
             child: _isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: isDark ? const Color(0xFF09090B) : Colors.white,
+                    ),
                   )
                 : const Text(
                     'Send Recovery Link',
@@ -208,8 +211,17 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           Center(
             child: TextButton.icon(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back_rounded, size: 16),
-              label: const Text('Back to Sign In'),
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                size: 16,
+                color: isDark ? Colors.white : const Color(0xFF18181B),
+              ),
+              label: Text(
+                'Back to Sign In',
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF18181B),
+                ),
+              ),
             ),
           ),
         ],

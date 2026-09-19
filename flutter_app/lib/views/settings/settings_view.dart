@@ -346,7 +346,9 @@ class _SettingsViewState extends State<SettingsView> {
                       ? _showClearCacheDialog
                       : null,
                   style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.accentRose,
+                    foregroundColor: isDark
+                        ? AppTheme.actionPurpleDark
+                        : AppTheme.actionPurple,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,

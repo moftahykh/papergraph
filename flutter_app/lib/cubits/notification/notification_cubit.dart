@@ -41,13 +41,21 @@ class NotificationCubit extends Cubit<NotificationState> {
   void notifyGraphReady(
     String graphId,
     int nodeCount, {
+    String? paperTitle,
     bool isPartial = false,
   }) {
+    final title =
+        isPartial ? 'Graph ready with limited results' : 'Graph ready';
+    final hasTitle = paperTitle != null && paperTitle.trim().isNotEmpty;
+    final body = hasTitle
+        ? '$paperTitle · $nodeCount connected papers'
+        : isPartial
+            ? '$nodeCount papers are ready. Some sources did not respond.'
+            : '$nodeCount connected papers are ready to explore.';
+
     notify(
-      title: isPartial ? 'Graph ready with limited results' : 'Graph ready',
-      message: isPartial
-          ? '$nodeCount papers are ready. Some sources did not respond.'
-          : '$nodeCount connected papers are ready to explore.',
+      title: title,
+      message: body,
       type: isPartial ? NotificationType.warning : NotificationType.success,
       relatedGraphId: graphId,
       category: NotificationCategory.graphReady,

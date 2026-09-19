@@ -105,7 +105,7 @@ class LocalNotificationService {
         channelName,
         channelDescription: channelDescription,
         icon: '@drawable/ic_stat_papergraph',
-        color: const Color(0xFF71717A),
+        color: Color(0xFF71717A),
         importance: Importance.high,
         priority: Priority.high,
         ticker: 'PaperGraph update',
@@ -230,6 +230,7 @@ class LocalNotificationService {
   static Future<void> onGraphCompleted({
     required String graphId,
     required int nodeCount,
+    String? paperTitle,
     bool isPartial = false,
     required NotificationCubit notificationCubit,
   }) async {
@@ -237,6 +238,7 @@ class LocalNotificationService {
     notificationCubit.notifyGraphReady(
       graphId,
       nodeCount,
+      paperTitle: paperTitle,
       isPartial: isPartial,
     );
 
@@ -250,11 +252,13 @@ class LocalNotificationService {
 
     if (wasEnabled && permitted && !_isAppInForeground) {
       final title = isPartial
-          ? 'Graph ready with limited results'
-          : 'Graph ready';
-      final body = isPartial
-          ? '$nodeCount papers are ready. Some sources did not respond.'
-          : '$nodeCount connected papers are ready to explore.';
+          ? 'Literature graph ready (partial)'
+          : 'Literature graph ready';
+      final body = paperTitle != null && paperTitle.trim().isNotEmpty
+          ? '$paperTitle ($nodeCount connected papers ready to explore)'
+          : isPartial
+              ? '$nodeCount papers are ready. Some sources did not respond.'
+              : '$nodeCount connected papers are ready to explore.';
       await showSystemNotification(
         id: graphId.hashCode.abs() % 100000,
         title: title,

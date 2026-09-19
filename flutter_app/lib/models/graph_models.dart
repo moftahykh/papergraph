@@ -148,6 +148,7 @@ class GraphNode {
   final String canonicalId;
   final String title;
   final String? shortTitle;
+  final String? doi;
   final List<String> authors;
   final int? year;
   final String? venue;
@@ -167,6 +168,7 @@ class GraphNode {
     required this.canonicalId,
     required this.title,
     this.shortTitle,
+    this.doi,
     this.authors = const [],
     this.year,
     this.venue,
@@ -204,6 +206,7 @@ class GraphNode {
       canonicalId: (json['canonical_id'] as String?) ?? '',
       title: (json['title'] as String?) ?? 'Untitled',
       shortTitle: json['short_title'] as String?,
+      doi: json['doi'] as String?,
       authors:
           (json['authors'] as List<dynamic>?)
               ?.map((e) => e.toString())
@@ -231,6 +234,7 @@ class GraphNode {
     'canonical_id': canonicalId,
     'title': title,
     'short_title': shortTitle,
+    'doi': doi,
     'authors': authors,
     'year': year,
     'venue': venue,

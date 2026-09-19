@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/abstract_text_formatter.dart';
 import '../../core/utils/paper_url_helper.dart';
 import '../../cubits/library/library_cubit.dart';
 import '../../cubits/paper_details/paper_details_cubit.dart';
@@ -65,8 +66,11 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(saved ? 'Notes saved' : 'Notes could not be saved. Try again.'),
-        backgroundColor: saved ? AppTheme.accentEmerald : AppTheme.accentRose,
+        content: Text(
+          saved ? 'Notes saved' : 'Notes could not be saved. Try again.',
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -129,9 +133,10 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
           if (loaded.paper.abstractText != null && loaded.paper.abstractText!.isNotEmpty) {
             effectiveAbstract = loaded.paper.abstractText!;
           }
-          if (loaded.paper.citationCount > 0) {
-            effectiveCitations = loaded.paper.citationCount;
-          }
+          // The details endpoint is authoritative for this paper. A provider
+          // can legitimately confirm zero citations, so do not keep the
+          // graph snapshot's fallback value when the loaded value is zero.
+          effectiveCitations = loaded.paper.citationCount;
           if (loaded.paper.doi != null && loaded.paper.doi!.isNotEmpty) {
             effectiveDoi = loaded.paper.doi!;
           }
@@ -156,6 +161,9 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
           citationsCount: effectiveCitations,
           doi: effectiveDoi,
         );
+        final visibleAuthors = effectiveAuthors.length > 8
+            ? '${effectiveAuthors.take(8).join(' • ')} + ${effectiveAuthors.length - 8} more'
+            : effectiveAuthors.join(' • ');
 
         return Scaffold(
           appBar: AppBar(
@@ -274,7 +282,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                       Text(
                         effectiveTitle,
                         style: const TextStyle(
-                          fontSize: 23,
+                          fontSize: 25,
                           fontWeight: FontWeight.w800,
                           height: 1.22,
                           letterSpacing: -0.3,
@@ -283,9 +291,9 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                       if (effectiveAuthors.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Text(
-                          effectiveAuthors.join(' • '),
+                          visibleAuthors,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             height: 1.45,
                             color: isDark
                                 ? AppTheme.darkTextSecondary
@@ -369,7 +377,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                                 : Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),
@@ -390,7 +398,7 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),
@@ -409,14 +417,33 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                             color: isDark
                                 ? AppTheme.actionPurple.withAlpha(24)
                                 : const Color(0xFFF3F1FF),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: AppTheme.actionPurple.withAlpha(55),
                             ),
                           ),
-                          child: Text(
-                            tldr,
-                            style: const TextStyle(fontSize: 14, height: 1.55),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Summary',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isDark
+                                      ? AppTheme.actionPurpleDark
+                                      : AppTheme.actionPurple,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                tldr,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  height: 1.55,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -427,9 +454,12 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                           !effectiveAbstract.contains(
                             'Synthesized node from PaperGraph',
                           ))
-                        Text(
-                          effectiveAbstract,
-                          style: const TextStyle(fontSize: 14.5, height: 1.7),
+                        FormattedAbstract(
+                          text: effectiveAbstract,
+                          bodyStyle: const TextStyle(
+                            fontSize: 15.5,
+                            height: 1.7,
+                          ),
                         )
                       else if (isLoadingDetails)
                         Text(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/theme/app_theme.dart';
+import '../../cubits/library/library_cubit.dart';
 import '../../cubits/notification/notification_cubit.dart';
 import '../../cubits/notification/notification_state.dart';
 import '../graph_view/connected_graph_view.dart';
@@ -129,7 +130,9 @@ class NotificationsSheet extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentEmerald,
+                          color: isDark
+                              ? const Color(0xFF27272A)
+                              : const Color(0xFF18181B),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -232,58 +235,107 @@ class NotificationsSheet extends StatelessWidget {
                           if (!notif.isRead) cubit.markAsRead(notif.id);
                           if (notif.relatedGraphId != null) {
                             Navigator.of(context).pop();
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    notif.category ==
-                                        NotificationCategory.researchUpdate
-                                    ? GraphUpdatesView(
-                                        localGraphId: notif.relatedGraphId!,
-                                        graphTitle: 'Saved graph',
-                                      )
-                                    : ConnectedGraphView(
-                                        seedDoi: notif.relatedGraphId!,
-                                      ),
-                              ),
-                            );
+                            if (notif.category ==
+                                NotificationCategory.researchUpdate) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => GraphUpdatesView(
+                                    localGraphId: notif.relatedGraphId!,
+                                    graphTitle: 'Saved graph',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
+                            final snapshot = context
+                                .read<LibraryCubit>()
+                                .getCachedGraph(notif.relatedGraphId!);
+                            if (snapshot != null) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ConnectedGraphView(
+                                    initialSnapshot: snapshot,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'This graph is no longer available offline.',
+                                  ),
+                                ),
+                              );
+                            }
                           }
                         },
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: notif.isRead
-                                ? (isDark
-                                      ? AppTheme.darkSurface.withValues(
-                                          alpha: 0.5,
-                                        )
-                                      : const Color(0xFFF8FAFC))
-                                : (isDark
-                                      ? AppTheme.darkSurface
+                            color: isDark
+                                ? (notif.isRead
+                                      ? AppTheme.darkSurface.withValues(alpha: 0.5)
+                                      : const Color(0xFF161618))
+                                : (notif.isRead
+                                      ? const Color(0xFFF8FAFC)
                                       : Colors.white),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: notif.isRead
-                                  ? (isDark
-                                        ? Colors.white10
-                                        : Colors.black.withValues(alpha: 0.06))
-                                  : color.withValues(alpha: 0.35),
-                              width: notif.isRead ? 1 : 1.4,
+                              color: isDark
+                                  ? const Color(0x22FFFFFF)
+                                  : const Color(0xFFE5E5EA),
+                              width: 0.75,
                             ),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _getTypeIcon(notif.type),
-                                  size: 18,
-                                  color: color,
-                                ),
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF242426)
+                                          : const Color(0xFFF2F2F7),
+                                      borderRadius: BorderRadius.circular(9),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? const Color(0x18FFFFFF)
+                                            : const Color(0xFFE5E5EA),
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      _getTypeIcon(notif.type),
+                                      size: 17,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF1C1C1E),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: -2,
+                                    right: -2,
+                                    child: Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isDark
+                                              ? const Color(0xFF161618)
+                                              : Colors.white,
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -296,10 +348,10 @@ class NotificationsSheet extends StatelessWidget {
                                           child: Text(
                                             notif.title,
                                             style: TextStyle(
-                                              fontSize: 13.5,
+                                              fontSize: 13,
                                               fontWeight: notif.isRead
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w700,
+                                                  ? FontWeight.w500
+                                                  : FontWeight.w600,
                                               color: isDark
                                                   ? Colors.white
                                                   : const Color(0xFF0F172A),
@@ -311,8 +363,8 @@ class NotificationsSheet extends StatelessWidget {
                                           style: TextStyle(
                                             fontSize: 11,
                                             color: isDark
-                                                ? Colors.white38
-                                                : Colors.black38,
+                                                ? const Color(0xFFA1A1AA)
+                                                : const Color(0xFF71717A),
                                           ),
                                         ),
                                       ],
@@ -323,8 +375,8 @@ class NotificationsSheet extends StatelessWidget {
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: isDark
-                                            ? AppTheme.darkTextSecondary
-                                            : const Color(0xFF64748B),
+                                            ? const Color(0xFF8E8E93)
+                                            : const Color(0xFF636366),
                                       ),
                                     ),
                                     if (notif.relatedGraphId != null) ...[
@@ -333,8 +385,10 @@ class NotificationsSheet extends StatelessWidget {
                                         children: [
                                           Icon(
                                             Icons.account_tree_outlined,
-                                            size: 14,
-                                            color: color,
+                                            size: 13,
+                                            color: isDark
+                                                ? const Color(0xFFA1A1AA)
+                                                : const Color(0xFF71717A),
                                           ),
                                           const SizedBox(width: 5),
                                           Text(
@@ -342,7 +396,9 @@ class NotificationsSheet extends StatelessWidget {
                                             style: TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w600,
-                                              color: color,
+                                              color: isDark
+                                                  ? const Color(0xFFA1A1AA)
+                                                  : const Color(0xFF71717A),
                                             ),
                                           ),
                                         ],
@@ -354,10 +410,10 @@ class NotificationsSheet extends StatelessWidget {
                               if (!notif.isRead) ...[
                                 const SizedBox(width: 8),
                                 Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: color,
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF2563EB),
                                     shape: BoxShape.circle,
                                   ),
                                 ),

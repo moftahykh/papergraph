@@ -192,7 +192,7 @@ class _GraphListViewTabState extends State<GraphListViewTab> {
               if (_selectedSection == 'all' &&
                   filteredNodes.any((n) => n.isOrigin)) ...[
                 _buildSectionHeader(
-                  'STARTING PAPER',
+                  'Starting paper',
                   1,
                   AppTheme.originGreen,
                   isDark,

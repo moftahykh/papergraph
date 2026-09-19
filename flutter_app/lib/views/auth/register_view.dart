@@ -403,18 +403,21 @@ class _RegisterViewState extends State<RegisterView> {
             onPressed: _isLoading ? null : _onProceedToOtp,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
+              backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+              foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              elevation: 3,
+              elevation: 0,
             ),
             child: _isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: isDark ? const Color(0xFF09090B) : Colors.white,
+                    ),
                   )
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -442,10 +445,10 @@ class _RegisterViewState extends State<RegisterView> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(
+                child: Text(
                   'Sign In',
                   style: TextStyle(
-                    color: AppTheme.primaryLightBlue,
+                    color: isDark ? Colors.white : const Color(0xFF18181B),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -534,17 +537,18 @@ class _RegisterViewState extends State<RegisterView> {
                   _customDomainController.clear();
                 });
               },
-              selectedColor: AppTheme.primaryBlue.withAlpha(40),
+              selectedColor: isDark ? const Color(0xFF242426) : const Color(0xFF18181B),
+              backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
               labelStyle: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected
-                    ? AppTheme.primaryLightBlue
+                    ? Colors.white
                     : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
               ),
               side: BorderSide(
                 color: isSelected
-                    ? AppTheme.primaryLightBlue
+                    ? (isDark ? const Color(0x40FFFFFF) : const Color(0xFF18181B))
                     : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
               ),
             );
@@ -572,18 +576,21 @@ class _RegisterViewState extends State<RegisterView> {
           onPressed: authProvider.isLoading ? null : _onFinalRegister,
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: AppTheme.primaryBlue,
-            foregroundColor: Colors.white,
+            backgroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+            foregroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
-            elevation: 4,
+            elevation: 0,
           ),
           child: authProvider.isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: isDark ? const Color(0xFF09090B) : Colors.white,
+                  ),
                 )
               : const Text(
                   'Complete & Launch PaperGraph',

@@ -63,7 +63,6 @@ class _CitationBottomSheetState extends State<CitationBottomSheet> {
             ),
           ],
         ),
-        backgroundColor: AppTheme.accentEmerald,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),

@@ -215,7 +215,12 @@ class _ResearchSessionDock extends StatelessWidget {
     final session = context.watch<ResearchSessionCubit>().state;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (!session.hasSession) return const SizedBox.shrink();
+    // The dock is a transient continuation affordance, not a permanent
+    // "completed" banner. Once the graph is ready, the normal Library/Graph
+    // surfaces are the source of truth.
+    if (!session.hasSession || session.status == ResearchSessionStatus.ready) {
+      return const SizedBox.shrink();
+    }
 
     final currentIndex = context
         .findAncestorStateOfType<_MainNavigationViewState>()

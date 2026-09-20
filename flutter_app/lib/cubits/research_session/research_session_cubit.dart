@@ -72,6 +72,14 @@ class ResearchSessionCubit extends Cubit<ResearchSessionState> {
   }
 
   void syncGraph(GraphState next) {
+    // GraphInitial is emitted when the user explicitly stops tracking or
+    // leaves a newly-created graph before it starts polling. The session dock
+    // must not keep presenting that job after the GraphCubit is idle.
+    if (next is GraphInitial) {
+      clear();
+      return;
+    }
+
     if (next is GraphCreating) {
       emit(
         state.copyWith(

@@ -95,3 +95,4 @@ google-services.json
 .agents/
 *.zip
 *.tar.gz
+flutter_app/lib/firebase_options.dart

@@ -1,106 +1,328 @@
-# PaperGraph
-
-> Turn one paper into a visual map of its research field.
-
-![Python](https://img.shields.io/badge/python-3.11+-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B) ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
-
-PaperGraph is a mobile-first academic discovery engine. Paste a paper's DOI, link, or title, and it builds an interactive literature graph: the works it builds on (prior works), the works that build on it (derivative works), and the most relevant similar research — resolved across four scholarly databases, deduplicated, ranked with explainable scores, and laid out as an explorable map.
-
 <p align="center">
-  <img src="flutter_app/assets/images/logo_light.png" width="140" alt="PaperGraph logo" />
+  <img src="docs/assets/papergraph-mark-light.svg" width="96" alt="PaperGraph logo" />
 </p>
 
-## Features
+<h1 align="center">PaperGraph</h1>
 
-- **Universal paper resolution** — bare DOI, DOI URL, PMID/PMCID, arXiv ID, Semantic Scholar ID, OpenAlex ID, or a publisher landing-page URL (citation meta-tag scraping as fallback)
-- **Multi-provider engine** — Semantic Scholar, OpenAlex, Crossref, and PubMed with per-channel failure isolation, API key pooling with instant 429 rotation, and per-provider rate limiting
-- **Explainable hybrid ranking** — semantic score, weighted bibliographic coupling (WBC), normalized co-citation (NCC), and direct-link signals; missing signals are never defaulted to zero (weights renormalize), and every candidate carries a full score breakdown
-- **Prior & derivative works** extraction (Connected Papers-style)
-- **MMR diversity selection** (λ = 0.70) so the graph shows the breadth of the field, not 40 copies of the same paper
-- **Deterministic, force-directed layout** computed server-side: collision-free, prior works to the left, derivative works to the right, similar works clustered by actual similarity
-- **Interactive Flutter canvas** — pinch-zoom, draggable nodes, tap for details, year-gradient node colors, directed citation arrows vs. dashed similarity links
-- **Offline library** — cached graphs (Hive) with staleness badges, favorites with personal notes, biometric vault unlock
-- **One-tap citations** — BibTeX/APA generated per paper
-- **Auth** — Firebase email/password, biometric quick-unlock, and email OTP delivered via Gmail SMTP
-- **Honest progress** — a 16-stage job lifecycle streamed to the UI with cancellation, backoff polling, and partial-result warnings instead of silent failures
+<p align="center">
+  <strong>See the field.<br />Not just the paper.</strong>
+</p>
 
-## Architecture
+<p align="center">
+  Turn one DOI, title, or paper link into an explorable map of citations,
+  related research, and the ideas surrounding a paper.
+</p>
 
+<p align="center">
+  <a href="#quick-start">Run locally</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#research-integrity">Research integrity</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/status-active%20alpha%2Fbeta-087F6B?style=flat-square" alt="Project status" />
+  <img src="https://img.shields.io/badge/client-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/API-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/data-PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/deployment-Render-46E3B7?style=flat-square&logo=render&logoColor=111827" alt="Render" />
+</p>
+
+<br />
+
+<p align="center">
+  <img src="docs/assets/papergraph-hero.svg" alt="PaperGraph research graph concept: a starting paper connected to foundational, related, derivative, and recent work" width="100%" />
+</p>
+
+## The idea
+
+Academic search is optimized for retrieval. **Research is not a list. It is a field.**
+
+PaperGraph starts with one paper and helps a researcher understand:
+
+- what came before it;
+- what cites it directly;
+- what is related through shared scholarly evidence;
+- which later work extends the field; and
+- what changed after the graph was saved.
+
+It is built to make a research area navigable without pretending that incomplete provider data is complete.
+
+## See it in action
+
+<p align="center">
+  <img src="docs/assets/screens/graph-explorer.png" alt="PaperGraph graph explorer on mobile" width="360" />
+</p>
+
+<p align="center"><em>A graph is useful when it helps you decide what to read next.</em></p>
+
+## From one paper to a research field
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 01 · Discover
+
+Paste a DOI, title, or paper link. PaperGraph resolves the canonical work and gathers candidate literature from scholarly sources.
+
+</td>
+<td width="33%" valign="top">
+
+### 02 · Understand
+
+Explore directional citation paths separately from evidence-backed similarity relationships. Open any node for context.
+
+</td>
+<td width="33%" valign="top">
+
+### 03 · Keep going
+
+Save the graph, add notes, export citations, monitor it for new work, and return to it offline.
+
+</td>
+</tr>
+</table>
+
+## What you can do
+
+### Explore
+
+- Search by title, DOI, keyword, or paper link.
+- Generate an interactive literature graph.
+- Toggle citation and similarity layers.
+- Zoom, pan, recenter, and inspect nodes.
+- See publication years, relationship direction, and graph diagnostics.
+- Open paper-level details and connected literature.
+
+### Read and keep
+
+- View paper metadata and abstract previews.
+- Save papers and graphs to the library.
+- Add personal notes.
+- Export APA, BibTeX, MLA, and Chicago citations.
+- Use cached graphs and saved papers offline.
+
+### Monitor
+
+- Turn research monitoring on for a saved graph.
+- Review newly discovered papers and why they appeared.
+- Add an update back to the graph.
+- Mark updates as read.
+- Pause and resume monitoring.
+- Receive local and Firebase-backed notifications where configured.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[DOI, title, or link] --> B[Canonical identity]
+    B --> C[Candidate discovery]
+    C --> D[Evidence + ranking]
+    D --> E[Interactive graph]
+    E --> F[Library + notes]
+    E --> G[Research monitoring]
+    G --> H[New update + notification]
 ```
-┌──────────────┐      REST / JSON       ┌─────────────────────────────────────┐
-│  Flutter app │  ◀──────────────────▶  │  FastAPI backend                    │
-│  (bloc, dio, │   async graph jobs     │  providers → resolution → candidates│
-│  hive, firebase)  (202 + polling)     │  → enrichment (WBC/NCC) → ranking   │
-└──────────────┘                        │  → MMR → force-directed layout      │
-                                        └─────────────────────────────────────┘
+
+### The stack
+
+<p>
+  <img src="docs/assets/icons/flutter.svg" width="24" alt="Flutter" />
+  <img src="docs/assets/icons/dart.svg" width="24" alt="Dart" />
+  <img src="docs/assets/icons/fastapi.svg" width="24" alt="FastAPI" />
+  <img src="docs/assets/icons/python.svg" width="24" alt="Python" />
+  <img src="docs/assets/icons/firebase.svg" width="24" alt="Firebase" />
+  <img src="docs/assets/icons/postgresql.svg" width="24" alt="PostgreSQL" />
+  <img src="docs/assets/icons/redis.svg" width="24" alt="Redis" />
+  <img src="docs/assets/icons/docker.svg" width="24" alt="Docker" />
+  <img src="docs/assets/icons/githubactions.svg" width="24" alt="GitHub Actions" />
+  <img src="docs/assets/icons/render.svg" width="24" alt="Render" />
+</p>
+
+| Layer | Technology |
+| --- | --- |
+| Mobile client | Flutter, Dart, BLoC/Cubit |
+| API | FastAPI, Pydantic, Uvicorn |
+| Persistence | PostgreSQL, SQLAlchemy, Alembic |
+| Local infrastructure | Docker Compose, PostgreSQL, Redis |
+| Authentication and notifications | Firebase Auth, Firebase Messaging, local notifications |
+| Scholarly sources | Semantic Scholar, OpenAlex, Crossref, PubMed |
+| Automation | GitHub Actions, scheduled monitoring workers |
+| Deployment | Render |
+
+## Graph semantics
+
+PaperGraph does not flatten every signal into one vague “related” edge.
+
+| Relationship | Meaning | Direction |
+| --- | --- | --- |
+| **Citation** | A bibliographic relationship where one paper cites another | Directional |
+| **Similarity** | Relatedness supported by shared references, co-citation, or validated content signals | Undirected |
+| **Unavailable** | The provider did not return enough evidence | No relationship is invented |
+
+> **A similar title is not a citation. A missing score is not a zero.**
+
+The graph preserves those distinctions so the user can explore confidently and still see where the evidence is incomplete.
+
+## Research integrity
+
+PaperGraph depends on external scholarly indexes. Their coverage, indexing delay, quotas, and rate limits affect every graph.
+
+The backend is designed to:
+
+- normalize identities across providers;
+- preserve provider identifiers and provenance;
+- keep citation and similarity semantics separate;
+- expose incomplete evidence instead of manufacturing confidence;
+- fall back where possible; and
+- return partial results when upstream data is unavailable.
+
+A graph is a discovery aid—not a replacement for reading the original papers or verifying a claim at the source.
+
+## Repository map
+
+```text
+.
+├── backend/
+│   ├── app/api/v1/       # Search, resolve, graph, paper, monitoring routes
+│   ├── app/candidates/   # Candidate discovery and retention
+│   ├── app/enrichment/   # Metadata, references, citations, metrics
+│   ├── app/graph/        # Evidence, ranking, edges, layout, synthesis
+│   ├── app/monitoring/   # Research update scanner
+│   ├── app/providers/    # Semantic Scholar, OpenAlex, Crossref, PubMed
+│   ├── alembic/          # Database migrations
+│   ├── scripts/          # Operational and smoke-test scripts
+│   └── tests/            # Backend test suite
+├── flutter_app/
+│   ├── lib/views/        # Explore, graph, paper, library, updates, settings
+│   ├── lib/cubits/       # State and async workflows
+│   ├── lib/core/         # API, cache, auth, notifications
+│   └── test/             # Widget, graph, responsive, and notification tests
+├── .github/workflows/    # Monitoring and controlled operational jobs
+├── docker-compose.yml    # Local PostgreSQL and Redis
+└── render.yaml           # Render deployment definition
 ```
 
-## Tech stack
+## Quick start
 
-| Layer | Tech |
-|---|---|
-| Mobile | Flutter / Dart — flutter_bloc + provider, dio, hive, firebase_auth, local_auth, lottie |
-| Backend | Python 3.11+ — FastAPI, pydantic v2, httpx |
-| Data providers | Semantic Scholar Graph API, OpenAlex, Crossref, NCBI E-Utilities |
-| Testing | pytest (backend: providers, resolution, ranking, graph, security) + flutter_test |
+### Prerequisites
 
-## Project structure
+- Flutter SDK compatible with Dart `3.12.2`.
+- Python `3.11+`.
+- Docker Desktop.
+- Provider credentials for live scholarly data.
+- Firebase configuration for authentication and notification flows.
 
-```
-├── backend/            # FastAPI discovery & ranking engine
-│   ├── app/            # api, providers, resolution, candidates, enrichment, ranking, graph, workers
-│   └── tests/          # pytest suite with provider fixtures
-├── flutter_app/        # Flutter mobile app
-│   └── lib/            # views, cubits, models, core (theme, network, services)
-└── docs/               # API contract, ranking spec, design decisions, plans
+### 1. Start local infrastructure
+
+```powershell
+docker compose up -d postgres redis
 ```
 
-## Getting started
+### 2. Configure the backend
 
-### Backend
+Create `backend/.env` locally. Never commit it.
 
+```env
+DATABASE_URL=postgresql+asyncpg://<user>:<password>@localhost:5432/<database>
+SEMANTIC_SCHOLAR_API_KEYS=key1,key2
+CROSSREF_MAILTO=your-email@example.com
+OPENALEX_MAILTO=your-email@example.com
+FIREBASE_PROJECT_ID=your-firebase-project-id
 ```
+
+Optional configuration includes `NCBI_API_KEY`, SMTP/Resend credentials, Firebase service-account credentials for worker notifications, and provider rate limits.
+
+### 3. Install and run the backend
+
+```powershell
 cd backend
 python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -r requirements.txt
-copy .env.example .env          # then fill in your own API keys
-uvicorn app.main:app --reload
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m alembic upgrade head
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Interactive API docs: `http://localhost:8000/api/v1/docs`
+API docs:
 
-### Flutter app
-
+```text
+http://127.0.0.1:8000/docs
 ```
+
+### 4. Run the Flutter client
+
+In another terminal:
+
+```powershell
 cd flutter_app
 flutter pub get
 flutter run --dart-define=PAPERGRAPH_API_URL=http://10.0.2.2:8000/api/v1
 ```
 
-Release APK against a deployed backend:
+`10.0.2.2` is the Android emulator alias for the host machine. For a physical device, use the computer's LAN IP.
 
+## Quality gates
+
+### Backend
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m compileall -q app tests
+.\.venv\Scripts\python.exe -m pytest -q
 ```
-flutter build apk --release --dart-define=PAPERGRAPH_API_URL=https://<your-backend-host>/api/v1
+
+### Flutter
+
+```powershell
+cd flutter_app
+flutter analyze
+flutter test
 ```
 
-## Testing
+The test suites cover graph semantics, ranking, enrichment, monitoring deduplication, authentication policies, notifications, offline behavior, responsive layouts, RTL, and large accessibility text scaling.
 
-```
-cd backend && python -m pytest -q
-cd flutter_app && flutter test
-```
+## Deployment and automation
 
-## Design principles
+`render.yaml` defines the FastAPI web service on Render. GitHub Actions provides scheduled and manually triggered monitoring workflows for due graphs, one-graph scans, and controlled notification navigation tests.
 
-- **Never fabricate** — if every provider fails, the job fails loudly with an honest error; no invented papers, ever
-- **Explainability** — every score ships with its signal breakdown and confidence level
-- **Resilience** — key rotation on 429s, per-channel isolation (one provider's 500 never aborts the chain), exponential backoff, and graceful partial results with explicit warnings
+Keep all secrets in Render or GitHub Actions secrets. Never commit:
 
-## Screenshots
+- provider API keys;
+- database URLs;
+- Firebase service-account JSON;
+- SMTP passwords;
+- temporary authentication tokens.
 
-<!-- TODO: add real screenshots under docs/screenshots/ and embed them here -->
+## Current limitations
+
+- External provider quotas can make a graph partial or slow.
+- A successful graph does not guarantee complete citation coverage.
+- Provider indexing determines which papers can be resolved.
+- Firebase configuration and platform permissions are required for the full notification experience.
+- The repository does not currently declare an open-source license.
+
+## Roadmap
+
+- Make provider request budgets explicit per graph.
+- Improve durable job execution and cancellation for long-running graphs.
+- Persist richer evidence and provenance in graph snapshots.
+- Add stronger provider-health telemetry and partial-result explanations.
+- Continue improving graph layout without weakening relationship semantics.
+- Publish a clear license and contribution guide.
+
+## Contributing
+
+Before opening a pull request:
+
+1. Keep credentials and production data out of commits.
+2. Add or update tests for behavior changes.
+3. Run `flutter analyze` and `flutter test` for client changes.
+4. Run `python -m pytest -q` for backend changes.
+5. Document migrations and operational changes.
+6. Never present incomplete provider data as complete research evidence.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+No license has been declared yet. Until a license is added, this repository should not be assumed to grant permission to copy, modify, or redistribute the code.

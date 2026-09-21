@@ -1,0 +1,31 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="bg" x1="40" y1="20" x2="1160" y2="540" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#111827"/><stop offset="1" stop-color="#1E293B"/>
+  </linearGradient>
+  <linearGradient id="glow" x1="180" y1="90" x2="920" y2="460" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#55D6BE"/><stop offset="1" stop-color="#7C83FD"/>
+  </linearGradient>
+  <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#020617" flood-opacity=".5"/></filter>
+</defs>
+<rect width="1200" height="560" rx="28" fill="url(#bg)"/>
+<path d="M70 92H1130" stroke="#334155" stroke-width="1"/>
+<circle cx="95" cy="52" r="7" fill="#FB7185"/><circle cx="119" cy="52" r="7" fill="#FBBF24"/><circle cx="143" cy="52" r="7" fill="#34D399"/>
+<text x="205" y="58" fill="#CBD5E1" font-family="Arial, sans-serif" font-size="14" letter-spacing="1.6">PAPERGRAPH  /  EXPLORING: MOLECULAR EVOLUTION</text>
+<rect x="70" y="118" width="760" height="360" rx="22" fill="#0F172A" stroke="#334155"/>
+<text x="98" y="150" fill="#94A3B8" font-family="Arial, sans-serif" font-size="13">RESEARCH FIELD MAP</text>
+<text x="98" y="181" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="20" font-weight="700">MEGA X: Molecular Evolutionary Genetics</text>
+<text x="98" y="207" fill="#64748B" font-family="Arial, sans-serif" font-size="13">19 papers  ·  10 citation links  ·  32 similarity links</text>
+<path d="M430 300L190 245M430 300L250 390M430 300L350 196M430 300L540 205M430 300L640 270M430 300L630 390M430 300L760 334M430 300L570 445M430 300L280 290M430 300L730 190M350 196L540 205M540 205L640 270M640 270L760 334M250 390L280 290M630 390L570 445" stroke="#64748B" stroke-opacity=".55" stroke-width="1.2" stroke-dasharray="4 5"/>
+<path d="M430 300L350 196M430 300L640 270M430 300L630 390M430 300L570 445" stroke="url(#glow)" stroke-width="2.8"/>
+<path d="M430 300L350 196M430 300L640 270M430 300L630 390M430 300L570 445" stroke="#F8FAFC" stroke-width="1" opacity=".55"/>
+<g filter="url(#shadow)"><circle cx="430" cy="300" r="29" fill="#111827" stroke="#55D6BE" stroke-width="3"/><circle cx="430" cy="300" r="20" fill="#334155"/><text x="416" y="305" fill="#F8FAFC" font-family="Arial" font-size="11" font-weight="700">2018</text></g>
+<g fill="#94A3B8"><circle cx="190" cy="245" r="12"/><circle cx="250" cy="390" r="15"/><circle cx="350" cy="196" r="19"/><circle cx="540" cy="205" r="14"/><circle cx="640" cy="270" r="20"/><circle cx="630" cy="390" r="14"/><circle cx="760" cy="334" r="12"/><circle cx="570" cy="445" r="17"/><circle cx="280" cy="290" r="10"/><circle cx="730" cy="190" r="10"/></g>
+<g fill="#E2E8F0" font-family="Arial" font-size="11"><text x="152" y="232">Early work</text><text x="225" y="420">Methods</text><text x="326" y="175">Foundational</text><text x="526" y="184">Related</text><text x="620" y="254">Derivative</text><text x="610" y="419">Clinical work</text><text x="718" y="362">Recent study</text></g>
+<rect x="860" y="118" width="300" height="360" rx="22" fill="#F8FAFC"/>
+<rect x="886" y="146" width="88" height="24" rx="12" fill="#DFF8F1"/><text x="900" y="163" fill="#087F6B" font-family="Arial" font-size="11" font-weight="700">STARTING PAPER</text>
+<text x="886" y="214" fill="#0F172A" font-family="Arial" font-size="21" font-weight="700">MEGA X:</text><text x="886" y="241" fill="#0F172A" font-family="Arial" font-size="21" font-weight="700">Molecular Evolutionary</text><text x="886" y="268" fill="#0F172A" font-family="Arial" font-size="21" font-weight="700">Genetics Analysis</text>
+<line x1="886" y1="294" x2="1134" y2="294" stroke="#CBD5E1"/>
+<text x="886" y="326" fill="#64748B" font-family="Arial" font-size="12">WHY THIS PAPER APPEARS</text><text x="886" y="353" fill="#334155" font-family="Arial" font-size="14">Direct citation and</text><text x="886" y="375" fill="#334155" font-family="Arial" font-size="14">shared references.</text>
+<rect x="886" y="412" width="110" height="34" rx="17" fill="#111827"/><text x="908" y="434" fill="#F8FAFC" font-family="Arial" font-size="12" font-weight="700">OPEN PAPER</text>
+</svg>

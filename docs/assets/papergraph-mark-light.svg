@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 310" role="img" aria-label="PaperGraph mark">
+  <circle cx="155" cy="155" r="95" fill="none" stroke="#000000" stroke-opacity=".18" stroke-width="1.5" stroke-dasharray="4 6"/>
+  <g stroke="#18181B" stroke-opacity=".32" stroke-width="2" stroke-linecap="round">
+    <path d="M155 155L90 95M155 155L230 105M155 155L220 220M155 155L85 215M90 95L25 125M230 105L275 55M220 220L290 200M85 215L135 280M90 95L230 105M220 220L85 215"/>
+  </g>
+  <g fill="#27272A">
+    <circle cx="90" cy="95" r="5.5"/><circle cx="230" cy="105" r="6"/><circle cx="220" cy="220" r="5.2"/><circle cx="85" cy="215" r="5.6"/><circle cx="25" cy="125" r="4.2"/><circle cx="275" cy="55" r="4.2"/><circle cx="290" cy="200" r="4.2"/><circle cx="135" cy="280" r="4.5"/>
+  </g>
+  <circle cx="155" cy="155" r="18" fill="none" stroke="#000000" stroke-opacity=".5" stroke-width="2"/>
+  <circle cx="155" cy="155" r="8.5" fill="#18181B"/>
+</svg>

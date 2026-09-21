@@ -115,13 +115,13 @@ Save the graph, add notes, export citations, monitor it for new work, and return
 
 ```mermaid
 flowchart LR
-    A[DOI, title, or link] --> B[Canonical identity]
-    B --> C[Candidate discovery]
-    C --> D[Evidence + ranking]
-    D --> E[Interactive graph]
-    E --> F[Library + notes]
-    E --> G[Research monitoring]
-    G --> H[New update + notification]
+    A["DOI, title, or link"] --> B["Canonical identity"]
+    B --> C["Candidate discovery"]
+    C --> D["Evidence + ranking"]
+    D --> E["Interactive graph"]
+    E --> F["Library + notes"]
+    E --> G["Research monitoring"]
+    G --> H["New update + notification"]
 ```
 
 ### The stack

@@ -16,7 +16,6 @@ import '../../cubits/notification/notification_cubit.dart';
 import '../../cubits/notification/notification_state.dart';
 import '../../cubits/search/search_cubit.dart';
 import '../../cubits/search/search_state.dart';
-import '../../cubits/theme/theme_cubit.dart';
 import '../../models/api_schemas.dart';
 import '../../models/graph_job_status.dart';
 import '../../models/graph_models.dart';
@@ -27,6 +26,7 @@ import 'recent_graphs_view.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/paper_graph_mark.dart';
 import '../research_monitoring/graph_updates_view.dart';
+import '../settings/settings_view.dart';
 
 /// Search-first home (the Connected Papers model).
 ///
@@ -213,11 +213,15 @@ class _HomeViewState extends State<HomeView> {
             },
           ),
           IconButton(
-            tooltip: 'Toggle theme',
-            icon: Icon(
-              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-            ),
-            onPressed: () => context.read<ThemeCubit>().toggleTheme(),
+            tooltip: 'Profile and settings',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SettingsView(),
+                ),
+              );
+            },
           ),
         ],
       ),

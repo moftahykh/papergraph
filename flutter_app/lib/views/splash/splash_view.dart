@@ -26,7 +26,9 @@ class _SplashViewState extends State<SplashView>
   @override
   void initState() {
     super.initState();
-    // Silently ping backend health to initiate cloud container wake-up early
+    // Warm the backend in parallel with the branded startup animation.
+    // This must remain non-blocking so the native/Flutter splash never waits
+    // on Render or any remote provider.
     PaperGraphApiClient().checkHealth();
 
     _controller = AnimationController(
@@ -90,7 +92,7 @@ class _SplashViewState extends State<SplashView>
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 600),
+          transitionDuration: const Duration(milliseconds: 600),
         pageBuilder: (context, animation, secondaryAnimation) =>
             MainNavigationView(
               requireInitialUnlock: HiveService.isBiometricsEnabled(),
@@ -105,18 +107,6 @@ class _SplashViewState extends State<SplashView>
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  String _getStatusText(double progress) {
-    if (progress < 0.25) {
-      return 'INITIALIZING';
-    } else if (progress < 0.60) {
-      return 'MAPPING CITATIONS';
-    } else if (progress < 0.88) {
-      return 'SYNTHESIZING';
-    } else {
-      return 'READY';
-    }
   }
 
   @override
@@ -234,7 +224,7 @@ class _SplashViewState extends State<SplashView>
                             ),
                             const SizedBox(height: 14),
                             Text(
-                              _getStatusText(progress),
+                              'LOADING PAPERGRAPH',
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w400,

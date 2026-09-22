@@ -14,8 +14,20 @@ import '../paper_details/paper_details_view.dart';
 import '../research_monitoring/graph_updates_view.dart';
 import '../widgets/paper_graph_mark.dart';
 
+enum FavoritesViewMode {
+  /// The legacy two-tab Library surface, kept for direct widget coverage.
+  library,
+  papers,
+  graphs,
+}
+
 class FavoritesView extends StatefulWidget {
-  const FavoritesView({super.key});
+  final FavoritesViewMode mode;
+
+  const FavoritesView({
+    super.key,
+    this.mode = FavoritesViewMode.library,
+  });
 
   static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(0);
 
@@ -42,7 +54,11 @@ class _FavoritesViewState extends State<FavoritesView>
     _tabController = TabController(
       length: 2,
       vsync: this,
-      initialIndex: FavoritesView.selectedTabNotifier.value.clamp(0, 1),
+      initialIndex: widget.mode == FavoritesViewMode.graphs
+          ? 1
+          : widget.mode == FavoritesViewMode.papers
+              ? 0
+              : FavoritesView.selectedTabNotifier.value.clamp(0, 1),
     );
     _tabController.addListener(_handleTabChanged);
     FavoritesView.selectedTabNotifier.addListener(_handleExternalTabRequest);
@@ -73,6 +89,10 @@ class _FavoritesViewState extends State<FavoritesView>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (widget.mode != FavoritesViewMode.library) {
+      return _buildSingleCollectionView(context, isDark);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -147,8 +167,14 @@ class _FavoritesViewState extends State<FavoritesView>
           final papers = state is LibraryLoaded
               ? state.savedPapers
               : <CanonicalPaper>[];
+          // The dedicated Graphs destination is the user's full local graph
+          // history, including graphs that have not been explicitly pinned
+          // to the Library. The Library's legacy Graphs tab remains saved-only
+          // for backwards compatibility with existing direct widget users.
           final graphs = state is LibraryLoaded
-              ? state.cachedGraphs
+              ? widget.mode == FavoritesViewMode.graphs
+                  ? state.recentGraphs
+                  : state.cachedGraphs
               : <GraphSnapshot>[];
           final notes = state is LibraryLoaded
               ? state.paperNotes
@@ -161,6 +187,44 @@ class _FavoritesViewState extends State<FavoritesView>
               _buildGraphsTab(context, graphs, isDark),
             ],
           );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSingleCollectionView(BuildContext context, bool isDark) {
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 72,
+        title: Text(
+          widget.mode == FavoritesViewMode.graphs ? 'Graphs' : 'Library',
+          style: AppTheme.brandTitleStyle(
+            fontSize: 32,
+            color: isDark
+                ? AppTheme.darkTextPrimary
+                : AppTheme.lightTextPrimary,
+          ),
+        ),
+      ),
+      body: BlocBuilder<LibraryCubit, LibraryState>(
+        builder: (context, state) {
+          if (state is LibraryError) {
+            return _buildLoadError(context, state.message, isDark);
+          }
+
+          final papers = state is LibraryLoaded
+              ? state.savedPapers
+              : <CanonicalPaper>[];
+          final graphs = state is LibraryLoaded
+              ? state.cachedGraphs
+              : <GraphSnapshot>[];
+          final notes = state is LibraryLoaded
+              ? state.paperNotes
+              : <String, String>{};
+
+          return widget.mode == FavoritesViewMode.graphs
+              ? _buildGraphsTab(context, graphs, isDark)
+              : _buildPapersTab(context, papers, notes, isDark);
         },
       ),
     );
@@ -556,7 +620,7 @@ class _FavoritesViewState extends State<FavoritesView>
         customIcon: PaperGraphMark(size: 40, isDark: isDark),
         title: 'No graphs yet',
         description:
-            'Save a graph to keep it in your library for quick access anytime.',
+            'Create a literature graph to keep it available for quick access.',
         isDark: isDark,
       );
     }

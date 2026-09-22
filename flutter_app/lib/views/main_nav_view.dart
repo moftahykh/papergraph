@@ -14,7 +14,6 @@ import '../cubits/search/search_state.dart';
 import 'graph_view/connected_graph_view.dart';
 import 'favorites/favorites_view.dart';
 import 'home/home_view.dart';
-import 'settings/settings_view.dart';
 import 'widgets/app_lock_gate.dart';
 
 class MainNavigationView extends StatefulWidget {
@@ -51,8 +50,8 @@ class _MainNavigationViewState extends State<MainNavigationView> {
 
   final List<Widget> _screens = const [
     HomeView(),
-    FavoritesView(),
-    SettingsView(),
+    FavoritesView(mode: FavoritesViewMode.graphs),
+    FavoritesView(mode: FavoritesViewMode.papers),
   ];
 
   @override
@@ -159,6 +158,21 @@ class _MainNavigationViewState extends State<MainNavigationView> {
                           ),
                           NavigationDestination(
                             icon: Icon(
+                              Icons.account_tree_outlined,
+                              color: isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.lightTextSecondary,
+                            ),
+                            selectedIcon: Icon(
+                              Icons.account_tree_rounded,
+                              color: isDark
+                                  ? AppTheme.darkTextPrimary
+                                  : AppTheme.lightTextPrimary,
+                            ),
+                            label: 'Graphs',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(
                               Icons.bookmarks_outlined,
                               color: isDark
                                   ? AppTheme.darkTextSecondary
@@ -171,21 +185,6 @@ class _MainNavigationViewState extends State<MainNavigationView> {
                                   : AppTheme.lightTextPrimary,
                             ),
                             label: 'Library',
-                          ),
-                          NavigationDestination(
-                            icon: Icon(
-                              Icons.settings_outlined,
-                              color: isDark
-                                  ? AppTheme.darkTextSecondary
-                                  : AppTheme.lightTextSecondary,
-                            ),
-                            selectedIcon: Icon(
-                              Icons.settings_rounded,
-                              color: isDark
-                                  ? AppTheme.darkTextPrimary
-                                  : AppTheme.lightTextPrimary,
-                            ),
-                            label: 'Settings',
                           ),
                         ],
                       ),

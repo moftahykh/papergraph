@@ -4,6 +4,7 @@ from app.models.canonical_paper import CanonicalPaper
 from app.models.graph import GraphNode
 from app.ranking.models import RankedCandidate
 from app.graph.mmr import compute_pairwise_similarity
+from app.graph.identifiers import identifier_aliases, relationship_target_map
 
 
 def compute_node_radius(citation_count: int, is_origin: bool = False) -> float:
@@ -70,16 +71,7 @@ def apply_force_directed_pass(
     # a node whose only link is a citation gets exiled to the canvas edge
     # by pure repulsion, dragging an ugly long edge behind it.
     id_to_idx = {nd.id: i for i, nd in enumerate(nodes)}
-    doi_to_idx: Dict[str, int] = {}
-    s2_to_idx: Dict[str, int] = {}
-    for i, nd in enumerate(nodes):
-        p = papers_by_id.get(nd.id)
-        if p is None:
-            continue
-        if p.doi:
-            doi_to_idx[p.doi.lower().strip()] = i
-        if p.semantic_scholar_id:
-            s2_to_idx[p.semantic_scholar_id] = i
+    target_map = relationship_target_map(papers_by_id.values())
 
     linked_nodes: set = set()
     for i, nd in enumerate(nodes):
@@ -87,11 +79,15 @@ def apply_force_directed_pass(
         if p is None:
             continue
         for ref in p.reference_ids:
-            j = id_to_idx.get(ref)
-            if j is None:
-                j = doi_to_idx.get(ref.lower().strip())
-            if j is None:
-                j = s2_to_idx.get(ref)
+            target_id = next(
+                (
+                    target_map[alias]
+                    for alias in identifier_aliases(ref)
+                    if alias in target_map
+                ),
+                None,
+            )
+            j = id_to_idx.get(target_id)
             if j is None or j == i:
                 continue
             pair = (i, j) if i < j else (j, i)

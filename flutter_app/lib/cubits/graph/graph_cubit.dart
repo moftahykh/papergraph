@@ -10,6 +10,8 @@ import '../../providers/auth_provider.dart';
 import 'graph_state.dart';
 
 class GraphCubit extends Cubit<GraphState> {
+  static const String currentGraphAlgorithmVersion = 'v1.1';
+
   final PaperGraphApiClient _apiClient;
   final bool _resumePendingJobs;
   CancelToken? _activeCancelToken;
@@ -114,7 +116,8 @@ class GraphCubit extends Cubit<GraphState> {
     // 0-second instant loading from local Hive cache
     if (checkCacheFirst) {
       final cached = HiveService.getCachedGraph(cleanId, allowExpired: false);
-      if (cached != null) {
+      if (cached != null &&
+          cached.algorithmVersion == currentGraphAlgorithmVersion) {
         emit(
           GraphLoaded(
             snapshot: cached,
@@ -140,6 +143,7 @@ class GraphCubit extends Cubit<GraphState> {
         maxNodes: maxNodes,
         includePriorWorks: includePrior,
         includeDerivativeWorks: includeDerivative,
+        algorithmVersion: currentGraphAlgorithmVersion,
       );
 
       final dispatchResponse = await _apiClient.createGraph(

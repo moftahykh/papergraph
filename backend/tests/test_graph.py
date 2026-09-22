@@ -278,6 +278,7 @@ def test_graph_snapshot_preserves_partial_state_and_warnings(sample_origin, samp
     )
 
     assert snapshot.status == GraphJobStatus.PARTIAL
-    assert len(snapshot.warnings) == 1
-    assert snapshot.warnings[0].code == "provider_timeout"
+    warning_codes = {warning.code for warning in snapshot.warnings}
+    assert "provider_timeout" in warning_codes
+    assert "disconnected_nodes_excluded" in warning_codes
     assert snapshot.data_completeness.citations == 0.50

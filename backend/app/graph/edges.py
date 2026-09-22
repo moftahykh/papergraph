@@ -3,6 +3,7 @@ from app.models.canonical_paper import CanonicalPaper
 from app.models.enums import EdgeType
 from app.models.graph import GraphEdge
 from app.graph.mmr import compute_pairwise_similarity
+from app.graph.identifiers import identifier_aliases, relationship_target_map
 
 
 def synthesize_citation_edges(
@@ -16,46 +17,39 @@ def synthesize_citation_edges(
       - Strictly no self-edges (source != target)
     """
     citation_edges: List[GraphEdge] = []
-    node_id_map = {n.canonical_id: n for n in nodes}
-    
-    # Also index by bare DOI if available
-    doi_map = {n.doi.lower().strip(): n.canonical_id for n in nodes if n.doi}
-    s2_map = {n.semantic_scholar_id: n.canonical_id for n in nodes if n.semantic_scholar_id}
+    target_map = relationship_target_map(nodes)
 
     seen_pairs: Set[Tuple[str, str]] = set()
 
     for paper in nodes:
         source_id = paper.canonical_id
-        ref_ids = set(paper.reference_ids)
-
-        for target_paper in nodes:
-            target_id = target_paper.canonical_id
-
-            # Rule: No self-edges
-            if source_id == target_id:
+        for ref_id in paper.reference_ids:
+            target_id = next(
+                (
+                    target_map[alias]
+                    for alias in identifier_aliases(ref_id)
+                    if alias in target_map
+                ),
+                None,
+            )
+            # Rule: No self-edges and no edges to papers outside this snapshot.
+            if target_id is None or source_id == target_id:
                 continue
 
-            # Check if source paper cites target paper
-            is_citation = (
-                target_id in ref_ids
-                or (target_paper.doi and target_paper.doi.lower().strip() in ref_ids)
-                or (target_paper.semantic_scholar_id and target_paper.semantic_scholar_id in ref_ids)
+            pair = (source_id, target_id)
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+            citation_edges.append(
+                GraphEdge(
+                    source=source_id,
+                    target=target_id,
+                    type=EdgeType.CITATION,
+                    weight=1.0,
+                    directed=True,  # Directional arrow
+                    label="cites",
+                )
             )
-
-            if is_citation:
-                pair = (source_id, target_id)
-                if pair not in seen_pairs:
-                    seen_pairs.add(pair)
-                    citation_edges.append(
-                        GraphEdge(
-                            source=source_id,
-                            target=target_id,
-                            type=EdgeType.CITATION,
-                            weight=1.0,
-                            directed=True,  # Directional arrow
-                            label="cites",
-                        )
-                    )
 
     return citation_edges
 

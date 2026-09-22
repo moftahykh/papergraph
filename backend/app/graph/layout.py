@@ -2,6 +2,8 @@ import math
 from typing import List, Dict, Tuple
 from app.models.canonical_paper import CanonicalPaper
 from app.models.graph import GraphNode
+from app.models.metric import MetricResult
+from app.models.enums import MetricAvailability
 from app.ranking.models import RankedCandidate
 from app.graph.mmr import compute_pairwise_similarity
 from app.graph.identifiers import identifier_aliases, relationship_target_map
@@ -231,10 +233,27 @@ def generate_graph_layout(
         score_val = cand.final_score if cand.final_score is not None else 0.50
         rad = compute_node_radius(p.citation_count or 0, is_origin=False)
 
-        # Convert score breakdown metrics to model
-        scores_dict = None
+        # Convert all computed score signals to the node payload. The early
+        # pre-signals map does not contain WBC/NCC; those are calculated later
+        # by the enrichment pipeline and must be copied from the enrichment
+        # record or the app will display "Not enough data" for every paper.
+        scores_dict = {}
         if cand.candidate_record and cand.candidate_record.pre_signals:
-            scores_dict = cand.candidate_record.pre_signals
+            scores_dict.update(cand.candidate_record.pre_signals)
+        if cand.enrichment_record is not None:
+            scores_dict["wbc"] = cand.enrichment_record.wbc
+            scores_dict["ncc"] = cand.enrichment_record.ncc
+
+        # Expose the two derived classification signals as well so the list
+        # and details views can explain prior/follow-up classification.
+        scores_dict["prior_score"] = MetricResult(
+            value=cand.prior_score,
+            availability=MetricAvailability.AVAILABLE,
+        )
+        scores_dict["derivative_score"] = MetricResult(
+            value=cand.derivative_score,
+            availability=MetricAvailability.AVAILABLE,
+        )
 
         return GraphNode(
             id=p.canonical_id,
@@ -251,7 +270,7 @@ def generate_graph_layout(
             y=round(y, 2),
             final_score=cand.final_score,
             confidence=cand.confidence,
-            scores=scores_dict,
+            scores=scores_dict or None,
             cluster=cluster,
             archetype=cand.archetype,
         )

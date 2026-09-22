@@ -1,6 +1,12 @@
 from app.models.canonical_paper import CanonicalPaper
-from app.models.enums import ConfidenceLevel, EdgeType
+from app.models.enums import (
+    ConfidenceLevel,
+    EdgeType,
+    MetricAvailability,
+)
+from app.models.metric import MetricResult
 from app.candidates.models import CandidateRecord, CandidateSourceType
+from app.enrichment.models import CandidateEnrichmentRecord
 from app.graph.edges import synthesize_citation_edges
 from app.graph.synthesizer import GraphSynthesizer, _bounded_candidates
 from app.ranking.models import RankedCandidate, RankingResult, ScoreBreakdown
@@ -128,3 +134,60 @@ def test_graph_excludes_isolated_recommendations():
         edge.source in node_ids and edge.target in node_ids
         for edge in [*snapshot.citation_edges, *snapshot.similarity_edges]
     )
+
+
+def test_graph_nodes_expose_enriched_wbc_and_ncc_signals():
+    origin = CanonicalPaper(
+        canonical_id="doi:10.1000/origin",
+        doi="10.1000/origin",
+        title="Origin",
+        year=2020,
+        reference_ids=["10.1000/candidate"],
+    )
+    candidate = CanonicalPaper(
+        canonical_id="doi:10.1000/candidate",
+        doi="10.1000/candidate",
+        title="Connected candidate",
+        year=2021,
+    )
+    record = CandidateRecord(
+        paper=candidate,
+        sources={CandidateSourceType.REFERENCE},
+        is_direct_reference=True,
+    )
+    enrichment = CandidateEnrichmentRecord(
+        candidate=record,
+        wbc=MetricResult(
+            value=0.72,
+            availability=MetricAvailability.AVAILABLE,
+        ),
+        ncc=MetricResult(
+            value=0.41,
+            availability=MetricAvailability.AVAILABLE,
+        ),
+    )
+    ranked = RankedCandidate(
+        paper=candidate,
+        candidate_record=record,
+        enrichment_record=enrichment,
+        final_score=0.8,
+        prior_score=0.2,
+        derivative_score=0.4,
+        confidence=ConfidenceLevel.MEDIUM,
+        score_breakdown=ScoreBreakdown(),
+    )
+
+    snapshot = GraphSynthesizer().synthesize_snapshot(
+        origin=origin,
+        ranking_result=RankingResult(
+            origin=origin,
+            ranked_candidates=[ranked],
+        ),
+    )
+    node = next(
+        node for node in snapshot.nodes if node.canonical_id == candidate.canonical_id
+    )
+
+    assert node.scores is not None
+    assert node.scores["wbc"].value == 0.72
+    assert node.scores["ncc"].value == 0.41

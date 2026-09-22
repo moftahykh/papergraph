@@ -211,7 +211,9 @@ void main() {
         // Verify partial warning banner is present with warning message
         expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
         expect(
-          find.text('Semantic Scholar rate limited; degraded completeness.'),
+          find.text(
+            'Some source data was unavailable, so this graph may be incomplete.',
+          ),
           findsOneWidget,
         );
       },

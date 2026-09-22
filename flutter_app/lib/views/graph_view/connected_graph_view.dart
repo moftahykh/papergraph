@@ -559,6 +559,35 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
     );
   }
 
+  String _userFacingGraphWarning(List<GraphWarning> warnings) {
+    final hasDisconnectedNodes = warnings.any(
+      (warning) => warning.code.toLowerCase() == 'disconnected_nodes_excluded',
+    );
+    final hasSourceIssue = warnings.any(
+      (warning) {
+        final code = warning.code.toLowerCase();
+        return code == 'provider_timeout' ||
+            code == 'provider_rate_limited' ||
+            code == 'provider_references_error' ||
+            code == 'provider_citations_error' ||
+            code == 'degraded_source';
+      },
+    );
+
+    if (hasDisconnectedNodes && hasSourceIssue) {
+      return 'Some papers and source data could not be verified. '
+          'The graph shows the relationships we could confirm.';
+    }
+    if (hasDisconnectedNodes) {
+      return 'Some papers were left out because their connection '
+          'could not be verified.';
+    }
+    if (hasSourceIssue) {
+      return 'Some source data was unavailable, so this graph may be incomplete.';
+    }
+    return 'Some information was unavailable, so this graph may be incomplete.';
+  }
+
   Widget _buildTopBar(
     GraphSnapshot snapshot,
     bool isPartial,
@@ -761,10 +790,8 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      snapshot.warnings.isNotEmpty
-                          ? snapshot.warnings.first.message
-                          : 'Partial graph: External providers throttled.',
-                      maxLines: 1,
+                      _userFacingGraphWarning(snapshot.warnings),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,

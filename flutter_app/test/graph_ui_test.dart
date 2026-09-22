@@ -452,7 +452,7 @@ void main() {
         expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
         expect(
           find.textContaining(
-            'Crossref provider timed out; partial completeness.',
+            'Some source data was unavailable, so this graph may be incomplete.',
           ),
           findsOneWidget,
         );

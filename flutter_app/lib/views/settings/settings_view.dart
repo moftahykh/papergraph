@@ -12,7 +12,11 @@ import '../../cubits/library/library_state.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_view.dart';
 import '../auth/register_view.dart';
+import '../favorites/favorites_view.dart';
 import 'account_view.dart';
+
+const _appVersion = '2.0.0';
+const _appVersionLabel = '2.0.0 (Build 2)';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -189,7 +193,7 @@ class _SettingsViewState extends State<SettingsView> {
     final authProvider = Provider.of<AuthProvider>(context);
     final libraryState = context.watch<LibraryCubit>().state;
     final int cachedGraphsCount = libraryState is LibraryLoaded
-        ? libraryState.recentGraphs.length
+        ? libraryState.cachedGraphs.length
         : 0;
 
     return Scaffold(
@@ -294,8 +298,8 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           const SizedBox(height: 24),
 
-          // 3. Research & Data
-          _buildSectionHeader(context, 'Research & Data'),
+          // 3. Research updates
+          _buildSectionHeader(context, 'Research updates'),
           _buildGroupContainer(
             context: context,
             children: [
@@ -323,7 +327,15 @@ class _SettingsViewState extends State<SettingsView> {
                 value: _researchNotificationsEnabled,
                 onChanged: _handleResearchNotificationsToggle,
               ),
-              _buildGroupDivider(context),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // 4. App data
+          _buildSectionHeader(context, 'App data'),
+          _buildGroupContainer(
+            context: context,
+            children: [
               ListTile(
                 leading: Icon(
                   Icons.download_done_rounded,
@@ -333,7 +345,7 @@ class _SettingsViewState extends State<SettingsView> {
                   size: 22,
                 ),
                 title: const Text(
-                  'Offline graphs',
+                  'Offline storage',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                 ),
                 subtitle: Text(
@@ -388,9 +400,51 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                   ],
                 ),
-                onTap: cachedGraphsCount > 0 ? _showClearCacheDialog : null,
+                onTap: cachedGraphsCount > 0
+                    ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const FavoritesView(
+                            mode: FavoritesViewMode.graphs,
+                          ),
+                        ),
+                      )
+                    : null,
               ),
               _buildGroupDivider(context),
+              ListTile(
+                leading: Icon(
+                  Icons.delete_sweep_outlined,
+                  color: cachedGraphsCount > 0
+                      ? AppTheme.accentRose
+                      : (isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.lightTextSecondary),
+                  size: 22,
+                ),
+                title: const Text(
+                  'Clear cached data',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                ),
+                subtitle: Text(
+                  'Remove offline graph copies; saved papers stay safe',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary,
+                  ),
+                ),
+                onTap: cachedGraphsCount > 0 ? _showClearCacheDialog : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // 5. Permissions
+          _buildSectionHeader(context, 'Permissions'),
+          _buildGroupContainer(
+            context: context,
+            children: [
               ListTile(
                 leading: Icon(
                   Icons.security_outlined,
@@ -400,11 +454,11 @@ class _SettingsViewState extends State<SettingsView> {
                   size: 22,
                 ),
                 title: const Text(
-                  'System Permissions',
+                  'System permissions',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                 ),
                 subtitle: Text(
-                  'Storage, notifications & device access',
+                  'Notifications and device access',
                   style: TextStyle(
                     fontSize: 12.5,
                     color: isDark
@@ -425,8 +479,8 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           const SizedBox(height: 24),
 
-          // 4. About & Resources
-          _buildSectionHeader(context, 'About & Resources'),
+          // 6. About & legal
+          _buildSectionHeader(context, 'About & legal'),
           _buildGroupContainer(
             context: context,
             children: [
@@ -443,7 +497,7 @@ class _SettingsViewState extends State<SettingsView> {
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                 ),
                 trailing: Text(
-                  '1.0.0 (Build 1)',
+                  _appVersionLabel,
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark
@@ -475,7 +529,7 @@ class _SettingsViewState extends State<SettingsView> {
                 onTap: () => showLicensePage(
                   context: context,
                   applicationName: 'PaperGraph',
-                  applicationVersion: '1.0.0',
+                  applicationVersion: _appVersion,
                 ),
               ),
             ],

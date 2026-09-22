@@ -82,6 +82,7 @@ class PaperGraphApiClient {
     int limit = 10,
     int offset = 0,
     String? provider,
+    String scope = 'all',
     CancelToken? cancelToken,
   }) async {
     try {
@@ -92,6 +93,7 @@ class PaperGraphApiClient {
           'limit': limit,
           'offset': offset,
           'provider': ?provider,
+          'scope': scope,
         },
         cancelToken: cancelToken,
       );

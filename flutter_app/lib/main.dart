@@ -34,14 +34,10 @@ void main() async {
   // Initialize Hive local database
   await HiveService.init();
 
-  await LocalNotificationService.init(
-    onNotificationTap: FcmNotificationService.handleLocalNotificationTap,
-  );
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    await FcmNotificationService.initialize(_rootNavigatorKey);
   } catch (e) {
     debugPrint('Firebase initialization notice: $e');
   }
@@ -59,6 +55,18 @@ void main() async {
   };
 
   runApp(const PaperGraphApp());
+
+  // These services do not need to block the first Flutter frame. Deferring
+  // them removes the black/native startup gap while preserving cold-start
+  // notification handling through the pending-tap queue.
+  unawaited(
+    LocalNotificationService.init(
+      onNotificationTap: FcmNotificationService.handleLocalNotificationTap,
+    ),
+  );
+  if (Firebase.apps.isNotEmpty) {
+    unawaited(FcmNotificationService.initialize(_rootNavigatorKey));
+  }
 }
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();

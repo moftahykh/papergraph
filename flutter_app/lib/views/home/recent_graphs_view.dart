@@ -194,11 +194,8 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
   ) {
     final year = graph.origin.year != null ? '${graph.origin.year}' : null;
     final paperCount = '${graph.nodes.length} papers';
-    final isCompleted = graph.status != GraphJobStatus.partial;
-    final statusText = isCompleted ? 'COMPLETED' : 'PARTIAL';
-    final statusColor = isCompleted
-        ? const Color(0xFF10B981)
-        : const Color(0xFFF59E0B);
+    final isPartial = graph.status == GraphJobStatus.partial;
+    const partialColor = Color(0xFFF59E0B);
 
     final originNode =
         graph.nodes.where((n) => n.isOrigin).firstOrNull ??
@@ -304,14 +301,15 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                         if (year != null)
                           _buildPillBadge(text: year, isDark: isDark),
                         _buildPillBadge(text: paperCount, isDark: isDark),
-                        _buildPillBadge(
-                          text: statusText,
-                          textColor: statusColor,
-                          bgColor: statusColor.withAlpha(25),
-                          borderColor: statusColor.withAlpha(60),
-                          isDark: isDark,
-                          isBold: true,
-                        ),
+                        if (isPartial)
+                          _buildPillBadge(
+                            text: 'PARTIAL',
+                            textColor: partialColor,
+                            bgColor: partialColor.withAlpha(25),
+                            borderColor: partialColor.withAlpha(60),
+                            isDark: isDark,
+                            isBold: true,
+                          ),
                       ],
                     ),
                   ],

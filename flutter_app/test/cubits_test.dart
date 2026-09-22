@@ -35,6 +35,7 @@ class FakePaperGraphApiClient extends PaperGraphApiClient {
     int limit = 10,
     int offset = 0,
     String? provider,
+    String scope = 'all',
     CancelToken? cancelToken,
   }) async {
     if (mockSearchException != null) throw mockSearchException!;

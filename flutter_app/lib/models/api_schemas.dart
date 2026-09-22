@@ -11,6 +11,8 @@ class SearchResultItem {
   final int citationCount;
   final String? doi;
   final double? score;
+  final List<String> matchedFields;
+  final String? matchReason;
 
   const SearchResultItem({
     required this.canonicalId,
@@ -21,6 +23,8 @@ class SearchResultItem {
     this.citationCount = 0,
     this.doi,
     this.score,
+    this.matchedFields = const [],
+    this.matchReason,
   });
 
   factory SearchResultItem.fromJson(Map<String, dynamic> json) {
@@ -37,6 +41,12 @@ class SearchResultItem {
       citationCount: (json['citation_count'] as num?)?.toInt() ?? 0,
       doi: json['doi'] as String?,
       score: (json['score'] as num?)?.toDouble(),
+      matchedFields:
+          (json['matched_fields'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      matchReason: json['match_reason'] as String?,
     );
   }
 
@@ -49,6 +59,8 @@ class SearchResultItem {
     'citation_count': citationCount,
     'doi': doi,
     'score': score,
+    'matched_fields': matchedFields,
+    'match_reason': matchReason,
   };
 }
 

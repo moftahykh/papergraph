@@ -7,6 +7,11 @@ class SearchRequest(BaseModel):
     limit: int = Field(default=10, ge=1, le=50, description="Maximum results per page.")
     offset: int = Field(default=0, ge=0, description="Offset for pagination.")
     provider: Optional[str] = Field(default=None, description="Optional provider filter (e.g. 'semantic_scholar', 'openalex').")
+    scope: str = Field(
+        default="all",
+        pattern="^(all|title|author)$",
+        description="Optional local ranking scope: all, title, or author.",
+    )
 
 
 class SearchResultItem(BaseModel):
@@ -17,7 +22,18 @@ class SearchResultItem(BaseModel):
     venue: Optional[str] = Field(default=None, description="Venue or journal.")
     citation_count: int = Field(default=0, ge=0, description="Citation count.")
     doi: Optional[str] = Field(default=None, description="Normalized DOI if available.")
-    score: Optional[float] = Field(default=None, description="Search relevance score.")
+    score: Optional[float] = Field(
+        default=None,
+        description="Local explainable relevance score after provider retrieval.",
+    )
+    matched_fields: List[str] = Field(
+        default_factory=list,
+        description="Metadata fields that matched the query, such as title or author.",
+    )
+    match_reason: Optional[str] = Field(
+        default=None,
+        description="Human-readable explanation of why this result ranked.",
+    )
 
 
 class SearchResponse(BaseModel):

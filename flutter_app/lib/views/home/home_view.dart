@@ -708,7 +708,7 @@ class _HomeViewState extends State<HomeView> {
         }
       },
       decoration: InputDecoration(
-        hintText: 'Search papers, DOI',
+        hintText: 'Search papers, authors, or DOI',
         prefixIcon: const Icon(Icons.search_rounded, size: 20),
         suffixIcon: hasText
             ? IconButton(
@@ -751,7 +751,7 @@ class _HomeViewState extends State<HomeView> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Paste DOI',
+                              'Paste',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600,
@@ -983,6 +983,20 @@ class _HomeViewState extends State<HomeView> {
                           : AppTheme.lightTextSecondary,
                     ),
                   ),
+                  if (item.matchReason != null &&
+                      item.matchReason!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      item.matchReason!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1080,11 +1094,8 @@ class _HomeViewState extends State<HomeView> {
   Widget _recentGraphTile(GraphSnapshot graph, bool isDark, Color accent) {
     final year = graph.origin.year != null ? '${graph.origin.year}' : null;
     final paperCount = '${graph.nodes.length} papers';
-    final isCompleted = graph.status != GraphJobStatus.partial;
-    final statusText = isCompleted ? 'COMPLETED' : 'PARTIAL';
-    final statusColor = isCompleted
-        ? const Color(0xFF10B981)
-        : const Color(0xFFF59E0B);
+    final isPartial = graph.status == GraphJobStatus.partial;
+    const partialColor = Color(0xFFF59E0B);
 
     final originNode =
         graph.nodes.where((n) => n.isOrigin).firstOrNull ??
@@ -1193,14 +1204,15 @@ class _HomeViewState extends State<HomeView> {
                           if (year != null)
                             _buildPillBadge(text: year, isDark: isDark),
                           _buildPillBadge(text: paperCount, isDark: isDark),
-                          _buildPillBadge(
-                            text: statusText,
-                            textColor: statusColor,
-                            bgColor: statusColor.withAlpha(25),
-                            borderColor: statusColor.withAlpha(60),
-                            isDark: isDark,
-                            isBold: true,
-                          ),
+                          if (isPartial)
+                            _buildPillBadge(
+                              text: 'PARTIAL',
+                              textColor: partialColor,
+                              bgColor: partialColor.withAlpha(25),
+                              borderColor: partialColor.withAlpha(60),
+                              isDark: isDark,
+                              isBold: true,
+                            ),
                         ],
                       ),
                     ],
@@ -1253,21 +1265,134 @@ class _HomeViewState extends State<HomeView> {
   Widget _buildDiscoveryRecommendation(bool isDark, Color accent) {
     return BlocBuilder<DiscoveryCubit, DiscoveryState>(
       builder: (context, state) {
-        if (state is! DiscoveryLoaded || state.recommendation == null) {
+        if (state is! DiscoveryLoaded) {
           return const SizedBox.shrink();
         }
 
-        final recommendation = state.recommendation!;
         final secondary = isDark
             ? AppTheme.darkTextSecondary
             : AppTheme.lightTextSecondary;
 
+        if (state.recommendation == null) {
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
+          final isAuthenticated = authProvider.isAuthenticated;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              Text(
+                'NEW IN YOUR RESEARCH',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
+                  color: secondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0x22FFFFFF)
+                        : const Color(0xFFE5E5EA),
+                    width: 0.75,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      if (!isAuthenticated) {
+                        AuthGateBottomSheet.show(context);
+                        return;
+                      }
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RecentGraphsView(),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF242426)
+                                  : const Color(0xFFF2F2F7),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Icon(
+                              Icons.notifications_none_rounded,
+                              color: accent,
+                              size: 21,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isAuthenticated
+                                      ? 'Stay ahead of your field'
+                                      : 'Create your research watchlist',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? AppTheme.darkTextPrimary
+                                        : AppTheme.lightTextPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  isAuthenticated
+                                      ? 'Save a graph to discover new papers here.'
+                                      : 'Sign in and save a graph to track new papers.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.35,
+                                    color: secondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: secondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        final recommendation = state.recommendation!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
             Text(
-              'Recommended for your research',
+              'NEW IN YOUR RESEARCH',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,

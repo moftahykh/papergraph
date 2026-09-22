@@ -63,12 +63,20 @@ class GraphProgressiveLoadingView extends StatefulWidget {
 
 class _GraphProgressiveLoadingViewState
     extends State<GraphProgressiveLoadingView>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  late AnimationController _revealController;
   late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
+    // Reveal the same living PaperGraph network used by the startup splash.
+    // Once fully drawn, the second controller keeps it breathing while the
+    // real backend job continues.
+    _revealController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..forward();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
@@ -77,6 +85,7 @@ class _GraphProgressiveLoadingViewState
 
   @override
   void dispose() {
+    _revealController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
@@ -120,11 +129,17 @@ class _GraphProgressiveLoadingViewState
               mainAxisSize: MainAxisSize.min,
               children: [
                 AnimatedBuilder(
-                  animation: _pulseController,
+                  animation: Listenable.merge([
+                    _revealController,
+                    _pulseController,
+                  ]),
                   builder: (context, child) {
                     return PaperGraphMark(
                       size: 130,
                       isDark: isDark,
+                      progress: Curves.easeOutCubic.transform(
+                        _revealController.value,
+                      ),
                       pulse: _pulseController.value,
                     );
                   },

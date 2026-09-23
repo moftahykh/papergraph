@@ -22,6 +22,7 @@ class _SplashViewState extends State<SplashView>
   late AnimationController _controller;
   late Animation<double> _brandFade;
   late Animation<double> _footerFade;
+  bool _didNavigate = false;
 
   @override
   void initState() {
@@ -33,7 +34,9 @@ class _SplashViewState extends State<SplashView>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4500),
+      // The logo gets enough time to finish its reveal, but startup is no
+      // longer held hostage by a fixed 4.5 second delay.
+      duration: const Duration(milliseconds: 2400),
     );
 
     _brandFade = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -54,9 +57,12 @@ class _SplashViewState extends State<SplashView>
     _navigateToNext();
   }
 
-  Future<void> _navigateToNext() async {
-    await Future.delayed(const Duration(milliseconds: 4500));
-    if (!mounted) return;
+  Future<void> _navigateToNext({bool skip = false}) async {
+    if (!skip) {
+      await Future.delayed(const Duration(milliseconds: 2400));
+    }
+    if (!mounted || _didNavigate) return;
+    _didNavigate = true;
 
     final onboardingCompleted = HiveService.isOnboardingCompleted();
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -94,9 +100,7 @@ class _SplashViewState extends State<SplashView>
       PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 600),
         pageBuilder: (context, animation, secondaryAnimation) =>
-            MainNavigationView(
-              requireInitialUnlock: HiveService.isBiometricsEnabled(),
-            ),
+            const MainNavigationView(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -122,7 +126,15 @@ class _SplashViewState extends State<SplashView>
     final barTrack = isDark ? const Color(0x14FFFFFF) : const Color(0x14000000);
     final barFill = isDark ? Colors.white : const Color(0xFF18181B);
 
-    return Scaffold(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        // Let the branding breathe briefly, then offer a real escape hatch.
+        if (_controller.value >= 0.35) {
+          _navigateToNext(skip: true);
+        }
+      },
+      child: Scaffold(
       backgroundColor: bg,
       body: SafeArea(
         child: AnimatedBuilder(
@@ -242,6 +254,7 @@ class _SplashViewState extends State<SplashView>
             );
           },
         ),
+      ),
       ),
     );
   }

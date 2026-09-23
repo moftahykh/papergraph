@@ -39,16 +39,13 @@ class GraphBottomSheet extends StatefulWidget {
 class _GraphBottomSheetState extends State<GraphBottomSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final TextEditingController _listFilterController = TextEditingController();
-  String _listFilter = '';
-  String _sortBy = 'citations'; // citations, year, score
   double _sheetHeight = 380.0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 4,
+      length: 5,
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
@@ -67,7 +64,6 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   @override
   void dispose() {
     _tabController.dispose();
-    _listFilterController.dispose();
     super.dispose();
   }
 
@@ -126,8 +122,8 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
                     tooltip: 'Close sheet',
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
-                      minWidth: 36,
-                      minHeight: 32,
+                      minWidth: 44,
+                      minHeight: 44,
                     ),
                   ),
                 ],
@@ -135,7 +131,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             ),
           ),
 
-          // 4-Tab Navigation Bar
+          // Keep the same relationship taxonomy as the full list view.
           TabBar(
             controller: _tabController,
             isScrollable: true,
@@ -161,21 +157,29 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             tabs: const [
               Tab(icon: Icon(Icons.article_outlined, size: 16), text: 'Paper'),
               Tab(
+                icon: Icon(Icons.format_quote_outlined, size: 16),
+                text: 'Citations',
+              ),
+              Tab(
+                icon: Icon(Icons.auto_awesome_outlined, size: 16),
+                text: 'Similar',
+              ),
+              Tab(
                 icon: Icon(Icons.history_edu_outlined, size: 16),
-                text: 'Earlier works',
+                text: 'Earlier',
               ),
               Tab(
                 icon: Icon(Icons.trending_up_outlined, size: 16),
-                text: 'Later works',
-              ),
-              Tab(
-                icon: Icon(Icons.list_alt_outlined, size: 16),
-                text: 'All papers',
+                text: 'Later',
               ),
             ],
           ),
 
-          const Divider(height: 1, thickness: 1),
+          Divider(
+            height: 1,
+            thickness: 0.75,
+            color: isDark ? AppTheme.darkBorder : const Color(0xFFE5E7EB),
+          ),
 
           // Tab Content
           Expanded(
@@ -183,9 +187,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
               controller: _tabController,
               children: [
                 _buildSelectedPaperTab(isDark),
+                _buildCitationsTab(isDark),
+                _buildSimilarTab(isDark),
                 _buildPriorWorksTab(isDark),
                 _buildDerivativeWorksTab(isDark),
-                _buildListViewTab(isDark),
               ],
             ),
           ),
@@ -314,8 +319,10 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         const SizedBox(height: 4),
 
         // Authors & Publication Venue
-        Text(
-          node.authors.isNotEmpty ? node.authors.join(', ') : 'Unknown Authors',
+          Text(
+            node.authors.isNotEmpty
+                ? node.authors.join(', ')
+                : 'Author information unavailable',
           style: TextStyle(fontSize: 12, color: subtextColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -342,7 +349,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
             if (node.confidence != null)
               _buildMetaTag(
                 Icons.verified_outlined,
-                '${_confidenceLabel(node.confidence!)} confidence',
+                '${_confidenceLabel(node.confidence!)} data confidence',
                 isDark,
               ),
           ],
@@ -487,7 +494,67 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     );
   }
 
-  // TAB 2: Prior Works
+  // TAB 2: Direct citations
+  Widget _buildCitationsTab(bool isDark) {
+    final originId = widget.snapshot.origin.canonicalId;
+    final ids = <String>{};
+    for (final edge in widget.snapshot.citationEdges) {
+      if (edge.source == originId) ids.add(edge.target);
+      if (edge.target == originId) ids.add(edge.source);
+    }
+    final nodes = widget.snapshot.nodes
+        .where((node) => !node.isOrigin && ids.contains(node.canonicalId))
+        .toList()
+      ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
+    return _buildNodeCollectionTab(
+      nodes,
+      title: 'No direct citations identified',
+      description: 'No confirmed citation links are available in this graph.',
+      icon: Icons.format_quote_outlined,
+      isDark: isDark,
+    );
+  }
+
+  // TAB 3: Validated similarities
+  Widget _buildSimilarTab(bool isDark) {
+    final originId = widget.snapshot.origin.canonicalId;
+    final ids = <String>{};
+    for (final edge in widget.snapshot.similarityEdges) {
+      if (edge.source == originId) ids.add(edge.target);
+      if (edge.target == originId) ids.add(edge.source);
+    }
+    final nodes = widget.snapshot.nodes
+        .where((node) => !node.isOrigin && ids.contains(node.canonicalId))
+        .toList()
+      ..sort((a, b) => (b.finalScore ?? 0).compareTo(a.finalScore ?? 0));
+    return _buildNodeCollectionTab(
+      nodes,
+      title: 'No similar papers identified',
+      description: 'No validated similarity links are available in this graph.',
+      icon: Icons.auto_awesome_outlined,
+      isDark: isDark,
+    );
+  }
+
+  Widget _buildNodeCollectionTab(
+    List<GraphNode> nodes, {
+    required String title,
+    required String description,
+    required IconData icon,
+    required bool isDark,
+  }) {
+    if (nodes.isEmpty) {
+      return _buildEmptyTab(title, description, icon, isDark);
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: nodes.length,
+      itemBuilder: (context, index) =>
+          _buildSimpleNodeTile(nodes[index], isDark),
+    );
+  }
+
+  // TAB 4: Prior Works
   Widget _buildPriorWorksTab(bool isDark) {
     final originYear = widget.snapshot.origin.year ?? 2020;
     final priorNodes = widget.snapshot.nodes.where((n) {
@@ -516,7 +583,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     );
   }
 
-  // TAB 3: Derivative Works
+  // TAB 5: Derivative Works
   Widget _buildDerivativeWorksTab(bool isDark) {
     final originYear = widget.snapshot.origin.year ?? 2020;
     final derivNodes = widget.snapshot.nodes.where((n) {
@@ -544,121 +611,6 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
       itemCount: derivNodes.length,
       itemBuilder: (context, idx) =>
           _buildSimpleNodeTile(derivNodes[idx], isDark),
-    );
-  }
-
-  // TAB 4: List View Tab with Filter & Sorting
-  Widget _buildListViewTab(bool isDark) {
-    var displayNodes = widget.snapshot.nodes.where((n) {
-      if (_listFilter.isEmpty) {
-        return true;
-      }
-      final q = _listFilter.toLowerCase();
-      return n.title.toLowerCase().contains(q) ||
-          n.authors.any((a) => a.toLowerCase().contains(q));
-    }).toList();
-
-    // Sorting
-    displayNodes.sort((a, b) {
-      if (_sortBy == 'year') {
-        return (b.year ?? 0).compareTo(a.year ?? 0);
-      } else if (_sortBy == 'score') {
-        return (b.finalScore ?? 0.0).compareTo(a.finalScore ?? 0.0);
-      }
-      return b.citationCount.compareTo(a.citationCount);
-    });
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _listFilterController,
-                  onChanged: (val) => setState(() => _listFilter = val.trim()),
-                  style: const TextStyle(fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'Search papers…',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    suffixIcon: _listFilter.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 16),
-                            onPressed: () {
-                              _listFilterController.clear();
-                              setState(() => _listFilter = '');
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              PopupMenuButton<String>(
-                initialValue: _sortBy,
-                onSelected: (val) => setState(() => _sortBy = val),
-                tooltip: 'Sort papers',
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.darkSurface
-                        : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark
-                          ? AppTheme.darkBorder
-                          : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _sortBy == 'citations'
-                            ? 'Citations'
-                            : (_sortBy == 'year' ? 'Year' : 'Score'),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.arrow_drop_down_rounded, size: 16),
-                    ],
-                  ),
-                ),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'citations', child: Text('Citations')),
-                  PopupMenuItem(value: 'year', child: Text('Year')),
-                  PopupMenuItem(
-                    value: 'score',
-                    child: Text('Overall relevance'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, thickness: 1),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            itemCount: displayNodes.length,
-            itemBuilder: (context, idx) =>
-                _buildSimpleNodeTile(displayNodes[idx], isDark),
-          ),
-        ),
-      ],
     );
   }
 
@@ -787,6 +739,12 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
   }
 
   Widget _buildRankingSignals(GraphNode node, bool isDark) {
+    final explanation = ConnectionReasonHelper.explainConnection(
+      node: node,
+      snapshot: widget.snapshot,
+    );
+    final isSimilarity =
+        explanation.category == ConnectionCategory.similarity;
     final signals = <Widget>[
       _buildMetricSignal(
         label: 'Shared references',
@@ -801,7 +759,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         isDark: isDark,
       ),
       _buildMetricSignal(
-        label: node.isOrigin ? 'Graph baseline' : 'Overall relevance',
+        label: node.isOrigin ? 'Graph baseline' : 'Connection strength',
         result: MetricResult(
           value: node.isOrigin ? null : node.finalScore,
           availability: node.isOrigin
@@ -813,17 +771,18 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
         displayValue: node.isOrigin ? 'Starting paper' : null,
         help: node.isOrigin
             ? 'This is the starting paper used to build the graph.'
-            : 'Combined ranking score returned by the graph service.',
+            : 'Combined score used to rank this paper in the graph. It is not a measure of research quality.',
         isDark: isDark,
       ),
-      if (node.scores?.containsKey('prior_score') == true)
+      if (!isSimilarity && node.scores?.containsKey('prior_score') == true)
         _buildMetricSignal(
           label: 'Foundation signal',
           result: node.scores?['prior_score'],
           help: 'Signal used to classify earlier foundational work.',
           isDark: isDark,
         ),
-      if (node.scores?.containsKey('derivative_score') == true)
+      if (!isSimilarity &&
+          node.scores?.containsKey('derivative_score') == true)
         _buildMetricSignal(
           label: 'Follow-up signal',
           result: node.scores?['derivative_score'],
@@ -936,13 +895,13 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
     }
     switch (result?.availability) {
       case MetricAvailability.providerError:
-        return 'Source unavailable';
+        return 'Unavailable from source';
       case MetricAvailability.notApplicable:
-        return 'Not applicable';
+        return 'Not relevant to this link';
       case MetricAvailability.available:
       case MetricAvailability.unavailable:
       case null:
-        return 'Not enough data';
+        return 'Unavailable';
     }
   }
 
@@ -982,7 +941,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
           ),
         ),
         subtitle: Text(
-          '${node.year ?? 'N/A'} · ${_citationLabel(node)}',
+            '${node.year ?? 'Year unavailable'} · ${_citationLabel(node)}',
           style: TextStyle(
             fontSize: 11,
             color: isDark
@@ -1001,7 +960,7 @@ class _GraphBottomSheetState extends State<GraphBottomSheet>
 
   String _citationLabel(GraphNode node) {
     if (node.citationCount == 0) {
-      return 'Citation count not in snapshot';
+      return 'Citation data unavailable';
     }
     return '${node.citationCount} citations';
   }

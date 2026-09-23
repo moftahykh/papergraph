@@ -146,6 +146,22 @@ async def update_monitored_graph(
     return graph
 
 
+async def request_immediate_scan(
+    db: AsyncSession,
+    graph: MonitoredGraph,
+) -> MonitoredGraph:
+    """Make an active graph eligible for the next worker scan pass."""
+    now = utc_now()
+    graph.next_check_at = now
+    graph.scan_claimed_at = None
+    graph.last_scan_status = "pending"
+    graph.last_scan_error = None
+    graph.updated_at = now
+    await db.commit()
+    await db.refresh(graph)
+    return graph
+
+
 async def claim_due_monitored_graph(
     db: AsyncSession,
     now: datetime | None = None,
@@ -196,6 +212,8 @@ async def complete_monitored_graph_scan(
 ) -> MonitoredGraph:
     checked_at = checked_at or utc_now()
     graph.last_checked_at = checked_at
+    graph.last_scan_status = "success"
+    graph.last_scan_error = None
     graph.next_check_at = _next_check_at(graph.frequency, checked_at)
     graph.scan_claimed_at = None
     graph.updated_at = checked_at
@@ -207,8 +225,11 @@ async def complete_monitored_graph_scan(
 async def release_monitored_graph_claim(
     db: AsyncSession,
     graph: MonitoredGraph,
+    error: str | None = None,
 ) -> None:
     graph.scan_claimed_at = None
+    graph.last_scan_status = "error"
+    graph.last_scan_error = error
     await db.commit()
 
 
@@ -318,6 +339,8 @@ async def upsert_device_token(
     user_id: str,
     token: str,
     platform: str,
+    research_updates_enabled: bool = True,
+    research_reminders_enabled: bool = True,
 ) -> DeviceToken:
     result = await db.execute(
         select(DeviceToken).where(DeviceToken.fcm_token == token)
@@ -331,6 +354,8 @@ async def upsert_device_token(
             fcm_token=token,
             platform=platform,
             last_seen_at=now,
+            research_updates_enabled=research_updates_enabled,
+            research_reminders_enabled=research_reminders_enabled,
             is_active=True,
         )
         db.add(device)
@@ -338,6 +363,8 @@ async def upsert_device_token(
         device.user_id = user_id
         device.platform = platform
         device.last_seen_at = now
+        device.research_updates_enabled = research_updates_enabled
+        device.research_reminders_enabled = research_reminders_enabled
         device.is_active = True
     await db.commit()
     await db.refresh(device)
@@ -373,8 +400,60 @@ async def list_active_device_tokens(
         .where(
             DeviceToken.user_id == user_id,
             DeviceToken.is_active.is_(True),
+            DeviceToken.research_updates_enabled.is_(True),
         )
         .order_by(DeviceToken.last_seen_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def list_due_reengagement_targets(
+    db: AsyncSession,
+    now: datetime | None = None,
+    inactivity: timedelta = timedelta(days=7),
+    cooldown: timedelta = timedelta(days=7),
+) -> list[tuple[DeviceToken, MonitoredGraph, int]]:
+    """Return opted-in inactive devices with one active graph to suggest."""
+    now = now or utc_now()
+    inactive_before = now - inactivity
+    reminder_before = now - cooldown
+    result = await db.execute(
+        select(DeviceToken).where(
+            DeviceToken.is_active.is_(True),
+            DeviceToken.research_reminders_enabled.is_(True),
+            DeviceToken.last_seen_at <= inactive_before,
+            or_(
+                DeviceToken.last_reengagement_at.is_(None),
+                DeviceToken.last_reengagement_at <= reminder_before,
+            ),
+        )
+    )
+    devices = list(result.scalars().all())
+    targets: list[tuple[DeviceToken, MonitoredGraph, int]] = []
+    for device in devices:
+        graph_result = await db.execute(
+            select(MonitoredGraph)
+            .options(selectinload(MonitoredGraph.updates))
+            .where(
+                MonitoredGraph.user_id == device.user_id,
+                MonitoredGraph.status == "active",
+            )
+            .order_by(MonitoredGraph.updated_at.desc())
+            .limit(1)
+        )
+        graph = graph_result.scalar_one_or_none()
+        if graph is None:
+            continue
+        unread_count = sum(1 for update in graph.updates if not update.is_read)
+        targets.append((device, graph, unread_count))
+    return targets
+
+
+async def mark_reengagement_sent(
+    db: AsyncSession,
+    device: DeviceToken,
+    sent_at: datetime | None = None,
+) -> None:
+    device.last_reengagement_at = sent_at or utc_now()
+    await db.commit()
 

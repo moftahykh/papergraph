@@ -44,7 +44,7 @@ void main() {
     expect(find.byType(PaperGraphApp), findsOneWidget);
     expect(find.byType(SplashView), findsOneWidget);
 
-    // Fire the splash's 4.5-second navigation timer. A plain pump(duration)
+    // Fire the splash's 2.4-second navigation timer. A plain pump(duration)
     // advances the fake clock without waiting for animations — unlike
     // pumpAndSettle(), which would hang forever on the looping Lottie.
     await tester.pump(const Duration(seconds: 6));

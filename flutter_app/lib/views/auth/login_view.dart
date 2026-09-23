@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/biometric_service.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
@@ -23,10 +24,12 @@ class _LoginViewState extends State<LoginView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _biometricsAvailable = false;
 
   @override
   void initState() {
     super.initState();
+    _loadBiometricAvailability();
     if (widget.successMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -39,6 +42,15 @@ class _LoginViewState extends State<LoginView> {
         );
       });
     }
+  }
+
+  Future<void> _loadBiometricAvailability() async {
+    final availability = await BiometricService.getAvailability();
+    if (!mounted) return;
+    setState(
+      () => _biometricsAvailable =
+          availability == BiometricAvailability.available,
+    );
   }
 
   @override
@@ -119,6 +131,15 @@ class _LoginViewState extends State<LoginView> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -158,7 +179,7 @@ class _LoginViewState extends State<LoginView> {
 
                   // Email Field
                   Text(
-                    'Academic Email',
+                    'Email address',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -172,7 +193,7 @@ class _LoginViewState extends State<LoginView> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      hintText: 'name@institution.edu',
+                      hintText: 'name@example.com',
                       prefixIcon: Icon(Icons.email_outlined, size: 20),
                     ),
                     validator: (val) {
@@ -341,7 +362,9 @@ class _LoginViewState extends State<LoginView> {
 
                   // Biometrics Button (Doctor requirement)
                   OutlinedButton.icon(
-                    onPressed: _handleBiometricLogin,
+                    onPressed: _biometricsAvailable
+                        ? _handleBiometricLogin
+                        : null,
                     icon: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
@@ -357,7 +380,9 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                     label: Text(
-                      'Sign In with Biometrics',
+                      _biometricsAvailable
+                          ? 'Sign In with Biometrics'
+                          : 'Biometric login unavailable',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,

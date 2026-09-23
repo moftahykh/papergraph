@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -172,7 +174,6 @@ class LibraryCubit extends Cubit<LibraryState> {
   Future<bool> cacheGraph(GraphSnapshot snapshot) async {
     try {
       await HiveService.saveCachedGraph(snapshot, markAsSaved: true);
-      await _syncMonitoringAfterSave(snapshot);
       final updated = List<GraphSnapshot>.from(_getCurrentGraphs());
       final index = updated.indexWhere(
         (graph) => graph.graphId == snapshot.graphId,
@@ -194,6 +195,10 @@ class LibraryCubit extends Cubit<LibraryState> {
       }
       recent.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _emitLoaded(cachedGraphs: updated, recentGraphs: recent);
+      // Local saving must never wait on Render, Semantic Scholar, or the
+      // monitoring API. The graph is immediately usable offline; monitoring
+      // registration continues independently and logs a retryable failure.
+      unawaited(syncMonitoring(snapshot));
       return true;
     } catch (error, stackTrace) {
       _logWriteFailure('save graph', error, stackTrace);
@@ -284,16 +289,22 @@ class LibraryCubit extends Cubit<LibraryState> {
     }
   }
 
-  Future<void> _syncMonitoringAfterSave(GraphSnapshot snapshot) async {
-    if (!_apiClient.hasAuthenticatedFirebaseUser) return;
+  /// Attempts to register a saved graph for remote research updates.
+  ///
+  /// Local persistence is deliberately independent from this network action.
+  /// Callers that need an explicit retry can await this method.
+  Future<bool> syncMonitoring(GraphSnapshot snapshot) async {
+    if (!_apiClient.hasAuthenticatedFirebaseUser) return false;
     try {
       await _apiClient.registerMonitoredGraph(snapshot);
+      return true;
     } catch (error, stackTrace) {
       // Local persistence remains the source of truth while offline. A
       // durable retry queue will be added before production monitoring ships.
       debugPrint(
         'Saved graph locally, but monitoring sync failed: $error\n$stackTrace',
       );
+      return false;
     }
   }
 

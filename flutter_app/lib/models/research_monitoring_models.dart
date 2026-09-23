@@ -9,6 +9,8 @@ class MonitoredGraphSummary {
   final String frequency;
   final String timezone;
   final DateTime? lastCheckedAt;
+  final String lastScanStatus;
+  final String? lastScanError;
   final DateTime nextCheckAt;
   final DateTime? lastNotifiedAt;
 
@@ -20,6 +22,8 @@ class MonitoredGraphSummary {
     required this.frequency,
     required this.timezone,
     required this.nextCheckAt,
+    this.lastScanStatus = 'pending',
+    this.lastScanError,
     this.lastCheckedAt,
     this.lastNotifiedAt,
   });
@@ -44,6 +48,8 @@ class MonitoredGraphSummary {
       status: (json['status'] as String?) ?? 'active',
       frequency: (json['frequency'] as String?) ?? 'daily',
       timezone: (json['timezone'] as String?) ?? 'Asia/Riyadh',
+      lastScanStatus: (json['last_scan_status'] as String?) ?? 'pending',
+      lastScanError: json['last_scan_error'] as String?,
       nextCheckAt: parseRequiredDate('next_check_at'),
       lastCheckedAt: parseOptionalDate('last_checked_at'),
       lastNotifiedAt: parseOptionalDate('last_notified_at'),

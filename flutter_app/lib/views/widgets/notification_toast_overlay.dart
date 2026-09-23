@@ -204,7 +204,7 @@ class _NotificationToastOverlayState extends State<NotificationToastOverlay>
     switch (toast.category) {
       case NotificationCategory.graphReady:
         return toast.type == NotificationType.warning
-            ? 'GRAPH READY (PARTIAL)'
+            ? 'GRAPH READY — LIMITED DATA'
             : 'LITERATURE GRAPH READY';
       case NotificationCategory.researchUpdate:
         return 'RESEARCH UPDATE';

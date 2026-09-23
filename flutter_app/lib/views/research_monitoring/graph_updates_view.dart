@@ -54,7 +54,7 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
         title: const Text('Research updates'),
         actions: [
           IconButton(
-            tooltip: 'Refresh updates',
+            tooltip: 'Refresh monitoring status',
             onPressed: context.read<ResearchMonitoringCubit>().load,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -82,7 +82,10 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
             );
           }
           if (state.isNotMonitoring) {
-            return _NotMonitoringView(graphTitle: widget.graphTitle);
+            return _NotMonitoringView(
+              graphTitle: widget.graphTitle,
+              onRetry: () => _retryMonitoring(context),
+            );
           }
 
           final visibleUpdates = _visibleUpdates(state.updates);
@@ -98,6 +101,7 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
                   onPauseResume: () => context
                       .read<ResearchMonitoringCubit>()
                       .setPaused(!state.monitoring!.isPaused),
+                  onCheckNow: () => _requestCheckNow(context),
                   onStop: () => _confirmStop(context),
                 ),
                 const SizedBox(height: 18),
@@ -112,7 +116,10 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
                 ),
                 const SizedBox(height: 12),
                 if (visibleUpdates.isEmpty)
-                  _EmptyUpdatesView(filter: _filter)
+                  _EmptyUpdatesView(
+                    filter: _filter,
+                    lastCheckedAt: state.monitoring?.lastCheckedAt,
+                  )
                 else
                   ...visibleUpdates.map(
                     (update) => Padding(
@@ -142,6 +149,22 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
       case _UpdateFilter.added:
         return updates.where((update) => update.isAddedToGraph).toList();
     }
+  }
+
+  Future<void> _requestCheckNow(BuildContext context) async {
+    final requested = await context
+        .read<ResearchMonitoringCubit>()
+        .requestCheckNow();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          requested
+              ? 'Check requested. It will run on the next monitoring pass.'
+              : 'A check could not be requested right now.',
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmAdd(BuildContext context, ResearchUpdate update) async {
@@ -381,6 +404,35 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
       if (stopped && context.mounted) Navigator.pop(context);
     }
   }
+
+  Future<void> _retryMonitoring(BuildContext context) async {
+    final libraryCubit = context.read<LibraryCubit>();
+    final snapshot = libraryCubit.getCachedGraph(
+      context.read<ResearchMonitoringCubit>().localGraphId,
+    );
+    if (snapshot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This graph is no longer available on this device.'),
+        ),
+      );
+      return;
+    }
+
+    final synced = await libraryCubit.syncMonitoring(snapshot);
+    if (!context.mounted) return;
+    if (synced) {
+      await context.read<ResearchMonitoringCubit>().load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Research updates could not be connected. Check your account and internet connection, then try again.',
+          ),
+        ),
+      );
+    }
+  }
 }
 
 class _UpdateDetailsActions extends StatelessWidget {
@@ -451,6 +503,7 @@ class _MonitoringHeader extends StatelessWidget {
   final int unreadCount;
   final bool isActing;
   final VoidCallback onPauseResume;
+  final VoidCallback onCheckNow;
   final VoidCallback onStop;
 
   const _MonitoringHeader({
@@ -458,6 +511,7 @@ class _MonitoringHeader extends StatelessWidget {
     required this.unreadCount,
     required this.isActing,
     required this.onPauseResume,
+    required this.onCheckNow,
     required this.onStop,
   });
 
@@ -465,6 +519,15 @@ class _MonitoringHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPaused = monitoring.isPaused;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statusLabel = _monitoringStatusLabel(monitoring);
+    final statusColor = isPaused
+        ? const Color(0xFFF59E0B)
+        : monitoring.lastScanStatus == 'error'
+        ? AppTheme.accentRose
+        : monitoring.lastCheckedAt == null ||
+              monitoring.nextCheckAt.isBefore(DateTime.now())
+        ? AppTheme.accentAmber
+        : const Color(0xFF10B981);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -570,6 +633,66 @@ class _MonitoringHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withAlpha(8)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark
+                      ? AppTheme.darkBorder
+                      : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.circle,
+                        size: 10,
+                        color: statusColor,
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          statusLabel,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _MonitoringTimeRow(
+                    label: 'Last checked',
+                    value: _formatMonitoringTime(monitoring.lastCheckedAt),
+                  ),
+                  const SizedBox(height: 4),
+                  _MonitoringTimeRow(
+                    label: 'Next check',
+                    value: isPaused
+                        ? 'Paused'
+                        : _formatMonitoringTime(monitoring.nextCheckAt),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: isPaused || isActing ? null : onCheckNow,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Check for updates'),
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -595,6 +718,70 @@ class _MonitoringHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MonitoringTimeRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MonitoringTimeRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final secondary = Theme.of(context).brightness == Brightness.dark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(color: secondary, fontSize: 11.5),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: secondary,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _monitoringStatusLabel(MonitoredGraphSummary monitoring) {
+  if (monitoring.isPaused) return 'Updates are paused';
+  if (monitoring.lastScanStatus == 'error') {
+    return 'Last check failed — try again';
+  }
+  if (monitoring.lastCheckedAt == null) return 'Waiting for first check';
+  if (monitoring.nextCheckAt.isBefore(DateTime.now())) {
+    return 'Check is overdue';
+  }
+  return 'Monitoring is active';
+}
+
+String _formatMonitoringTime(DateTime? value) {
+  if (value == null) return 'Not checked yet';
+  final local = value.toLocal();
+  final difference = local.difference(DateTime.now());
+  final elapsed = DateTime.now().difference(local);
+  if (elapsed.inMinutes < 1 && elapsed.inMinutes >= 0) return 'Just now';
+  if (elapsed.inMinutes < 60 && elapsed.inMinutes >= 0) {
+    return '${elapsed.inMinutes}m ago';
+  }
+  if (elapsed.inHours < 24 && elapsed.inHours >= 0) {
+    return '${elapsed.inHours}h ago';
+  }
+  if (difference.inMinutes > 0 && difference.inHours < 24) {
+    return 'in ${difference.inHours == 0 ? 1 : difference.inHours}h';
+  }
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '${local.day}/${local.month} at $hour:$minute';
 }
 
 class _UpdateFilterBar extends StatelessWidget {
@@ -903,8 +1090,12 @@ class _CountBadge extends StatelessWidget {
 
 class _EmptyUpdatesView extends StatelessWidget {
   final _UpdateFilter filter;
+  final DateTime? lastCheckedAt;
 
-  const _EmptyUpdatesView({required this.filter});
+  const _EmptyUpdatesView({
+    required this.filter,
+    required this.lastCheckedAt,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -935,7 +1126,9 @@ class _EmptyUpdatesView extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             filter == _UpdateFilter.all
-                ? 'We will show an update here when the scanner finds research connected to this graph.'
+                ? lastCheckedAt == null
+                    ? 'We will show an update here when the scanner finds research connected to this graph.'
+                    : 'No new papers were found in the last check. We will show an update here when the scanner finds research connected to this graph.'
                 : 'There are no $filterLabel updates to show right now.',
             textAlign: TextAlign.center,
             style: TextStyle(color: secondary, fontSize: 13, height: 1.45),
@@ -948,8 +1141,12 @@ class _EmptyUpdatesView extends StatelessWidget {
 
 class _NotMonitoringView extends StatelessWidget {
   final String graphTitle;
+  final VoidCallback onRetry;
 
-  const _NotMonitoringView({required this.graphTitle});
+  const _NotMonitoringView({
+    required this.graphTitle,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -972,9 +1169,15 @@ class _NotMonitoringView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Monitoring is not active for “$graphTitle”. Saving the graph again while signed in will start monitoring.',
+              'Monitoring is not active for “$graphTitle”. Connect it again when you are signed in and online.',
               textAlign: TextAlign.center,
               style: TextStyle(color: secondary, height: 1.45),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.sync_rounded, size: 18),
+              label: const Text('Connect research updates'),
             ),
           ],
         ),

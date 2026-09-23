@@ -303,7 +303,7 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                         _buildPillBadge(text: paperCount, isDark: isDark),
                         if (isPartial)
                           _buildPillBadge(
-                            text: 'PARTIAL',
+                            text: 'LIMITED DATA',
                             textColor: partialColor,
                             bgColor: partialColor.withAlpha(25),
                             borderColor: partialColor.withAlpha(60),
@@ -337,7 +337,8 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                   }
                 },
               ),
-              // Delete from recents menu
+              // Keep the action truthful: removing a saved graph also removes
+              // its library copy and monitoring subscription.
               PopupMenuButton<String>(
                 icon: Icon(
                   Icons.more_vert_rounded,
@@ -356,18 +357,22 @@ class _RecentGraphsViewState extends State<RecentGraphsView> {
                   }
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
                     child: Row(
                       children: [
                         Icon(
-                          Icons.delete_outline_rounded,
+                          isSaved
+                              ? Icons.bookmark_remove_outlined
+                              : Icons.delete_outline_rounded,
                           size: 17,
                           color: Color(0xFFEF4444),
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'Remove from history',
+                          isSaved
+                              ? 'Remove from library'
+                              : 'Remove from history',
                           style: TextStyle(
                             fontSize: 13,
                             color: Color(0xFFEF4444),

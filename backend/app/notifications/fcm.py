@@ -16,7 +16,9 @@ from app.core.config import settings
 from app.models.monitoring import MonitoredGraph
 from app.repositories.monitoring import (
     deactivate_device_token,
+    list_due_reengagement_targets,
     list_active_device_tokens,
+    mark_reengagement_sent,
 )
 
 logger = logging.getLogger("papergraph.notifications.fcm")
@@ -77,6 +79,52 @@ def _message(graph: MonitoredGraph, update_count: int, token: str) -> dict[str, 
                         "content-available": 1,
                     }
                 },
+            },
+        }
+    }
+
+
+def _reengagement_message(
+    graph: MonitoredGraph,
+    token: str,
+    unread_count: int,
+) -> dict[str, Any]:
+    graph_title = graph.graph_title.strip() or "your saved graph"
+    if unread_count > 0:
+        title = "Your research map is waiting"
+        body = (
+            f"{unread_count} unread research update"
+            f"{'s' if unread_count != 1 else ''} are waiting in "
+            f"{graph_title}."
+        )
+    else:
+        title = "Keep your research moving"
+        body = (
+            f"Try exploring a recent paper related to {graph_title} "
+            "when you are ready."
+        )
+    return {
+        "message": {
+            "token": token,
+            "data": {
+                "type": "research_nudge",
+                "title": title,
+                "body": body,
+                "local_graph_id": graph.local_graph_id,
+                "graph_id": graph.local_graph_id,
+                "graph_title": graph_title,
+                "update_count": str(unread_count),
+                "deep_link": (
+                    f"papergraph://graphs/{graph.local_graph_id}/updates"
+                ),
+            },
+            "android": {"priority": "NORMAL"},
+            "apns": {
+                "headers": {
+                    "apns-push-type": "background",
+                    "apns-priority": "5",
+                },
+                "payload": {"aps": {"content-available": 1}},
             },
         }
     }
@@ -155,6 +203,73 @@ async def send_research_update_notifications(
             except httpx.HTTPError:
                 logger.exception("FCM request failed for device %s.", device.id)
 
+    return delivered
+
+
+async def send_reengagement_reminders(db: AsyncSession) -> int:
+    """Send at most one gentle nudge per opted-in device every seven days."""
+    credentials = _credentials()
+    if credentials is None:
+        logger.info(
+            "Re-engagement delivery skipped; Firebase service account is not configured."
+        )
+        return 0
+
+    try:
+        credentials.refresh(Request())
+        access_token = credentials.token
+    except Exception:
+        logger.exception("Could not refresh Firebase service-account token.")
+        return 0
+
+    targets = await list_due_reengagement_targets(db)
+    if not targets:
+        return 0
+
+    endpoint = _FCM_ENDPOINT.format(project_id=settings.FIREBASE_PROJECT_ID)
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    delivered = 0
+    async with httpx.AsyncClient(timeout=settings.PROVIDER_TIMEOUT_SECONDS) as client:
+        for device, graph, unread_count in targets:
+            try:
+                response = await client.post(
+                    endpoint,
+                    headers=headers,
+                    json=_reengagement_message(
+                        graph,
+                        device.fcm_token,
+                        unread_count,
+                    ),
+                )
+                if response.is_success:
+                    await mark_reengagement_sent(db, device)
+                    delivered += 1
+                    continue
+
+                body = response.text.upper()
+                if response.status_code in {400, 404} and (
+                    "UNREGISTERED" in body
+                    or "NOT_FOUND" in body
+                    or "INVALID_ARGUMENT" in body
+                ):
+                    await deactivate_device_token(
+                        db,
+                        device.user_id,
+                        device.fcm_token,
+                    )
+                logger.warning(
+                    "Re-engagement delivery failed for device %s: status=%s",
+                    device.id,
+                    response.status_code,
+                )
+            except httpx.HTTPError:
+                logger.exception(
+                    "Re-engagement request failed for device %s.",
+                    device.id,
+                )
     return delivered
 
 

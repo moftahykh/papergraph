@@ -9,6 +9,8 @@ import '../../models/canonical_paper.dart';
 import '../../models/graph_models.dart';
 import '../../models/paper_model.dart';
 import '../graph_view/connected_graph_view.dart';
+import '../home/home_view.dart';
+import '../main_nav_view.dart';
 import '../paper_details/citation_bottom_sheet.dart';
 import '../paper_details/paper_details_view.dart';
 import '../research_monitoring/graph_updates_view.dart';
@@ -18,7 +20,10 @@ enum FavoritesViewMode {
   /// The legacy two-tab Library surface, kept for direct widget coverage.
   library,
   papers,
+  /// All graph history, including graphs not explicitly saved.
   graphs,
+  /// Explicitly saved graph copies only.
+  savedGraphs,
 }
 
 class FavoritesView extends StatefulWidget {
@@ -45,12 +50,13 @@ class _FavoritesViewState extends State<FavoritesView>
   final TextEditingController _librarySearchController =
       TextEditingController();
   String _libraryQuery = '';
-  bool _offlineOnly = false;
   bool _withNotesOnly = false;
+  late bool _showSavedGraphs;
 
   @override
   void initState() {
     super.initState();
+    _showSavedGraphs = widget.mode == FavoritesViewMode.savedGraphs;
     _tabController = TabController(
       length: 2,
       vsync: this,
@@ -197,7 +203,7 @@ class _FavoritesViewState extends State<FavoritesView>
       appBar: AppBar(
         toolbarHeight: 72,
         title: Text(
-          widget.mode == FavoritesViewMode.graphs ? 'Graphs' : 'Library',
+          widget.mode == FavoritesViewMode.papers ? 'Library' : 'Graphs',
           style: AppTheme.brandTitleStyle(
             fontSize: 32,
             color: isDark
@@ -216,16 +222,124 @@ class _FavoritesViewState extends State<FavoritesView>
               ? state.savedPapers
               : <CanonicalPaper>[];
           final graphs = state is LibraryLoaded
-              ? state.cachedGraphs
+              ? _showSavedGraphs
+                  ? state.cachedGraphs
+                  : state.recentGraphs
               : <GraphSnapshot>[];
           final notes = state is LibraryLoaded
               ? state.paperNotes
               : <String, String>{};
 
-          return widget.mode == FavoritesViewMode.graphs
-              ? _buildGraphsTab(context, graphs, isDark)
-              : _buildPapersTab(context, papers, notes, isDark);
+          if (widget.mode == FavoritesViewMode.graphs ||
+              widget.mode == FavoritesViewMode.savedGraphs) {
+            return Column(
+              children: [
+                _buildGraphCollectionHeader(isDark),
+                Expanded(
+                  child: _buildGraphsTab(context, graphs, isDark),
+                ),
+              ],
+            );
+          }
+
+          return _buildPapersTab(context, papers, notes, isDark);
         },
+      ),
+    );
+  }
+
+  Widget _buildGraphCollectionHeader(bool isDark) {
+    final secondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 44,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface : const Color(0xFFF1F3F7),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                _buildGraphCollectionTab(
+                  label: 'Recent',
+                  selected: !_showSavedGraphs,
+                  isDark: isDark,
+                  onTap: () => setState(() => _showSavedGraphs = false),
+                ),
+                _buildGraphCollectionTab(
+                  label: 'Saved',
+                  selected: _showSavedGraphs,
+                  isDark: isDark,
+                  onTap: () => setState(() => _showSavedGraphs = true),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+                    Text(
+                      _showSavedGraphs
+                          ? 'Saved graphs stay on this device and can receive research updates.'
+                          : 'Graphs you opened recently. Save one to keep it in your library and follow new research.',
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.35,
+              color: secondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGraphCollectionTab({
+    required String label,
+    required bool selected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? (isDark ? AppTheme.darkCard : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(isDark ? 30 : 12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected
+                  ? (isDark
+                        ? AppTheme.primaryLightBlue
+                        : AppTheme.primaryBlue)
+                  : (isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.lightTextSecondary),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -243,6 +357,8 @@ class _FavoritesViewState extends State<FavoritesView>
         description:
             'Save papers you want to revisit. Your notes will stay with each paper.',
         isDark: isDark,
+        actionLabel: 'Find papers',
+        onAction: () => _openExplore(context),
       );
     }
 
@@ -254,10 +370,7 @@ class _FavoritesViewState extends State<FavoritesView>
           paper.authorDisplay.toLowerCase().contains(query);
       final matchesNotes =
           !_withNotesOnly || (notes[paper.canonicalId] ?? '').trim().isNotEmpty;
-      // Saved papers are already locally available. Keep this filter as a
-      // product-level affordance so the UI remains ready for remote-only rows.
-      final matchesOffline = !_offlineOnly || paper.canonicalId.isNotEmpty;
-      return matchesQuery && matchesNotes && matchesOffline;
+      return matchesQuery && matchesNotes;
     }).toList();
 
     return ListView.separated(
@@ -346,18 +459,8 @@ class _FavoritesViewState extends State<FavoritesView>
             children: [
               _libraryFilterChip(
                 label: 'All',
-                selected: !_offlineOnly && !_withNotesOnly,
+                selected: !_withNotesOnly,
                 onSelected: () => setState(() {
-                  _offlineOnly = false;
-                  _withNotesOnly = false;
-                }),
-              ),
-              const SizedBox(width: 8),
-              _libraryFilterChip(
-                label: 'Offline',
-                selected: _offlineOnly,
-                onSelected: () => setState(() {
-                  _offlineOnly = !_offlineOnly;
                   _withNotesOnly = false;
                 }),
               ),
@@ -367,13 +470,12 @@ class _FavoritesViewState extends State<FavoritesView>
                 selected: _withNotesOnly,
                 onSelected: () => setState(() {
                   _withNotesOnly = !_withNotesOnly;
-                  _offlineOnly = false;
                 }),
               ),
             ],
           ),
         ),
-        if (_libraryQuery.isNotEmpty || _offlineOnly || _withNotesOnly)
+        if (_libraryQuery.isNotEmpty || _withNotesOnly)
           Padding(
             padding: const EdgeInsets.only(top: 10),
             child: Align(
@@ -400,12 +502,22 @@ class _FavoritesViewState extends State<FavoritesView>
       labelStyle: TextStyle(
         fontSize: 12,
         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-        color: selected ? Colors.white : AppTheme.lightTextSecondary,
+        color: selected
+            ? Colors.white
+            : (Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary),
       ),
       selectedColor: AppTheme.primaryBlue,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.darkSurface
+          : Colors.white,
       side: BorderSide(
-        color: selected ? AppTheme.primaryBlue : AppTheme.lightBorder,
+        color: selected
+            ? AppTheme.primaryBlue
+            : (Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.darkBorder
+                  : AppTheme.lightBorder),
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     );
@@ -421,15 +533,15 @@ class _FavoritesViewState extends State<FavoritesView>
       id: paper.canonicalId,
       title: paper.title,
       authors: paper.authors.map((a) => a.name).toList(),
-      year: paper.year ?? 2020,
-      journal: paper.venue ?? 'Academic Literature',
-      abstractText: paper.abstractText ?? 'Research paper',
+      year: paper.year ?? 0,
+      journal: paper.venue ?? '',
+      abstractText: paper.abstractText ?? '',
       citationsCount: paper.citationCount,
       influentialCitations: 0,
       connectedPaperIds: const [],
       pdfUrl: '',
       keyTakeaways: const [],
-      category: paper.topics.isNotEmpty ? paper.topics.first : 'Research Paper',
+      category: paper.topics.isNotEmpty ? paper.topics.first : '',
       doi:
           paper.doi ??
           (paper.canonicalId.startsWith('10.') ? paper.canonicalId : ''),
@@ -517,12 +629,14 @@ class _FavoritesViewState extends State<FavoritesView>
                   ),
                   _metadata(
                     Icons.format_quote_rounded,
-                    '${paper.citationCount} citations',
+                    paper.citationCount > 0
+                        ? '${paper.citationCount} citations'
+                        : 'Citation data unavailable',
                     secondary,
                   ),
                   _metadata(
                     Icons.download_done_rounded,
-                    'Available offline',
+                    'Saved on device',
                     isDark ? AppTheme.originGreenDark : AppTheme.originGreen,
                   ),
                 ],
@@ -616,12 +730,16 @@ class _FavoritesViewState extends State<FavoritesView>
     bool isDark,
   ) {
     if (graphs.isEmpty) {
+      final isSavedCollection = _showSavedGraphs;
       return _buildEmptyState(
         customIcon: PaperGraphMark(size: 40, isDark: isDark),
-        title: 'No graphs yet',
-        description:
-            'Create a literature graph to keep it available for quick access.',
+        title: isSavedCollection ? 'No saved graphs yet' : 'No recent graphs yet',
+        description: isSavedCollection
+            ? 'Save a graph to keep it in your library and follow new research.'
+            : 'Search for a paper to start your first research map.',
         isDark: isDark,
+        actionLabel: 'Create your first graph',
+        onAction: () => _openExplore(context),
       );
     }
 
@@ -629,16 +747,27 @@ class _FavoritesViewState extends State<FavoritesView>
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
       itemCount: graphs.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) =>
-          _buildGraphCard(context, graphs[index], isDark),
+      itemBuilder: (context, index) {
+        final libraryState = context.read<LibraryCubit>().state;
+        final isSaved =
+            libraryState is LibraryLoaded &&
+            libraryState.isGraphCached(graphs[index].graphId);
+        return _buildGraphCard(
+          context,
+          graphs[index],
+          isDark,
+          isSaved: isSaved,
+        );
+      },
     );
   }
 
   Widget _buildGraphCard(
     BuildContext context,
     GraphSnapshot snapshot,
-    bool isDark,
-  ) {
+    bool isDark, {
+    required bool isSaved,
+  }) {
     final secondary = isDark
         ? AppTheme.darkTextSecondary
         : AppTheme.lightTextSecondary;
@@ -685,18 +814,14 @@ class _FavoritesViewState extends State<FavoritesView>
                     onSelected: (value) {
                       if (value == 'remove') {
                         _confirmRemoveGraph(context, snapshot);
-                      } else if (value == 'updates') {
-                        _openGraphUpdates(context, snapshot);
                       }
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'updates',
-                        child: Text('Research updates'),
-                      ),
+                    itemBuilder: (_) => [
                       PopupMenuItem(
                         value: 'remove',
-                        child: Text('Remove graph'),
+                        child: Text(
+                          isSaved ? 'Remove from library' : 'Remove from history',
+                        ),
                       ),
                     ],
                   ),
@@ -723,6 +848,14 @@ class _FavoritesViewState extends State<FavoritesView>
                         : 'Available offline',
                     warning: needsRefresh,
                   ),
+                  _statusChip(
+                    context,
+                    icon: isSaved
+                        ? Icons.bookmark_rounded
+                        : Icons.history_rounded,
+                    label: isSaved ? 'Saved' : 'Recent',
+                    warning: false,
+                  ),
                   Text(
                     _formatUpdated(snapshot.createdAt),
                     style: TextStyle(fontSize: 11.5, color: secondary),
@@ -734,9 +867,30 @@ class _FavoritesViewState extends State<FavoritesView>
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _openGraphUpdates(context, snapshot),
-                      icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                      label: const Text('Updates'),
+                      onPressed: isSaved
+                          ? () => _openGraphUpdates(context, snapshot)
+                          : () async {
+                              final saved = await context
+                                  .read<LibraryCubit>()
+                                  .cacheGraph(snapshot);
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    saved
+                                        ? 'Graph saved. Research updates are now available.'
+                                        : 'Graph could not be saved. Try again.',
+                                  ),
+                                ),
+                              );
+                            },
+                      icon: Icon(
+                        isSaved
+                            ? Icons.auto_awesome_outlined
+                            : Icons.bookmark_add_outlined,
+                        size: 18,
+                      ),
+                      label: Text(isSaved ? 'Updates' : 'Save graph'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -849,6 +1003,8 @@ class _FavoritesViewState extends State<FavoritesView>
     required String title,
     required String description,
     required bool isDark,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     final secondary = isDark
         ? AppTheme.darkTextSecondary
@@ -892,9 +1048,35 @@ class _FavoritesViewState extends State<FavoritesView>
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, height: 1.5, color: secondary),
             ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.explore_outlined, size: 18),
+                label: Text(actionLabel),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  void _openExplore(BuildContext context) {
+    final switched = MainNavigationView.switchTo(context, 0);
+    if (switched) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const HomeView()),
     );
   }
 

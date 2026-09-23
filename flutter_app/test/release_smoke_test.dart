@@ -142,7 +142,7 @@ void main() {
         expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
         // Verify stage description text
-        expect(find.text('Comparing shared references…'), findsOneWidget);
+        expect(find.text('Comparing related research...'), findsOneWidget);
 
         // The current API has no server-side cancellation endpoint, so the UI
         // accurately offers to stop client tracking instead.

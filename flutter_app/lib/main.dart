@@ -25,6 +25,7 @@ import 'providers/favorites_provider.dart';
 import 'providers/papers_provider.dart';
 import 'views/splash/splash_view.dart';
 import 'views/auth/password_reset_view.dart';
+import 'views/widgets/app_lock_gate.dart';
 import 'views/widgets/error_boundary.dart';
 import 'views/widgets/notification_toast_overlay.dart';
 import 'firebase_options.dart';
@@ -187,9 +188,14 @@ class _PaperGraphAppState extends State<PaperGraphApp> {
                 darkTheme: AppTheme.darkTheme,
                 themeMode: themeState.themeMode,
                 builder: (context, child) {
-                  return NotificationToastOverlay(
-                    navigatorKey: _rootNavigatorKey,
-                    child: child ?? const SizedBox.shrink(),
+                  // Keep the lock above the app navigator so it covers every
+                  // pushed route, not only the bottom-navigation shell.
+                  return AppLockGate(
+                    lockOnStart: HiveService.isBiometricsEnabled(),
+                    child: NotificationToastOverlay(
+                      navigatorKey: _rootNavigatorKey,
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   );
                 },
                 home: const SplashView(),

@@ -107,6 +107,23 @@ class NotificationCubit extends Cubit<NotificationState> {
     );
   }
 
+  void notifyResearchNudge({
+    required String localGraphId,
+    String? graphTitle,
+    required bool hasUnreadUpdates,
+  }) {
+    notify(
+      title: 'Keep your research moving',
+      message: hasUnreadUpdates
+          ? 'You have research updates waiting to review.'
+          : 'Try exploring a recent paper related to your saved graph.',
+      type: NotificationType.info,
+      relatedGraphId: localGraphId,
+      category: NotificationCategory.researchUpdate,
+      showToast: true,
+    );
+  }
+
   /// Dismisses the currently displayed toast without removing it from history.
   void dismissToast() {
     emit(state.copyWith(clearToast: true));

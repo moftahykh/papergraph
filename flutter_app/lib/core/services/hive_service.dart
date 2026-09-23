@@ -5,6 +5,9 @@ import '../../models/graph_models.dart';
 import '../../models/paper_model.dart';
 
 class HiveService {
+  /// Give guests enough room to understand the product before asking them
+  /// to create an account.
+  static const int guestPreviewLimit = 2;
   static const String favoritesBoxName = 'papergraph_favorites';
   static const String settingsBoxName = 'papergraph_settings';
   static const String canonicalPapersBoxName = 'papergraph_canonical_papers';

@@ -37,19 +37,33 @@ class ResearchPushPayload {
       localGraphId != null &&
       localGraphId!.trim().isNotEmpty;
 
+  bool get isResearchNudge =>
+      type == 'research_nudge' &&
+      localGraphId != null &&
+      localGraphId!.trim().isNotEmpty;
+
+  bool get isResearchNotification => isResearchUpdate || isResearchNudge;
+
   factory ResearchPushPayload.fromData(Map<String, dynamic> data) {
     final rawCount = data['update_count'];
     final parsedCount = rawCount is int
         ? rawCount
         : int.tryParse(rawCount?.toString() ?? '');
+    final type = data['type']?.toString();
     final graphId =
         data['local_graph_id']?.toString() ?? data['graph_id']?.toString();
 
     return ResearchPushPayload(
       localGraphId: graphId,
       graphTitle: data['graph_title']?.toString(),
-      updateCount: parsedCount == null || parsedCount < 1 ? 1 : parsedCount,
-      type: data['type']?.toString(),
+      updateCount: parsedCount == null
+          ? (type == 'research_nudge' ? 0 : 1)
+          : (type == 'research_nudge'
+                ? parsedCount.clamp(0, 999).toInt()
+                : parsedCount < 1
+                ? 1
+                : parsedCount),
+      type: type,
     );
   }
 
@@ -90,7 +104,7 @@ class FcmNotificationService {
     _foregroundSub = FirebaseMessaging.onMessage.listen(_handleForeground);
     _openedSub = FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
     _tokenSub = FirebaseMessaging.instance.onTokenRefresh.listen((token) {
-      if (isEnabled) _registerToken(token);
+      _registerToken(token);
     });
 
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
@@ -121,11 +135,10 @@ class FcmNotificationService {
   }
 
   static Future<void> disable() async {
-    final token = await _safeGetToken();
-    if (token != null) {
-      await _deactivateToken(token);
-    }
     await _setEnabled(false);
+    // Keep the device registered for automatic re-engagement reminders while
+    // disabling only the user's research-update notification category.
+    await syncRegistration();
   }
 
   /// Called before Firebase sign-out so the protected DELETE still has auth.
@@ -135,7 +148,7 @@ class FcmNotificationService {
   }
 
   static Future<void> syncRegistration() async {
-    if (!isEnabled || Firebase.apps.isEmpty) return;
+    if (Firebase.apps.isEmpty) return;
     final user = firebase_auth.FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -151,7 +164,12 @@ class FcmNotificationService {
 
   static Future<void> _registerToken(String token) async {
     try {
-      await _api.registerDeviceToken(fcmToken: token, platform: _platform);
+      await _api.registerDeviceToken(
+        fcmToken: token,
+        platform: _platform,
+        researchUpdatesEnabled: isEnabled,
+        researchRemindersEnabled: true,
+      );
     } catch (_) {
       // Registration is retried by token refresh or the next explicit sync.
     }
@@ -205,15 +223,23 @@ class FcmNotificationService {
     }
 
     final payload = ResearchPushPayload.fromMessage(message);
-    if (!payload.isResearchUpdate) return;
+    if (!payload.isResearchNotification) return;
 
     final context = _navigatorKey?.currentContext;
     if (context == null) return;
-    context.read<NotificationCubit>().notifyResearchUpdate(
-      localGraphId: payload.localGraphId!,
-      updateCount: payload.updateCount,
-      graphTitle: payload.graphTitle,
-    );
+    if (payload.isResearchNudge) {
+      context.read<NotificationCubit>().notifyResearchNudge(
+        localGraphId: payload.localGraphId!,
+        graphTitle: payload.graphTitle,
+        hasUnreadUpdates: payload.updateCount > 0,
+      );
+    } else {
+      context.read<NotificationCubit>().notifyResearchUpdate(
+        localGraphId: payload.localGraphId!,
+        updateCount: payload.updateCount,
+        graphTitle: payload.graphTitle,
+      );
+    }
   }
 
   static void _handleTap(RemoteMessage message) {
@@ -222,7 +248,7 @@ class FcmNotificationService {
 
   static void _handleTapData(Map<String, dynamic> data) {
     final payload = ResearchPushPayload.fromData(data);
-    if (!payload.isResearchUpdate) return;
+    if (!payload.isResearchNotification) return;
     if (!_appShellReady) {
       _pendingTapPayload = payload;
       return;
@@ -302,17 +328,25 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   final data = message.data;
   final type = data['type']?.toString();
-  if (type != 'research_updates' && type != 'fcm_test') return;
+  if (type != 'research_updates' &&
+      type != 'research_nudge' &&
+      type != 'fcm_test') {
+    return;
+  }
 
   final title =
       data['title']?.toString() ??
       (type == 'fcm_test'
           ? 'PaperGraph test notification'
+          : type == 'research_nudge'
+          ? 'Keep your research moving'
           : 'New research update');
   final body =
       data['body']?.toString() ??
       (type == 'fcm_test'
           ? 'FCM delivery is connected.'
+          : type == 'research_nudge'
+          ? 'Open PaperGraph for your next research step.'
           : 'Open PaperGraph to review the latest updates.');
   await LocalNotificationService.showResearchUpdateNotification(
     id:

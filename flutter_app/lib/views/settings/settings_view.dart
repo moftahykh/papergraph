@@ -12,6 +12,7 @@ import '../../cubits/library/library_state.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_view.dart';
 import '../auth/register_view.dart';
+import '../auth/widgets/auth_gate_sheet.dart';
 import '../favorites/favorites_view.dart';
 import 'account_view.dart';
 
@@ -28,6 +29,7 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   late bool _biometricsEnabled;
   bool _biometricsAvailable = false;
+  bool _biometricsSupported = false;
   bool _researchNotificationsEnabled = false;
 
   @override
@@ -39,8 +41,9 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   Future<void> _loadBiometricAvailability() async {
-    final available =
-        (await BiometricService.getAvailableBiometrics()).isNotEmpty;
+    final availability = await BiometricService.getAvailability();
+    final available = availability == BiometricAvailability.available;
+    final supported = availability != BiometricAvailability.notSupported;
     if (!mounted) return;
     if (!available && _biometricsEnabled) {
       await HiveService.setBiometricsEnabled(false);
@@ -48,6 +51,7 @@ class _SettingsViewState extends State<SettingsView> {
     if (!mounted) return;
     setState(() {
       _biometricsAvailable = available;
+      _biometricsSupported = supported;
       if (!available) _biometricsEnabled = false;
     });
   }
@@ -140,11 +144,11 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text(
-          'Remove offline graph data?',
+          'Remove saved graph copies?',
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         content: const Text(
-          'Saved papers and personal notes will not be affected. Graphs can be created again when you are online.',
+          'This removes all saved graph copies from this device, including graphs in your Library. Saved papers and personal notes will not be affected. You can create the graphs again when you are online.',
         ),
         actions: [
           TextButton(
@@ -283,7 +287,9 @@ class _SettingsViewState extends State<SettingsView> {
                 subtitle: Text(
                   _biometricsAvailable
                       ? 'Use Face ID, fingerprint, or device passcode'
-                      : 'Set up Face ID or fingerprint in device settings',
+                      : _biometricsSupported
+                      ? 'Set up Face ID or fingerprint in device settings'
+                      : 'Biometric unlock is not supported on this device',
                   style: TextStyle(
                     fontSize: 12.5,
                     color: isDark
@@ -316,7 +322,9 @@ class _SettingsViewState extends State<SettingsView> {
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                 ),
                 subtitle: Text(
-                  'Get notified when a monitored graph has new relevant papers',
+                  authProvider.isAuthenticated
+                      ? 'Get notified when a monitored graph has new relevant papers'
+                      : 'Sign in to enable research update notifications',
                   style: TextStyle(
                     fontSize: 12.5,
                     color: isDark
@@ -325,7 +333,12 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                 ),
                 value: _researchNotificationsEnabled,
-                onChanged: _handleResearchNotificationsToggle,
+                onChanged: authProvider.isAuthenticated
+                    ? _handleResearchNotificationsToggle
+                    : (_) => AuthGateBottomSheet.show(
+                        context,
+                        reason: AuthGateReason.researchUpdates,
+                      ),
               ),
             ],
           ),
@@ -400,15 +413,13 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                   ],
                 ),
-                onTap: cachedGraphsCount > 0
-                    ? () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const FavoritesView(
-                            mode: FavoritesViewMode.graphs,
-                          ),
-                        ),
-                      )
-                    : null,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const FavoritesView(
+                      mode: FavoritesViewMode.savedGraphs,
+                    ),
+                  ),
+                ),
               ),
               _buildGroupDivider(context),
               ListTile(
@@ -421,12 +432,22 @@ class _SettingsViewState extends State<SettingsView> {
                             : AppTheme.lightTextSecondary),
                   size: 22,
                 ),
-                title: const Text(
+                title: Text(
                   'Clear cached data',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                    color: cachedGraphsCount > 0
+                        ? null
+                        : (isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary),
+                  ),
                 ),
                 subtitle: Text(
-                  'Remove offline graph copies; saved papers stay safe',
+                  cachedGraphsCount > 0
+                      ? 'Remove saved graph copies; papers and notes stay safe'
+                      : 'No offline graph copies to remove',
                   style: TextStyle(
                     fontSize: 12.5,
                     color: isDark

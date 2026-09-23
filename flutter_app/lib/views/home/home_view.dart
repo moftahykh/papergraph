@@ -21,8 +21,8 @@ import '../../models/graph_job_status.dart';
 import '../../models/graph_models.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/widgets/auth_gate_sheet.dart';
+import '../favorites/favorites_view.dart';
 import '../graph_view/connected_graph_view.dart';
-import 'recent_graphs_view.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/paper_graph_mark.dart';
 import '../research_monitoring/graph_updates_view.dart';
@@ -42,6 +42,7 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   String? _dismissedReadyGraphId;
 
   @override
@@ -57,6 +58,7 @@ class _HomeViewState extends State<HomeView> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -109,7 +111,7 @@ class _HomeViewState extends State<HomeView> {
     }
 
     final count = HiveService.getGuestSearchCount();
-    if (count >= 1) {
+    if (count >= HiveService.guestPreviewLimit) {
       AuthGateBottomSheet.show(context);
       return false;
     }
@@ -608,7 +610,7 @@ class _HomeViewState extends State<HomeView> {
     }
 
     final count = HiveService.getGuestSearchCount();
-    final hasSearchLeft = count < 1;
+    final hasSearchLeft = count < HiveService.guestPreviewLimit;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -633,7 +635,7 @@ class _HomeViewState extends State<HomeView> {
           Expanded(
             child: Text(
               hasSearchLeft
-                  ? 'Guest Preview: 1 free preview search available'
+                  ? 'Guest Preview: ${HiveService.guestPreviewLimit} free searches available'
                   : 'Free search used. Create account for unlimited access',
               style: TextStyle(
                 fontSize: 12,
@@ -678,6 +680,7 @@ class _HomeViewState extends State<HomeView> {
 
     return TextField(
       controller: _searchController,
+      focusNode: _searchFocusNode,
       textInputAction: TextInputAction.search,
       style: const TextStyle(fontSize: 14.5),
       onChanged: (value) {
@@ -685,7 +688,8 @@ class _HomeViewState extends State<HomeView> {
 
         final auth = Provider.of<AuthProvider>(context, listen: false);
         final hasSearchLeft =
-            auth.isAuthenticated || HiveService.getGuestSearchCount() < 1;
+            auth.isAuthenticated ||
+            HiveService.getGuestSearchCount() < HiveService.guestPreviewLimit;
         if (!hasSearchLeft) {
           // Do not spam backend queries when guest limit is exhausted
           return;
@@ -703,6 +707,8 @@ class _HomeViewState extends State<HomeView> {
         if (_looksLikeIdentifier(value)) {
           _openGraphFor(value);
         } else {
+          // Do not consume the guest preview for an empty or too-short query.
+          if (value.trim().length < 2) return;
           if (!_checkGuestSearchLimit()) return;
           context.read<SearchCubit>().search(value, immediate: true);
         }
@@ -1035,7 +1041,7 @@ class _HomeViewState extends State<HomeView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'RECENT GRAPHS',
+                      graphs.isEmpty ? 'START EXPLORING' : 'RECENT GRAPHS',
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -1050,7 +1056,9 @@ class _HomeViewState extends State<HomeView> {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => const RecentGraphsView(),
+                              builder: (_) => const FavoritesView(
+                                mode: FavoritesViewMode.graphs,
+                              ),
                             ),
                           );
                         },
@@ -1076,10 +1084,7 @@ class _HomeViewState extends State<HomeView> {
                 ),
                 const SizedBox(height: 6),
                 if (graphs.isEmpty)
-                  _hint(
-                    isDark,
-                    'Graphs you generate will appear here for quick re-opening — even offline.',
-                  )
+                  _buildFirstGraphCard(isDark, accent)
                 else
                   for (final graph in graphs.take(3))
                     _recentGraphTile(graph, isDark, accent),
@@ -1088,6 +1093,98 @@ class _HomeViewState extends State<HomeView> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildFirstGraphCard(bool isDark, Color accent) {
+    final secondary = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 24 : 8),
+            blurRadius: 18,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppTheme.darkSurface
+                  : const Color(0xFFF1F4F8),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(
+              child: PaperGraphMark(size: 34, isDark: isDark),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Start your first research map',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? AppTheme.darkTextPrimary
+                        : AppTheme.lightTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Search for a paper or paste a DOI to explore its connected literature.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    color: secondary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () {
+                    _startFirstResearchMap();
+                  },
+                  icon: const Icon(Icons.search_rounded, size: 17),
+                  label: const Text('Create your first graph'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 10,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1206,7 +1303,7 @@ class _HomeViewState extends State<HomeView> {
                           _buildPillBadge(text: paperCount, isDark: isDark),
                           if (isPartial)
                             _buildPillBadge(
-                              text: 'PARTIAL',
+                              text: 'LIMITED DATA',
                               textColor: partialColor,
                               bgColor: partialColor.withAlpha(25),
                               borderColor: partialColor.withAlpha(60),
@@ -1279,13 +1376,20 @@ class _HomeViewState extends State<HomeView> {
             listen: false,
           );
           final isAuthenticated = authProvider.isAuthenticated;
+          final hasSavedGraph = context.select<LibraryCubit, bool>((cubit) {
+            final libraryState = cubit.state;
+            return libraryState is LibraryLoaded &&
+                libraryState.cachedGraphs.isNotEmpty;
+          });
+          final hasActiveResearchUpdates =
+              isAuthenticated && hasSavedGraph;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
               Text(
-                'NEW IN YOUR RESEARCH',
+                'RESEARCH UPDATES',
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
@@ -1309,72 +1413,87 @@ class _HomeViewState extends State<HomeView> {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      if (!isAuthenticated) {
-                        AuthGateBottomSheet.show(context);
-                        return;
-                      }
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const RecentGraphsView(),
-                        ),
-                      );
-                    },
+                    onTap: !isAuthenticated
+                        ? () => AuthGateBottomSheet.show(
+                            context,
+                            reason: AuthGateReason.researchUpdates,
+                          )
+                        : hasActiveResearchUpdates
+                        ? () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const FavoritesView(
+                                mode: FavoritesViewMode.savedGraphs,
+                              ),
+                            ),
+                          )
+                        : null,
                     child: Padding(
                       padding: const EdgeInsets.all(14),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF242426)
-                                  : const Color(0xFFF2F2F7),
-                              borderRadius: BorderRadius.circular(11),
-                            ),
-                            child: Icon(
-                              Icons.notifications_none_rounded,
-                              color: accent,
-                              size: 21,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  isAuthenticated
-                                      ? 'Stay ahead of your field'
-                                      : 'Create your research watchlist',
-                                  style: TextStyle(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark
-                                        ? AppTheme.darkTextPrimary
-                                        : AppTheme.lightTextPrimary,
-                                  ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF242426)
+                                      : const Color(0xFFF2F2F7),
+                                  borderRadius: BorderRadius.circular(11),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  isAuthenticated
-                                      ? 'Save a graph to discover new papers here.'
-                                      : 'Sign in and save a graph to track new papers.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    height: 1.35,
-                                    color: secondary,
-                                  ),
+                                child: Icon(
+                                  Icons.notifications_none_rounded,
+                                  color: accent,
+                                  size: 21,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      !isAuthenticated
+                                          ? 'Sign in to follow research updates'
+                                          : hasActiveResearchUpdates
+                                          ? 'Graph saved on this device'
+                                          : 'Save your first graph to unlock research updates',
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? AppTheme.darkTextPrimary
+                                            : AppTheme.lightTextPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      !isAuthenticated
+                                          ? 'Save a graph and receive relevant new-paper alerts.'
+                                          : hasActiveResearchUpdates
+                                          ? 'Open your saved graph to check research updates.'
+                                          : 'Research alerts will appear after you save a graph.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        height: 1.35,
+                                        color: secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!isAuthenticated ||
+                                  hasActiveResearchUpdates) ...[
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
+                                  color: secondary,
                                 ),
                               ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 20,
-                            color: secondary,
+                            ],
                           ),
                         ],
                       ),
@@ -1519,6 +1638,10 @@ class _HomeViewState extends State<HomeView> {
         );
       },
     );
+  }
+
+  void _startFirstResearchMap() {
+    FocusScope.of(context).requestFocus(_searchFocusNode);
   }
 
   Future<void> _openExistingGraphForRecommendation(

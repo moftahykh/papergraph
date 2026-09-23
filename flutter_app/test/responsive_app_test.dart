@@ -312,7 +312,7 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.text('Shared references'), findsOneWidget);
           expect(find.text('Co-citation'), findsOneWidget);
-          expect(find.text('Overall relevance'), findsOneWidget);
+          expect(find.text('Connection strength'), findsOneWidget);
 
           await tester.scrollUntilVisible(
             find.text('Paper details'),

@@ -332,8 +332,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Switch to All papers tab to select non-origin paper
-      await tester.tap(find.text('All papers'));
+      // Switch to the unified Later tab to select the non-origin paper
+      await tester.tap(find.text('Later'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 

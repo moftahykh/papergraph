@@ -107,13 +107,13 @@ class CanonicalPaper {
   });
 
   String get authorDisplay {
-    if (authors.isEmpty) return 'Unknown Authors';
+    if (authors.isEmpty) return 'Author information unavailable';
     if (authors.length == 1) return authors.first.name;
     if (authors.length == 2) return '${authors[0].name} & ${authors[1].name}';
     return '${authors.first.name} et al.';
   }
 
-  String get yearDisplay => year != null ? year.toString() : 'Unknown Year';
+  String get yearDisplay => year != null ? year.toString() : 'Year unavailable';
 
   factory CanonicalPaper.fromJson(Map<String, dynamic> json) {
     return CanonicalPaper(

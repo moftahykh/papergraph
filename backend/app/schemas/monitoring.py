@@ -41,6 +41,8 @@ class MonitoredGraphResponse(BaseModel):
     frequency: str
     timezone: str
     last_checked_at: datetime | None
+    last_scan_status: str
+    last_scan_error: str | None
     next_check_at: datetime
     last_notified_at: datetime | None
     created_at: datetime
@@ -68,3 +70,5 @@ class ResearchUpdateResponse(BaseModel):
 class DeviceTokenRequest(BaseModel):
     fcm_token: str = Field(min_length=1, max_length=4096)
     platform: Literal["android", "ios", "web"] 
+    research_updates_enabled: bool = True
+    research_reminders_enabled: bool = True

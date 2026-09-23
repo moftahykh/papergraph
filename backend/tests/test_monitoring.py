@@ -110,6 +110,7 @@ async def test_create_monitored_graph(client):
     assert data["frequency"] == "daily"
     assert "id" in data
     assert "next_check_at" in data
+    assert data["last_scan_status"] == "pending"
 
     # Cleanup
     await client.delete(f"{PREFIX}/monitoring/graphs/{data['id']}")
@@ -236,7 +237,31 @@ async def test_update_frequency(client):
 
 
 # ---------------------------------------------------------------------------
-# 7. List research updates (empty baseline)
+# 7. Request an immediate monitoring pass
+# ---------------------------------------------------------------------------
+
+@pytest.mark.anyio
+async def test_request_monitoring_check_now(client):
+    """The button makes an active graph eligible for the next worker pass."""
+    _set_user("alice-check-now")
+    r = await client.post(
+        f"{PREFIX}/monitoring/graphs",
+        json={**SAMPLE_CREATE_PAYLOAD, "local_graph_id": "check-now-g1"},
+    )
+    mid = r.json()["id"]
+
+    requested = await client.post(
+        f"{PREFIX}/monitoring/graphs/{mid}/check-now",
+    )
+    assert requested.status_code == 200
+    assert requested.json()["last_scan_status"] == "pending"
+    assert requested.json()["next_check_at"] is not None
+
+    await client.delete(f"{PREFIX}/monitoring/graphs/{mid}")
+
+
+# ---------------------------------------------------------------------------
+# 8. List research updates (empty baseline)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.anyio
@@ -258,7 +283,7 @@ async def test_list_research_updates_empty(client):
 
 
 # ---------------------------------------------------------------------------
-# 8. Delete monitoring
+# 9. Delete monitoring
 # ---------------------------------------------------------------------------
 
 @pytest.mark.anyio

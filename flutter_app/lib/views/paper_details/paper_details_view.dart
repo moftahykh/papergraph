@@ -156,6 +156,9 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
           canonicalId: widget.paper.id,
           title: effectiveTitle,
         );
+        final citationLabel = effectiveCitations > 0
+            ? '$effectiveCitations citations'
+            : 'Citation count unavailable';
 
         final dynamicPaperModel = widget.paper.copyWith(
           title: effectiveTitle,
@@ -274,12 +277,14 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                             ),
                           _buildMetadataItem(
                             Icons.calendar_today_outlined,
-                            '$effectiveYear',
+                            effectiveYear > 0
+                                ? '$effectiveYear'
+                                : 'Year unavailable',
                             isDark,
                           ),
                           _buildMetadataItem(
                             Icons.format_quote_rounded,
-                            '$effectiveCitations citations',
+                            citationLabel,
                             isDark,
                           ),
                         ],
@@ -521,12 +526,16 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                       ),
                       const SizedBox(height: 10),
                       _buildExpandableSection(
-                        title: 'Citations ($effectiveCitations)',
+                        title: effectiveCitations > 0
+                            ? 'Citations ($effectiveCitations)'
+                            : 'Citations',
                         icon: Icons.format_quote_rounded,
                         isDark: isDark,
                         children: [
                           Text(
-                            '$effectiveCitations citations are recorded for this paper.',
+                            effectiveCitations > 0
+                                ? '$effectiveCitations citations are recorded for this paper.'
+                                : 'Citation data is not available from the current source.',
                             style: TextStyle(
                               color: isDark
                                   ? AppTheme.darkTextSecondary
@@ -570,7 +579,8 @@ class _PaperDetailsViewState extends State<PaperDetailsView> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       subtitle: Text(
-                                        '${paper.year} • ${paper.citationsCount} citations',
+                                        '${paper.year} • '
+                                        '${paper.citationsCount > 0 ? '${paper.citationsCount} citations' : 'Citation data unavailable'}',
                                       ),
                                       trailing: const Icon(
                                         Icons.chevron_right_rounded,

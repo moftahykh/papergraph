@@ -299,6 +299,25 @@ class PaperGraphApiClient {
     }
   }
 
+  /// Makes an active monitoring graph eligible for the next worker scan pass.
+  ///
+  /// The backend worker runs independently from the app, so this requests a
+  /// check rather than pretending that provider calls completed immediately.
+  Future<MonitoredGraphSummary> requestMonitoringScan(
+    String monitorId,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/monitoring/graphs/$monitorId/check-now',
+      );
+      return MonitoredGraphSummary.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
   /// Marks one update as read for the signed-in user.
   Future<ResearchUpdate> markResearchUpdateRead(
     String monitorId,
@@ -340,11 +359,18 @@ class PaperGraphApiClient {
   Future<void> registerDeviceToken({
     required String fcmToken,
     required String platform,
+    bool researchUpdatesEnabled = true,
+    bool researchRemindersEnabled = true,
   }) async {
     try {
       await _dio.post(
         '/monitoring/device-token',
-        data: {'fcm_token': fcmToken, 'platform': platform},
+        data: {
+          'fcm_token': fcmToken,
+          'platform': platform,
+          'research_updates_enabled': researchUpdatesEnabled,
+          'research_reminders_enabled': researchRemindersEnabled,
+        },
       );
     } on DioException catch (e) {
       throw _handleDioError(e);

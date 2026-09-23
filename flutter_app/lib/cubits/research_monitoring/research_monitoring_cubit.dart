@@ -84,6 +84,28 @@ class ResearchMonitoringCubit extends Cubit<ResearchMonitoringState> {
     }
   }
 
+  Future<bool> requestCheckNow() async {
+    final monitoring = state.monitoring;
+    if (monitoring == null || monitoring.isPaused) return false;
+    emit(state.copyWith(isActing: true, clearError: true));
+    try {
+      final updated = await _apiClient.requestMonitoringScan(monitoring.id);
+      emit(state.copyWith(isActing: false, monitoring: updated));
+      return true;
+    } on ApiException catch (error) {
+      emit(state.copyWith(isActing: false, errorMessage: error.message));
+      return false;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isActing: false,
+          errorMessage: 'A check could not be requested right now.',
+        ),
+      );
+      return false;
+    }
+  }
+
   Future<bool> stopMonitoring() async {
     final monitoring = state.monitoring;
     if (monitoring == null) return true;

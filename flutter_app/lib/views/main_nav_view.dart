@@ -14,22 +14,21 @@ import '../cubits/search/search_state.dart';
 import 'graph_view/connected_graph_view.dart';
 import 'favorites/favorites_view.dart';
 import 'home/home_view.dart';
-import 'widgets/app_lock_gate.dart';
 
 class MainNavigationView extends StatefulWidget {
-  final bool requireInitialUnlock;
-
-  const MainNavigationView({super.key, this.requireInitialUnlock = false});
+  const MainNavigationView({super.key});
 
   /// Allows descendants (like HomeView or notification toasts) to navigate
   /// directly to a specific tab and optionally select a subtab (e.g. Graphs in Library).
-  static void switchTo(
+  static bool switchTo(
     BuildContext context,
     int index, {
     int? librarySubIndex,
   }) {
     final state = context.findAncestorStateOfType<_MainNavigationViewState>();
-    state?.switchToIndex(index, librarySubIndex: librarySubIndex);
+    if (state == null) return false;
+    state.switchToIndex(index, librarySubIndex: librarySubIndex);
+    return true;
   }
 
   @override
@@ -84,9 +83,7 @@ class _MainNavigationViewState extends State<MainNavigationView> {
               context.read<ResearchSessionCubit>().syncGraph(state),
         ),
       ],
-      child: AppLockGate(
-        lockOnStart: widget.requireInitialUnlock,
-        child: Scaffold(
+      child: Scaffold(
           // Reserve layout space for the floating navigation container so
           // scrollable page content never renders underneath it.
           extendBody: true,
@@ -194,7 +191,6 @@ class _MainNavigationViewState extends State<MainNavigationView> {
               ],
             ),
           ),
-        ),
       ),
     );
   }

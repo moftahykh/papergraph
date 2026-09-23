@@ -17,6 +17,8 @@ void main() {
         'frequency': 'weekly',
         'timezone': 'Asia/Riyadh',
         'last_checked_at': '2026-09-18T10:00:00Z',
+        'last_scan_status': 'success',
+        'last_scan_error': null,
         'next_check_at': '2026-09-25T10:00:00Z',
         'last_notified_at': null,
       });
@@ -24,6 +26,7 @@ void main() {
       expect(graph.localGraphId, 'graph_1');
       expect(graph.isPaused, isTrue);
       expect(graph.frequency, 'weekly');
+      expect(graph.lastScanStatus, 'success');
       expect(graph.nextCheckAt.toUtc().year, 2026);
     });
 

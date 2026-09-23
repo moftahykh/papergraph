@@ -14,6 +14,7 @@ from app.repositories.monitoring import (
     list_updates,
     mark_update_added,
     mark_update_read,
+    request_immediate_scan,
     update_monitored_graph,
     upsert_device_token,
     upsert_monitored_graph,
@@ -68,6 +69,27 @@ async def patch_monitored_graph(
     if graph is None:
         raise HTTPException(status_code=404, detail="Monitored graph not found.")
     graph = await update_monitored_graph(db, graph, request)
+    return MonitoredGraphResponse.model_validate(graph)
+
+
+@router.post(
+    "/graphs/{monitor_id}/check-now",
+    response_model=MonitoredGraphResponse,
+)
+async def check_monitored_graph_now(
+    monitor_id: str,
+    user: RequiredUser,
+    db: Database,
+) -> MonitoredGraphResponse:
+    graph = await get_owned_graph(db, user.user_id, monitor_id)
+    if graph is None:
+        raise HTTPException(status_code=404, detail="Monitored graph not found.")
+    if graph.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Resume research updates before requesting a check.",
+        )
+    graph = await request_immediate_scan(db, graph)
     return MonitoredGraphResponse.model_validate(graph)
 
 
@@ -158,7 +180,14 @@ async def register_device_token(
     user: RequiredUser,
     db: Database,
 ) -> None:
-    await upsert_device_token(db, user.user_id, request.fcm_token, request.platform)
+    await upsert_device_token(
+        db,
+        user.user_id,
+        request.fcm_token,
+        request.platform,
+        request.research_updates_enabled,
+        request.research_reminders_enabled,
+    )
 
 
 @router.delete("/device-token", status_code=status.HTTP_204_NO_CONTENT)

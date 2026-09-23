@@ -279,7 +279,7 @@ void main() {
       );
 
       expect(find.text('0%'), findsOneWidget);
-      expect(find.text('Not enough data'), findsOneWidget);
+      expect(find.text('Unavailable'), findsOneWidget);
     });
   });
 
@@ -349,8 +349,8 @@ void main() {
     });
   });
 
-  group('GraphBottomSheet 4-Tab Navigation Tests', () {
-    testWidgets('renders all 4 tabs and displays paper details', (
+  group('GraphBottomSheet relationship navigation tests', () {
+    testWidgets('renders the unified relationship tabs and paper details', (
       tester,
     ) async {
       final snapshot = createSampleSnapshot();
@@ -368,11 +368,12 @@ void main() {
         ),
       );
 
-      // Verify all 4 tabs exist
+      // Verify the unified relationship taxonomy.
       expect(find.text('Paper'), findsOneWidget);
-      expect(find.text('Earlier works'), findsOneWidget);
-      expect(find.text('Later works'), findsOneWidget);
-      expect(find.text('All papers'), findsOneWidget);
+      expect(find.text('Citations'), findsOneWidget);
+      expect(find.text('Similar'), findsOneWidget);
+      expect(find.text('Earlier'), findsOneWidget);
+      expect(find.text('Later'), findsOneWidget);
 
       // Verify paper details
       expect(find.text('Attention Is All You Need'), findsOneWidget);
@@ -383,30 +384,15 @@ void main() {
       expect(find.text('Co-citation'), findsOneWidget);
       expect(find.text('Graph baseline'), findsOneWidget);
 
-      // Switch to Earlier works tab
-      await tester.tap(find.text('Earlier works'));
+      // Switch to Earlier tab
+      await tester.tap(find.text('Earlier'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Neural Machine Translation'), findsOneWidget);
 
-      // Switch to Later works tab
-      await tester.tap(find.text('Later works'));
+      // Switch to Later tab
+      await tester.tap(find.text('Later'));
       await tester.pumpAndSettle();
       expect(find.textContaining('BERT: Pre-training'), findsOneWidget);
-
-      // Switch to All papers tab
-      await tester.tap(find.text('All papers'));
-      await tester.pumpAndSettle();
-      expect(find.byType(TextField), findsOneWidget);
-      expect(find.text('Citations'), findsOneWidget);
-
-      // Test paper list filtering
-      await tester.enterText(find.byType(TextField), 'GPT-3');
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Language Models are Few-Shot Learners (GPT-3)'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('BERT'), findsNothing);
     });
   });
 

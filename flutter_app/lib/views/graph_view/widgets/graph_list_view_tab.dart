@@ -375,7 +375,7 @@ class _GraphListViewTabState extends State<GraphListViewTab> {
         ? (node.authors.length > 2
               ? '${node.authors.first} et al.'
               : node.authors.join(', '))
-        : 'Unknown Authors';
+        : 'Author information unavailable';
 
     Color badgeColor;
     switch (explanation.category) {
@@ -471,7 +471,8 @@ class _GraphListViewTabState extends State<GraphListViewTab> {
                 children: [
                   Expanded(
                     child: Text(
-                      '$authorsText · ${node.year ?? 'N/A'} · ${node.citationCount} citations',
+                      '$authorsText · ${node.year ?? 'Year unavailable'} · '
+                      '${node.citationCount > 0 ? '${node.citationCount} citations' : 'Citation data unavailable'}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

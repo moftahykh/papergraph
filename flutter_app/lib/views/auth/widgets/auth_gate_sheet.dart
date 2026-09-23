@@ -1,18 +1,32 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/hive_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/paper_graph_mark.dart';
 import '../login_view.dart';
 import '../register_view.dart';
 
-class AuthGateBottomSheet extends StatelessWidget {
-  const AuthGateBottomSheet({super.key});
+enum AuthGateReason {
+  searchLimit,
+  researchUpdates,
+}
 
-  static Future<void> show(BuildContext context) {
+class AuthGateBottomSheet extends StatelessWidget {
+  final AuthGateReason reason;
+
+  const AuthGateBottomSheet({
+    super.key,
+    this.reason = AuthGateReason.searchLimit,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    AuthGateReason reason = AuthGateReason.searchLimit,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const AuthGateBottomSheet(),
+      builder: (_) => AuthGateBottomSheet(reason: reason),
     );
   }
 
@@ -70,9 +84,10 @@ class AuthGateBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Title
             Text(
-              'Guest Search Limit Reached',
+              reason == AuthGateReason.searchLimit
+                  ? 'Guest Search Limit Reached'
+                  : 'Sign in to track your research',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
@@ -85,9 +100,10 @@ class AuthGateBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // Description
             Text(
-              'You have used your 1 free preview search. Create a free researcher profile to unlock unlimited literature searches, interactive graph synthesis, and citation exports.',
+              reason == AuthGateReason.searchLimit
+                  ? 'You have used your ${HiveService.guestPreviewLimit} free preview searches. Create a free researcher profile to unlock unlimited literature searches, interactive graph synthesis, and citation exports.'
+                  : 'Create a free researcher profile to save graphs and receive updates when new relevant papers are found.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -139,7 +155,6 @@ class AuthGateBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 26),
 
-            // Create Account Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

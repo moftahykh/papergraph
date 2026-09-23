@@ -6,7 +6,10 @@ import logging
 
 from app.db.session import SessionLocal
 from app.monitoring.scanner import MonitoringScanner
-from app.notifications.fcm import send_research_update_notifications
+from app.notifications.fcm import (
+    send_reengagement_reminders,
+    send_research_update_notifications,
+)
 from app.models.monitoring import utc_now
 from app.providers.crossref import CrossRefProvider
 from app.providers.openalex import OpenAlexProvider
@@ -71,8 +74,15 @@ async def run_once(
                     )
             except Exception:
                 await db.rollback()
-                await release_monitored_graph_claim(db, graph)
+                await release_monitored_graph_claim(db, graph, error="Scan failed.")
                 logger.exception("Monitoring scan failed for graph %s", graph.id)
+
+        reminders_delivered = await send_reengagement_reminders(db)
+        if reminders_delivered:
+            logger.info(
+                "Delivered %d research re-engagement reminder(s).",
+                reminders_delivered,
+            )
 
     return processed
 

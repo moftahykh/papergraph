@@ -11,6 +11,7 @@ import '../../cubits/library/library_state.dart';
 import '../../cubits/notification/notification_cubit.dart';
 import '../../cubits/notification/notification_state.dart';
 import '../../cubits/paper_details/paper_details_cubit.dart';
+import '../../models/graph_job_status.dart';
 import '../../models/graph_models.dart';
 import '../../models/paper_model.dart';
 import '../paper_details/paper_details_view.dart';
@@ -124,6 +125,7 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
   double _currentZoom = 0.75;
   GraphSnapshot? _displayedSnapshot;
   String? _lastFittedGraphId;
+  bool _gestureHintShown = false;
 
   static const double _canvasSize = 2000.0;
 
@@ -418,9 +420,23 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
     context.read<NotificationCubit>().notify(
       title: saved ? 'Graph saved' : 'Graph not saved',
       message: saved
-          ? 'This graph is available without internet.'
+          ? 'Saved on this device. Research updates will sync in the background.'
           : 'Keep this graph open and try saving it again.',
       type: saved ? NotificationType.success : NotificationType.error,
+    );
+  }
+
+  Future<void> _removeGraphFromLibrary(GraphSnapshot snapshot) async {
+    final removed = await context.read<LibraryCubit>().removeCachedGraph(
+      snapshot.graphId,
+    );
+    if (!mounted) return;
+    context.read<NotificationCubit>().notify(
+      title: removed ? 'Graph removed from library' : 'Graph not removed',
+      message: removed
+          ? 'The offline copy and its research monitoring link were removed.'
+          : 'Try again in a moment.',
+      type: removed ? NotificationType.info : NotificationType.error,
     );
   }
 
@@ -430,15 +446,15 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
       id: node.canonicalId,
       title: node.title,
       authors: node.authors,
-      year: node.year ?? 2020,
-      journal: node.venue ?? 'Academic Literature',
+      year: node.year ?? 0,
+      journal: node.venue ?? '',
       abstractText: '',
       citationsCount: node.citationCount,
       influentialCitations: 0,
       connectedPaperIds: const [],
       pdfUrl: '',
       keyTakeaways: const [],
-      category: node.archetype ?? 'Research Paper',
+      category: '',
       doi: node.canonicalId.startsWith('10.') ? node.canonicalId : '',
     );
 
@@ -452,9 +468,18 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBg : const Color(0xFFF8FAFC),
-      body: BlocConsumer<GraphCubit, GraphState>(
+    return PopScope(
+      canPop: !_isBottomSheetOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || !_isBottomSheetOpen) return;
+        setState(() {
+          _isBottomSheetOpen = false;
+          _selectedNode = null;
+        });
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppTheme.darkBg : const Color(0xFFF8FAFC),
+        body: BlocConsumer<GraphCubit, GraphState>(
         listener: (context, state) {
           if (state is GraphLoaded) {
             _displayedSnapshot = state.snapshot;
@@ -472,6 +497,21 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
               if (_selectedNode == null) {
                 setState(() {
                   _selectedNode = originNode;
+                });
+              }
+              if (!_gestureHintShown) {
+                _gestureHintShown = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Tip: long-press a node to move it. Double-tap to fit the graph.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
                 });
               }
             }
@@ -505,6 +545,7 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             onExplore: () => Navigator.of(context).maybePop(),
           );
         },
+        ),
       ),
     );
   }
@@ -585,7 +626,10 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
     if (hasSourceIssue) {
       return 'Some source data was unavailable, so this graph may be incomplete.';
     }
-    return 'Some information was unavailable, so this graph may be incomplete.';
+    // A partial snapshot can legitimately arrive without the warning payload
+    // after being restored from an older local cache. Keep the copy honest and
+    // useful instead of falling back to a vague message.
+    return 'Some source data was unavailable, so this graph may be incomplete.';
   }
 
   Widget _buildTopBar(
@@ -712,7 +756,7 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                         : const Color(0xFF18181B),
                     tooltip: isSaved ? 'Saved to library' : 'Save graph',
                     onPressed: isSaved
-                        ? null
+                        ? () => _removeGraphFromLibrary(snapshot)
                         : () => _saveGraphToLibrary(snapshot),
                   );
                 },
@@ -720,136 +764,90 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
             ],
           ),
 
-          // Offline / Partial Warning Badges
-          if (fromOfflineCache) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withAlpha(10)
-                    : Colors.black.withAlpha(6),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.cloud_off_rounded,
-                    size: 13,
-                    color: isDark
-                        ? AppTheme.darkTextSecondary
-                        : AppTheme.lightTextSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Available offline',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppTheme.darkTextSecondary
-                            : AppTheme.lightTextSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          if (isPartial) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withAlpha(10)
-                    : Colors.black.withAlpha(6),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    size: 14,
-                    color: isDark
-                        ? const Color(0xFFA1A1AA)
-                        : const Color(0xFF71717A),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      _userFacingGraphWarning(snapshot.warnings),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? const Color(0xFFA1A1AA)
-                            : const Color(0xFF71717A),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          if (snapshot.isExpired) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withAlpha(10)
-                    : Colors.black.withAlpha(6),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.history_toggle_off_rounded,
-                    size: 13,
-                    color: isDark
-                        ? AppTheme.darkTextSecondary
-                        : AppTheme.lightTextSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Refresh recommended. Connect to update this graph.',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppTheme.darkTextSecondary
-                            : AppTheme.lightTextSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          // One compact status strip prevents offline/partial/expired
+          // messages from pushing the graph too far down on small screens.
+          _buildGraphStatusStrip(
+            snapshot,
+            isPartial: isPartial,
+            fromOfflineCache: fromOfflineCache,
+            isDark: isDark,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGraphStatusStrip(
+    GraphSnapshot snapshot, {
+    required bool isPartial,
+    required bool fromOfflineCache,
+    required bool isDark,
+  }) {
+    final effectivePartial =
+        isPartial || snapshot.status == GraphJobStatus.partial;
+    final messages = <String>[];
+    if (fromOfflineCache) messages.add('Available offline');
+    if (effectivePartial) {
+      messages.add(_userFacingGraphWarning(snapshot.warnings));
+    }
+    if (snapshot.isExpired) {
+      messages.add('Refresh recommended when you are online');
+    }
+    if (messages.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(6),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              effectivePartial
+                  ? Icons.warning_amber_rounded
+                  : (fromOfflineCache
+                        ? Icons.cloud_off_rounded
+                        : Icons.info_outline_rounded),
+              size: 15,
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var index = 0; index < messages.length; index++)
+                    Padding(
+                      padding: EdgeInsets.only(top: index == 0 ? 0 : 3),
+                      child: Text(
+                        messages[index],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.lightTextSecondary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -980,7 +978,10 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
                 });
               },
               onOpenFullDetails: (node) => _openDetailsForNode(node),
-              onClose: () => setState(() => _isBottomSheetOpen = false),
+              onClose: () => setState(() {
+                _isBottomSheetOpen = false;
+                _selectedNode = null;
+              }),
             ),
           ),
       ],
@@ -1089,7 +1090,7 @@ class _ConnectedGraphContentViewState extends State<_ConnectedGraphContentView>
               context.read<GraphCubit>().buildGraphFromDoi(canonicalId);
             },
             onOpenFullDetails: (node) => _openDetailsForNode(node),
-            onClose: () {},
+            onClose: () => setState(() => _selectedNode = null),
           ),
         ),
       ],

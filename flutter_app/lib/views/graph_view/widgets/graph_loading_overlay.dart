@@ -11,31 +11,31 @@ extension GraphJobStatusDisplay on GraphJobStatus {
   String get displayTitle {
     switch (this) {
       case GraphJobStatus.queued:
-        return 'Queueing graph task...';
+        return 'Starting your research map...';
       case GraphJobStatus.resolvingOrigin:
-        return 'Resolving seed paper identity...';
+        return 'Finding the starting paper...';
       case GraphJobStatus.generatingCandidates:
-        return 'Generating candidate literature pool...';
+        return 'Searching connected literature...';
       case GraphJobStatus.preRanking:
-        return 'Applying PreScore quotas...';
+        return 'Selecting the most relevant papers...';
       case GraphJobStatus.enrichingMetadata:
-        return 'Enriching canonical paper metadata...';
+        return 'Checking paper details...';
       case GraphJobStatus.enrichingReferences:
-        return 'Harvesting foundational references...';
+        return 'Finding earlier research...';
       case GraphJobStatus.computingWbc:
-        return 'Comparing shared references…';
+        return 'Comparing related research...';
       case GraphJobStatus.enrichingCitations:
-        return 'Harvesting derivative citations...';
+        return 'Checking citation relationships...';
       case GraphJobStatus.computingNcc:
-        return 'Analyzing co-citation patterns…';
+        return 'Confirming research connections...';
       case GraphJobStatus.computingFinalScores:
-        return 'Ranking papers by relevance…';
+        return 'Ranking the research map...';
       case GraphJobStatus.extractingPriorWorks:
-        return 'Extracting foundational prior works...';
+        return 'Organizing earlier works...';
       case GraphJobStatus.extractingDerivativeWorks:
-        return 'Extracting subsequent derivative works...';
+        return 'Organizing later works...';
       case GraphJobStatus.buildingLayout:
-        return 'Synthesizing deterministic 2D graph layout...';
+        return 'Arranging your research map...';
       case GraphJobStatus.completed:
         return 'Graph generation complete';
       case GraphJobStatus.partial:
@@ -222,10 +222,7 @@ class _GraphProgressiveLoadingViewState
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: () {
-                    context.read<GraphCubit>().cancel();
-                    Navigator.of(context).maybePop();
-                  },
+                  onPressed: _confirmStopTracking,
                   icon: const Icon(Icons.stop_circle_outlined, size: 16),
                   label: const Text(
                     'Stop tracking',
@@ -245,6 +242,34 @@ class _GraphProgressiveLoadingViewState
         ),
       ),
     );
+  }
+
+  Future<void> _confirmStopTracking() async {
+    final shouldStop = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Stop building this graph?'),
+        content: const Text(
+          'The current graph build will be cancelled. You can start a new one later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep building'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+            child: const Text('Stop building'),
+          ),
+        ],
+      ),
+    );
+    if (shouldStop != true || !mounted) return;
+    context.read<GraphCubit>().cancel();
+    Navigator.of(context).maybePop();
   }
 
   Widget _buildNotificationOptIn(String graphId, bool isDark) {

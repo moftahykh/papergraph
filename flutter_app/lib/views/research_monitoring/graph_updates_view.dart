@@ -160,7 +160,7 @@ class _GraphUpdatesScaffoldState extends State<_GraphUpdatesScaffold> {
       SnackBar(
         content: Text(
           requested
-              ? 'Check requested. It will run on the next monitoring pass.'
+              ? 'We’ll check this graph for new papers shortly.'
               : 'A check could not be requested right now.',
         ),
       ),
@@ -678,7 +678,10 @@ class _MonitoringHeader extends StatelessWidget {
                     label: 'Next check',
                     value: isPaused
                         ? 'Paused'
-                        : _formatMonitoringTime(monitoring.nextCheckAt),
+                        : _formatMonitoringTime(
+                            monitoring.nextCheckAt,
+                            isNextCheck: true,
+                          ),
                   ),
                 ],
               ),
@@ -755,20 +758,27 @@ class _MonitoringTimeRow extends StatelessWidget {
 String _monitoringStatusLabel(MonitoredGraphSummary monitoring) {
   if (monitoring.isPaused) return 'Updates are paused';
   if (monitoring.lastScanStatus == 'error') {
-    return 'Last check failed — try again';
+    return 'Couldn’t check for updates';
   }
-  if (monitoring.lastCheckedAt == null) return 'Waiting for first check';
-  if (monitoring.nextCheckAt.isBefore(DateTime.now())) {
-    return 'Check is overdue';
-  }
+  if (monitoring.lastCheckedAt == null) return 'First check is scheduled';
   return 'Monitoring is active';
 }
 
-String _formatMonitoringTime(DateTime? value) {
-  if (value == null) return 'Not checked yet';
+String _formatMonitoringTime(DateTime? value, {bool isNextCheck = false}) {
+  if (value == null) return 'Not yet';
   final local = value.toLocal();
   final difference = local.difference(DateTime.now());
   final elapsed = DateTime.now().difference(local);
+  if (isNextCheck &&
+      difference.inMinutes >= -5 &&
+      difference.inMinutes <= 5) {
+    return 'Soon';
+  }
+  if (isNextCheck && !difference.isNegative) {
+    if (difference.inHours < 24) return 'Today';
+    if (difference.inHours < 48) return 'Tomorrow';
+  }
+  if (isNextCheck && difference.isNegative) return 'Soon';
   if (elapsed.inMinutes < 1 && elapsed.inMinutes >= 0) return 'Just now';
   if (elapsed.inMinutes < 60 && elapsed.inMinutes >= 0) {
     return '${elapsed.inMinutes}m ago';
@@ -1127,8 +1137,8 @@ class _EmptyUpdatesView extends StatelessWidget {
           Text(
             filter == _UpdateFilter.all
                 ? lastCheckedAt == null
-                    ? 'We will show an update here when the scanner finds research connected to this graph.'
-                    : 'No new papers were found in the last check. We will show an update here when the scanner finds research connected to this graph.'
+                    ? 'Your first check is still pending. We’ll show new papers here when they are found.'
+                    : 'No new papers were found in the last check. We’ll keep looking every day.'
                 : 'There are no $filterLabel updates to show right now.',
             textAlign: TextAlign.center,
             style: TextStyle(color: secondary, fontSize: 13, height: 1.45),
